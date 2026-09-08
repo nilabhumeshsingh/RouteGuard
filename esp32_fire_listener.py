@@ -92,7 +92,7 @@ def resolve_location_and_trigger_fire(source="ESP32 BOOT Button"):
         )
         with urllib.request.urlopen(req, timeout=5) as resp:
             data = json.loads(resp.read().decode("utf-8"))
-            pos = data.get("position", {})
+            pos = data.get("position") or {}
             if pos.get("label"):
                 resolved_label = pos["label"]
             if pos.get("roomId"):
@@ -157,10 +157,19 @@ def clear_fire_alarm():
             pass
     log("✓ System returned to normal status.\n", GREEN)
 
+last_serial_trigger_time = 0
+
 def listen_serial():
+    global last_serial_trigger_time
     if not serial:
         log("pyserial not available. Serial listener disabled.", YELLOW)
         return
+
+    RESET_KEYWORDS = [
+        "rst cause", "ets jan", "rst:0x", "ets jun",
+        "boot", "button", "fire", "trigger", "reset", "reboot",
+        "starting scan pass", "fire_trigger"
+    ]
 
     while True:
         try:
@@ -169,18 +178,20 @@ def listen_serial():
                 continue
 
             with serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=0.5) as ser:
-                log(f"\n✓ Connected to ESP32 on {SERIAL_PORT} @ {BAUD_RATE} baud", BOLD + GREEN)
-                log("👉 Press the BOOT button on the ESP32 to trigger fire alarm!", BOLD + YELLOW)
+                log(f"\n✓ Connected to ESP on {SERIAL_PORT} @ {BAUD_RATE} baud", BOLD + GREEN)
+                log("👉 Press the RESET (RST) or BOOT button on the ESP to trigger fire alarm!", BOLD + YELLOW)
 
                 while True:
                     line = ser.readline().decode("utf-8", errors="replace").strip()
                     if line:
                         # Print raw serial for visibility
-                        print(f"  [ESP32] {line}")
-                        # Check for trigger keywords
+                        print(f"  [ESP] {line}")
                         lower = line.lower()
-                        if any(kw in lower for kw in ["boot", "button", "fire", "trigger", "rst:0x", "ets jun"]):
-                            resolve_location_and_trigger_fire("ESP32 Hardware (Serial)")
+                        now = time.time()
+                        if any(kw in lower for kw in RESET_KEYWORDS):
+                            if now - last_serial_trigger_time > 5.0:
+                                last_serial_trigger_time = now
+                                resolve_location_and_trigger_fire("ESP Hardware (RESET / Serial)")
         except Exception as e:
             time.sleep(2)
 
