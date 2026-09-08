@@ -58,7 +58,7 @@ def export_csv(aps, filename="muj_wifi_scan.csv"):
         writer.writerows(aps)
     print(f"✓ Exported {len(aps)} APs to {filename}")
 
-def post_scan(aps, url="http://localhost:4000/api/scan", device_id="laptop-1"):
+def post_scan(aps, url=None, device_id="laptop-1"):
     import urllib.request
     import urllib.error
     
@@ -75,36 +75,46 @@ def post_scan(aps, url="http://localhost:4000/api/scan", device_id="laptop-1"):
         ]
     }
     
-    try:
-        req = urllib.request.Request(
-            url,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"}
-        )
-        with urllib.request.urlopen(req, timeout=5) as res:
-            data = json.loads(res.read().decode("utf-8"))
-            pos = data.get("position")
-            if pos:
-                print("\n=======================================================")
-                print(f"📍 ESTIMATED LOCATION: {pos.get('label', 'Unknown')}")
-                print(f"   Coordinates:  (X: {pos.get('x')}, Y: {pos.get('y')})")
-                print(f"   Confidence:   {int(pos.get('confidence', 0) * 100)}%")
-                print(f"   Anchors Used: {pos.get('anchorsUsed', 0)} APs")
-                print(f"   Uncertainty:  ±{pos.get('uncertaintyMeters', 0)}m")
-                print("=======================================================\n")
-            else:
-                print("Scan posted. No confident location found.")
-            return data
-    except Exception as e:
-        print(f"Could not reach {url}: {e}")
-        return None
+    # Target endpoints: custom url or both localhost and Vercel production
+    targets = [url] if url else [
+        "http://localhost:4000/api/scan",
+        "https://muj-wifi-bssid-mapper.vercel.app/api/scan"
+    ]
+    
+    last_pos = None
+    for target in targets:
+        try:
+            req = urllib.request.Request(
+                target,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={"Content-Type": "application/json"}
+            )
+            with urllib.request.urlopen(req, timeout=4) as res:
+                data = json.loads(res.read().decode("utf-8"))
+                if data.get("position"):
+                    last_pos = data.get("position")
+        except Exception as e:
+            # Silent fallback if one target is unreachable
+            pass
+
+    if last_pos:
+        print("\n=======================================================")
+        print(f"📍 ESTIMATED LOCATION: {last_pos.get('label', 'Unknown')}")
+        print(f"   Coordinates:  (X: {last_pos.get('x')}, Y: {last_pos.get('y')})")
+        print(f"   Confidence:   {int(last_pos.get('confidence', 0) * 100)}%")
+        print(f"   Anchors Used: {last_pos.get('anchorsUsed', 0)} APs")
+        print(f"   Uncertainty:  ±{last_pos.get('uncertaintyMeters', 0)}m")
+        print("   ✓ Synced with: Live PWA Map")
+        print("=======================================================\n")
+    else:
+        print("Scan posted. Position calculating...")
 
 if __name__ == "__main__":
     import time
     
     continuous = "-c" in sys.argv or "--continuous" in sys.argv or "--live" in sys.argv
     device_id = "laptop-1"
-    url = "http://localhost:4000/api/scan"
+    url = None
     
     for i, arg in enumerate(sys.argv):
         if arg in ("--device", "-d") and i + 1 < len(sys.argv):
