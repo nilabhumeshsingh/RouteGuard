@@ -56,4 +56,58 @@ router.post("/estimate", async (req: Request, res: Response) => {
   }
 });
 
+// POST /api/position/manual — admin manual checkpoint
+router.post("/manual", async (req: Request, res: Response) => {
+  const { deviceId, x, y, label } = req.body;
+  if (!deviceId || x === undefined || y === undefined) {
+    return res.status(400).json({ error: "missing deviceId, x, or y" });
+  }
+
+  const manualDoc = {
+    deviceId,
+    timestamp: Date.now(),
+    aps: [],
+    position: {
+      x,
+      y,
+      confidence: 1.0,
+      source: "manual",
+      label: label || "Manual checkpoint",
+      anchorsUsed: 0
+    },
+    receivedAt: Date.now(),
+    source: "manual"
+  };
+
+  try {
+    const { getDb } = await import("../db/mongo.js");
+    const db = getDb();
+    // Store as a scan too, so /api/scan/:deviceId picks it up
+    await db.collection("scans").insertOne({ ...manualDoc });
+    await db.collection("manual_checkpoints").insertOne({ ...manualDoc });
+  } catch (err: any) {
+    console.warn("[position/manual] MongoDB write notice:", err?.message || err);
+  }
+
+  // Update in-memory fallback
+  const { scanStore } = await import("./scan.routes.js");
+  scanStore.set(deviceId, manualDoc as any);
+
+  const io = req.app.get("io");
+  if (io) {
+    io.to("scanner-updates").emit("scanner.update", {
+      deviceId,
+      position: manualDoc.position,
+      manual: true
+    });
+    io.to("admin").emit("scanner.update", {
+      deviceId,
+      position: manualDoc.position,
+      manual: true
+    });
+  }
+
+  return res.json({ ok: true, position: manualDoc.position });
+});
+
 export default router;

@@ -1,29 +1,17 @@
-import { MongoClient, Db } from "mongodb";
+import { Db } from "mongodb";
 import { SurveyFingerprint } from "@routeguard/positioning";
-import { config } from "./config.js";
+import { connectMongo as connectAtlas, getDb, closeMongo } from "./db/mongo.js";
 import { loadSampleFingerprints } from "./data/loader.js";
 
-let client: MongoClient | null = null;
-let db: Db | null = null;
 let isConnected = false;
 
 export async function connectMongo(): Promise<Db | null> {
-  if (db && isConnected) {
-    return db;
-  }
   try {
-    client = new MongoClient(config.mongodbUri, {
-      serverSelectionTimeoutMS: 2000,
-      connectTimeoutMS: 2500
-    });
-    await client.connect();
-    db = client.db(config.mongodbDbName);
-    await db.command({ ping: 1 });
+    const db = await connectAtlas();
     isConnected = true;
-    console.log(`[DB] Connected to MongoDB database: ${config.mongodbDbName}`);
     return db;
   } catch (err: any) {
-    console.warn(`[DB] MongoDB connection failed (${err.message}). Using local survey cache.`);
+    console.warn(`[DB] Atlas connection failed (${err.message}). Using local survey cache.`);
     isConnected = false;
     return null;
   }
@@ -35,16 +23,34 @@ export function isDbConnected(): boolean {
 
 export async function getFingerprints(): Promise<SurveyFingerprint[]> {
   try {
-    if (isConnected && db) {
-      const docs = await db.collection("locations").find({}).toArray();
+    if (isConnected) {
+      const db = getDb();
+      const docs = await db.collection("fingerprints").find({}).toArray();
       if (docs.length > 0) {
-        return docs.map((doc) => ({
-          location: doc.location || "Unknown",
-          x: Number(doc.x) || 0,
-          y: Number(doc.y) || 0,
-          floorId: doc.floorId || "floor-2",
-          bssids: (doc.bssids as Record<string, number>) || {}
-        }));
+        return docs.map((doc: any) => {
+          // If stored as { aps: [{bssid, rssi}] }
+          if (Array.isArray(doc.aps)) {
+            const bssids: Record<string, number> = {};
+            doc.aps.forEach((ap: any) => {
+              if (ap.bssid) bssids[ap.bssid] = ap.rssi;
+            });
+            return {
+              location: doc.label || "Room",
+              x: Number(doc.x) || 0,
+              y: Number(doc.y) || 0,
+              floorId: doc.floorId || "floor-2",
+              bssids
+            };
+          }
+          // If stored as { bssids: {...} }
+          return {
+            location: doc.location || doc.label || "Room",
+            x: Number(doc.x) || 0,
+            y: Number(doc.y) || 0,
+            floorId: doc.floorId || "floor-2",
+            bssids: (doc.bssids as Record<string, number>) || {}
+          };
+        });
       }
     }
   } catch (err) {
@@ -63,10 +69,6 @@ export async function getFingerprints(): Promise<SurveyFingerprint[]> {
 }
 
 export async function disconnectMongo(): Promise<void> {
-  if (client) {
-    await client.close();
-    client = null;
-    db = null;
-    isConnected = false;
-  }
+  await closeMongo();
+  isConnected = false;
 }

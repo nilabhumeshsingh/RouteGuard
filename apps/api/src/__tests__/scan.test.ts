@@ -11,7 +11,7 @@ describe("WiFi Scanner Ingest Endpoints", () => {
   });
 
   describe("POST /api/scan", () => {
-    it("stores a scan payload in-memory and returns count", async () => {
+    it("stores a scan payload and returns count", async () => {
       const payload = {
         deviceId: "android-scanner-01",
         timestamp: 1788880000000,
@@ -27,7 +27,8 @@ describe("WiFi Scanner Ingest Endpoints", () => {
         .set("Content-Type", "application/json");
 
       expect(res.status).toBe(200);
-      expect(res.body).toEqual({ ok: true, count: 2 });
+      expect(res.body.ok).toBe(true);
+      expect(res.body.count).toBe(2);
       expect(scanStore.has("android-scanner-01")).toBe(true);
     });
 
@@ -61,12 +62,13 @@ describe("WiFi Scanner Ingest Endpoints", () => {
       expect(res.body.aps.length).toBe(1);
       expect(res.body.aps[0].bssid).toBe("aa:bb:cc:dd:ee:01");
       expect(res.body).toHaveProperty("receivedAt");
+      expect(res.body).toHaveProperty("ageMs");
     });
 
     it("returns 404 for unknown deviceId", async () => {
       const res = await request(app).get("/api/scan/nonexistent-device");
       expect(res.status).toBe(404);
-      expect(res.body).toEqual({ error: "no scan" });
+      expect(res.body.error).toContain("no scan");
     });
   });
 
@@ -89,11 +91,11 @@ describe("WiFi Scanner Ingest Endpoints", () => {
 
       const res = await request(app).get("/api/scanner/status");
       expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-      expect(res.body.length).toBe(2);
+      expect(res.body).toHaveProperty("scanners");
+      expect(res.body.total).toBe(2);
 
-      const devA = res.body.find((d: any) => d.deviceId === "dev-A");
-      const devB = res.body.find((d: any) => d.deviceId === "dev-B");
+      const devA = res.body.scanners.find((d: any) => d.deviceId === "dev-A");
+      const devB = res.body.scanners.find((d: any) => d.deviceId === "dev-B");
 
       expect(devA).toBeDefined();
       expect(devA.apCount).toBe(1);
@@ -102,6 +104,37 @@ describe("WiFi Scanner Ingest Endpoints", () => {
       expect(devB).toBeDefined();
       expect(devB.apCount).toBe(2);
       expect(typeof devB.lastSeen).toBe("number");
+    });
+  });
+
+  describe("POST /api/position/manual", () => {
+    it("stores manual position checkpoint and returns location", async () => {
+      const res = await request(app)
+        .post("/api/position/manual")
+        .send({ deviceId: "manual-tester", x: 1.75, y: 7.25, label: "Room 204" });
+
+      expect(res.status).toBe(200);
+      expect(res.body.ok).toBe(true);
+      expect(res.body.position.source).toBe("manual");
+      expect(res.body.position.x).toBe(1.75);
+      expect(res.body.position.y).toBe(7.25);
+    });
+  });
+
+  describe("DELETE /api/scan/:deviceId", () => {
+    it("clears scanner data for a device", async () => {
+      await request(app).post("/api/scan").send({
+        deviceId: "to-delete",
+        timestamp: 1000,
+        aps: [{ bssid: "aa:bb:cc:00:01:01", rssi: -50 }]
+      });
+
+      expect(scanStore.has("to-delete")).toBe(true);
+
+      const res = await request(app).delete("/api/scan/to-delete");
+      expect(res.status).toBe(200);
+      expect(res.body.ok).toBe(true);
+      expect(scanStore.has("to-delete")).toBe(false);
     });
   });
 });

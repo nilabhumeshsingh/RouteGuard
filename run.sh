@@ -17,12 +17,16 @@ export PATH="/home/triggy/.local/bin:$PATH"
 # ------------------------------------------------------------------------------
 if [ -f ".env" ]; then
   set -a
-  source .env 2>/dev/null || true
+  source ./.env 2>/dev/null || true
+  set +a
+elif [ -f "apps/api/.env" ]; then
+  set -a
+  source ./apps/api/.env 2>/dev/null || true
   set +a
 fi
 
 export MONGODB_URI="${MONGODB_URI:-mongodb://127.0.0.1:27017/routeguard}"
-export MONGODB_DB_NAME="${MONGODB_DB_NAME:-routeguard}"
+export MONGODB_DB_NAME="${MONGODB_DB_NAME:-campussafe}"
 export PORT="${PORT:-4000}"
 export API_PORT=4000
 export WEB_PORT=3000
@@ -32,7 +36,8 @@ echo "🛡️  CampusSafe · Unified System Launcher"
 echo "======================================================"
 echo "API Endpoint:  http://localhost:${API_PORT}"
 echo "Web PWA:       http://localhost:${WEB_PORT}"
-echo "MongoDB URI:   ${MONGODB_URI}"
+REDACTED_URI=$(echo "$MONGODB_URI" | sed -E 's/:\/\/[^:]+:[^@]+@/:\/\/****:****@/')
+echo "MongoDB URI:   ${REDACTED_URI}"
 echo "======================================================"
 
 # ------------------------------------------------------------------------------
@@ -42,10 +47,11 @@ echo "🔍 Checking MongoDB connectivity..."
 
 check_mongo_alive() {
   python3 -c "
-import sys
+import os, sys
 from pymongo import MongoClient
 try:
-    c = MongoClient('$MONGODB_URI', serverSelectionTimeoutMS=1500)
+    uri = os.environ.get('MONGODB_URI', 'mongodb://127.0.0.1:27017/routeguard')
+    c = MongoClient(uri, serverSelectionTimeoutMS=1500)
     c.admin.command('ping')
     sys.exit(0)
 except Exception:

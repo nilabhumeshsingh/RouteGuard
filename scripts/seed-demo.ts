@@ -11,10 +11,11 @@ const rootDir = path.resolve(__dirname, "..");
 
 // Load environment configuration
 dotenv.config({ path: path.join(rootDir, ".env") });
+dotenv.config({ path: path.join(rootDir, "apps/api/.env") });
 dotenv.config();
 
 const MONGODB_URI = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/routeguard";
-const MONGODB_DB_NAME = process.env.MONGODB_DB_NAME || "routeguard";
+const MONGODB_DB_NAME = process.env.MONGODB_DB_NAME || "campussafe";
 
 interface SurveyFingerprintRecord {
   location: string;

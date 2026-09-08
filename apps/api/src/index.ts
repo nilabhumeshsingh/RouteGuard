@@ -2,23 +2,29 @@ import http from "node:http";
 import { createApp } from "./app.js";
 import { config } from "./config.js";
 import { connectMongo, disconnectMongo } from "./db.js";
+import { seedFingerprints } from "./services/positioning/seed.js";
 import { initSocketGateway } from "./realtime/socket.js";
 
 export * from "./safety/index.js";
 export * from "./realtime/socket.js";
 export * from "./guardian/guardian.service.js";
 export * from "./routes/scan.routes.js";
+export * from "./db/mongo.js";
+export { seedFingerprints } from "./services/positioning/seed.js";
+export { runKNN } from "./services/positioning/knn.js";
 export { createApp } from "./app.js";
 
 async function bootstrap() {
   // Connect to database
   await connectMongo();
+  await seedFingerprints();
 
   const app = createApp();
   const server = http.createServer(app);
 
   // Initialize real-time Socket.IO gateway
-  initSocketGateway(server);
+  const io = initSocketGateway(server);
+  app.set("io", io);
 
   server.listen(config.port, config.host, () => {
     console.log(`====================================================`);

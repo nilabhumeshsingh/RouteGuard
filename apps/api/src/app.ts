@@ -11,6 +11,8 @@ import sosRouter from "./routes/sos.routes.js";
 import guardianRouter from "./routes/guardian.routes.js";
 import geofencesRouter from "./routes/geofences.routes.js";
 import scanRouter, { scannerRouter } from "./routes/scan.routes.js";
+import fingerprintsRouter from "./routes/fingerprints.routes.js";
+import alarmsRouter from "./routes/alarms.routes.js";
 import { registerBlockedNodesProvider } from "./services/routing.service.js";
 
 // Wire safety smoke forecast into dynamic route obstruction provider
@@ -58,6 +60,10 @@ export function createApp(): Express {
   // WiFi Scanner Ingest routes
   app.use("/api/scan", scanRouter);
   app.use("/api/scanner", scannerRouter);
+
+  // Fingerprint & Alarm routes (MongoDB Atlas backed)
+  app.use("/api/fingerprints", fingerprintsRouter);
+  app.use("/api/alarms", alarmsRouter);
 
   // Fallback 404 handler
   app.use((req: Request, res: Response) => {
