@@ -56,6 +56,14 @@ export interface GeofenceAlertEvent {
   timestamp: number;
 }
 
+export interface ScannerUpdateEvent {
+  deviceId: string;
+  timestamp: number;
+  receivedAt: number;
+  apCount: number;
+  aps: any[];
+}
+
 export function initSocketGateway(httpServer: HttpServer): SocketIOServer {
   const io = new SocketIOServer(httpServer, {
     cors: {
@@ -154,3 +162,9 @@ export function broadcastGeofenceAlert(
   }
   ioInstance.to("admin").emit("geofence.alert", event);
 }
+
+export function broadcastScannerUpdate(event: ScannerUpdateEvent): void {
+  if (!ioInstance) return;
+  ioInstance.to("admin").emit("scanner.update", event);
+}
+

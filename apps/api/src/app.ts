@@ -10,6 +10,7 @@ import adminRouter from "./routes/admin.routes.js";
 import sosRouter from "./routes/sos.routes.js";
 import guardianRouter from "./routes/guardian.routes.js";
 import geofencesRouter from "./routes/geofences.routes.js";
+import scanRouter, { scannerRouter } from "./routes/scan.routes.js";
 import { registerBlockedNodesProvider } from "./services/routing.service.js";
 
 // Wire safety smoke forecast into dynamic route obstruction provider
@@ -53,6 +54,10 @@ export function createApp(): Express {
   // Guardian & Geofencing routes
   app.use("/api/guardian", guardianRouter);
   app.use("/api/geofences", geofencesRouter);
+
+  // WiFi Scanner Ingest routes
+  app.use("/api/scan", scanRouter);
+  app.use("/api/scanner", scannerRouter);
 
   // Fallback 404 handler
   app.use((req: Request, res: Response) => {

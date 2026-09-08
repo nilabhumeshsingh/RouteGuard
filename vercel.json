@@ -23,6 +23,18 @@
       "destination": "/api/health"
     },
     {
+      "source": "/api/scanner/status",
+      "destination": "/api/scan"
+    },
+    {
+      "source": "/api/scan/:deviceId",
+      "destination": "/api/scan?deviceId=:deviceId"
+    },
+    {
+      "source": "/api/scan",
+      "destination": "/api/scan"
+    },
+    {
       "source": "/((?!api/|standalone_floorplan|3d|assets/|favicon|.*\\..*).*)",
       "destination": "/index.html"
     }

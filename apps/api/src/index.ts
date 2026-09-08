@@ -7,6 +7,7 @@ import { initSocketGateway } from "./realtime/socket.js";
 export * from "./safety/index.js";
 export * from "./realtime/socket.js";
 export * from "./guardian/guardian.service.js";
+export * from "./routes/scan.routes.js";
 export { createApp } from "./app.js";
 
 async function bootstrap() {
