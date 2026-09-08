@@ -16,6 +16,7 @@ interface CampusMapContainerProps {
   guardianState?: GuardianState | null;
   onSelectNode?: (nodeId: string, label: string) => void;
   onSelectRoom?: (room: ArchitecturalRoom) => void;
+  viewMode?: "2D" | "3D";
 }
 
 export const CampusMapContainer: React.FC<CampusMapContainerProps> = ({
@@ -29,8 +30,21 @@ export const CampusMapContainer: React.FC<CampusMapContainerProps> = ({
   smokeMinutes,
   guardianState,
   onSelectNode,
-  onSelectRoom
+  onSelectRoom,
+  viewMode = "2D"
 }) => {
+  if (viewMode === "3D") {
+    return (
+      <div className="relative w-full h-full overflow-hidden bg-[#081018]">
+        <iframe
+          src="/standalone_floorplan.html"
+          title="3D Architectural Dollhouse Floorplan"
+          className="w-full h-full border-0"
+        />
+      </div>
+    );
+  }
+
   if (currentFloor !== "floor-2") {
     return (
       <div className="relative w-full h-full flex items-center justify-center bg-[#f5f5f7]">

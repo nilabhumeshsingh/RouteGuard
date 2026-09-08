@@ -13,7 +13,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
 
-class PositionApiClient(var baseUrl: String = "https://routeguard.vercel.app") {
+class PositionApiClient(var baseUrl: String = "https://muj-wifi-bssid-mapper.vercel.app") {
 
     private val gson = Gson()
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()

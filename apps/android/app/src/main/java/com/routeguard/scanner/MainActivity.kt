@@ -44,8 +44,8 @@ class MainActivity : AppCompatActivity() {
     private var isControlsExpanded = true
 
     // Default endpoints
-    private var webUrl = "https://routeguard.vercel.app"
-    private var apiUrl = "https://routeguard.vercel.app"
+    private var webUrl = "https://muj-wifi-bssid-mapper.vercel.app"
+    private var apiUrl = "https://muj-wifi-bssid-mapper.vercel.app"
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -79,8 +79,8 @@ class MainActivity : AppCompatActivity() {
 
         // Preset Vercel Button
         binding.btnPresetVercel.setOnClickListener {
-            apiUrl = "https://routeguard.vercel.app"
-            webUrl = "https://routeguard.vercel.app"
+            apiUrl = "https://muj-wifi-bssid-mapper.vercel.app"
+            webUrl = "https://muj-wifi-bssid-mapper.vercel.app"
             binding.etServerUrl.setText(apiUrl)
             apiClient.baseUrl = apiUrl
             binding.webView.loadUrl(webUrl)

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Layers, LocateFixed, Eye, Check } from "lucide-react";
+import { Layers, LocateFixed, Eye, Check, Box } from "lucide-react";
 import { FloorId, MapLayerConfig } from "../../types";
 
 interface FloatingControlsProps {
@@ -8,6 +8,8 @@ interface FloatingControlsProps {
   layers: MapLayerConfig;
   onToggleLayer: (layer: keyof MapLayerConfig) => void;
   onRecenter: () => void;
+  viewMode: "2D" | "3D";
+  onToggleViewMode: () => void;
 }
 
 export const FloatingControls: React.FC<FloatingControlsProps> = ({
@@ -15,7 +17,9 @@ export const FloatingControls: React.FC<FloatingControlsProps> = ({
   onSelectFloor,
   layers,
   onToggleLayer,
-  onRecenter
+  onRecenter,
+  viewMode,
+  onToggleViewMode
 }) => {
   const [showLayerMenu, setShowLayerMenu] = useState(false);
 
@@ -26,7 +30,22 @@ export const FloatingControls: React.FC<FloatingControlsProps> = ({
   ];
 
   return (
-    <div className="fixed right-4 top-32 z-20 flex flex-col items-end gap-3 pointer-events-none">
+    <div className="fixed right-4 top-32 z-20 flex flex-col items-end gap-2.5 pointer-events-none">
+      {/* 2D / 3D Mode Toggle Button */}
+      <button
+        onClick={onToggleViewMode}
+        className={`pointer-events-auto px-2.5 py-1.5 rounded-xl border border-black/10 shadow-sm text-[12px] font-bold transition-all active:scale-95 flex items-center gap-1.5 ${
+          viewMode === "3D"
+            ? "bg-[#0066cc] text-white shadow-md"
+            : "bg-white/90 text-[#1d1d1f] hover:bg-white backdrop-blur-md"
+        }`}
+        title="Toggle 2D Blueprint / 3D Dollhouse Floorplan"
+        aria-label="Toggle 2D or 3D view mode"
+      >
+        <Box className="w-3.5 h-3.5" />
+        <span>{viewMode === "3D" ? "3D Model" : "2D Map"}</span>
+      </button>
+
       {/* Floor Selector (Vertical Capsule) */}
       <div className="pointer-events-auto flex flex-col bg-white/90 backdrop-blur-md rounded-2xl border border-black/8 shadow-sm overflow-hidden p-1 gap-1">
         {floors.map((fl) => {

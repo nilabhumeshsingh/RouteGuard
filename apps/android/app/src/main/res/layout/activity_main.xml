@@ -87,7 +87,7 @@
                         android:layout_height="40dp"
                         android:layout_weight="1"
                         android:background="@drawable/bg_input_box"
-                        android:hint="https://routeguard.vercel.app"
+                        android:hint="https://muj-wifi-bssid-mapper.vercel.app"
                         android:imeOptions="actionDone"
                         android:inputType="textUri"
                         android:paddingHorizontal="10dp"

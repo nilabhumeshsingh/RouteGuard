@@ -1,16 +1,30 @@
 {
   "version": 2,
-  "name": "muj-wifi-bssid-mapper",
-  "cleanUrls": true,
+  "buildCommand": "pnpm -r run build",
+  "outputDirectory": "apps/web/dist",
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
         {
-          "key": "Cache-Control",
-          "value": "public, max-age=0, must-revalidate"
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
         }
       ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/position/estimate",
+      "destination": "/api/position/estimate"
+    },
+    {
+      "source": "/api/health",
+      "destination": "/api/health"
+    },
+    {
+      "source": "/((?!api/|standalone_floorplan|3d|assets/|favicon|.*\\..*).*)",
+      "destination": "/index.html"
     }
   ]
 }

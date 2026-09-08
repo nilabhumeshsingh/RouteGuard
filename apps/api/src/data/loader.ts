@@ -3,6 +3,10 @@ import path from "node:path";
 import { CampusGraph, GraphNode, GraphEdge } from "@routeguard/graph";
 import { config } from "../config.js";
 
+import defaultGraphData from "./sample/floor2-graph.json" with { type: "json" };
+import defaultPoisData from "./sample/pois.json" with { type: "json" };
+import defaultFingerprintsData from "./sample/floor2-fingerprints.json" with { type: "json" };
+
 export interface FloorGraphData {
   floorId: string;
   name: string;
@@ -34,18 +38,19 @@ let cachedCampusGraph: CampusGraph | null = null;
 let cachedPois: PoiData[] | null = null;
 let cachedFingerprints: FingerprintData[] | null = null;
 
-function resolveDataPath(filename: string): string {
+function resolveDataPath(filename: string): string | null {
   const candidates = [
     path.join(config.dataDir, filename),
     path.resolve(process.cwd(), "data/sample", filename),
-    path.resolve(process.cwd(), "../../data/sample", filename)
+    path.resolve(process.cwd(), "../../data/sample", filename),
+    path.resolve(process.cwd(), "apps/api/src/data/sample", filename)
   ];
   for (const candidate of candidates) {
     if (fs.existsSync(candidate)) {
       return candidate;
     }
   }
-  throw new Error(`Data file not found: ${filename}. Checked: ${candidates.join(", ")}`);
+  return null;
 }
 
 export function loadFloor2Graph(): FloorGraphData {
@@ -53,8 +58,16 @@ export function loadFloor2Graph(): FloorGraphData {
     return cachedGraphData;
   }
   const filePath = resolveDataPath("floor2-graph.json");
-  const raw = fs.readFileSync(filePath, "utf-8");
-  cachedGraphData = JSON.parse(raw) as FloorGraphData;
+  if (filePath) {
+    try {
+      const raw = fs.readFileSync(filePath, "utf-8");
+      cachedGraphData = JSON.parse(raw) as FloorGraphData;
+      return cachedGraphData;
+    } catch {
+      // fallback to bundled JSON
+    }
+  }
+  cachedGraphData = defaultGraphData as FloorGraphData;
   return cachedGraphData;
 }
 
@@ -102,9 +115,16 @@ export function loadPois(): PoiData[] {
   if (cachedPois) {
     return cachedPois;
   }
+  let pois: PoiData[] = defaultPoisData as PoiData[];
   const filePath = resolveDataPath("pois.json");
-  const raw = fs.readFileSync(filePath, "utf-8");
-  const pois = JSON.parse(raw) as PoiData[];
+  if (filePath) {
+    try {
+      const raw = fs.readFileSync(filePath, "utf-8");
+      pois = JSON.parse(raw) as PoiData[];
+    } catch {
+      // use bundled defaultPoisData
+    }
+  }
 
   // Augment POIs with coordinates from graph nodes
   const graph = loadFloor2Graph();
@@ -129,7 +149,15 @@ export function loadSampleFingerprints(): FingerprintData[] {
     return cachedFingerprints;
   }
   const filePath = resolveDataPath("floor2-fingerprints.json");
-  const raw = fs.readFileSync(filePath, "utf-8");
-  cachedFingerprints = JSON.parse(raw) as FingerprintData[];
+  if (filePath) {
+    try {
+      const raw = fs.readFileSync(filePath, "utf-8");
+      cachedFingerprints = JSON.parse(raw) as FingerprintData[];
+      return cachedFingerprints;
+    } catch {
+      // use bundled defaultFingerprintsData
+    }
+  }
+  cachedFingerprints = defaultFingerprintsData as unknown as FingerprintData[];
   return cachedFingerprints;
 }

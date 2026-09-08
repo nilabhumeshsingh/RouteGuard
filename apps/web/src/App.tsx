@@ -25,6 +25,7 @@ export const App: React.FC = () => {
   const [currentFloor, setCurrentFloor] = useState<FloorId>("floor-2");
   const [snapPoint, setSnapPoint] = useState<SnapPoint>("half");
   const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState<"2D" | "3D">("2D");
 
   const [layers, setLayers] = useState<MapLayerConfig>({
     rooms: true,
@@ -311,6 +312,7 @@ export const App: React.FC = () => {
           guardianState={guardianState}
           onSelectRoom={handleSelectRoom}
           onSelectNode={handleSelectNode}
+          viewMode={viewMode}
         />
 
         {/* Floating Smoke Scrubber Card */}
@@ -331,6 +333,8 @@ export const App: React.FC = () => {
           layers={layers}
           onToggleLayer={toggleLayer}
           onRecenter={handleRecenter}
+          viewMode={viewMode}
+          onToggleViewMode={() => setViewMode((v) => (v === "2D" ? "3D" : "2D"))}
         />
       </main>
 
