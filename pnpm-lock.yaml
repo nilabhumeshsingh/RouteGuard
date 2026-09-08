@@ -24,6 +24,12 @@ importers:
         specifier: workspace:*
         version: link:../shared
 
+  packages/positioning:
+    dependencies:
+      '@routeguard/shared':
+        specifier: workspace:*
+        version: link:../shared
+
   packages/shared:
     dependencies:
       zod:
