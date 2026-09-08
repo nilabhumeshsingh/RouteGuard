@@ -15,7 +15,7 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background-color: #081018;
+      background-color: #F8F6F0;
     }
     #canvas-container {
       position: absolute;
@@ -94,8 +94,8 @@
       // 2. SCENE SETUP
       const container = document.getElementById('canvas-container');
       const scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x081018);
-      scene.fog = new THREE.FogExp2(0x081018, 0.008);
+      scene.background = new THREE.Color(0xF8F6F0);
+      scene.fog = new THREE.FogExp2(0xF8F6F0, 0.005);
 
       const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 500);
       camera.position.set(0, 36, 42);
@@ -106,14 +106,14 @@
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.1;
+      renderer.toneMappingExposure = 1.15;
       container.appendChild(renderer.domElement);
 
       // Lights
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
       scene.add(ambientLight);
 
-      const mainLight = new THREE.DirectionalLight(0xfff2e0, 0.9);
+      const mainLight = new THREE.DirectionalLight(0xfff7ea, 0.95);
       mainLight.position.set(25, 45, 30);
       mainLight.castShadow = true;
       mainLight.shadow.mapSize.width = 2048;
@@ -123,24 +123,24 @@
       mainLight.shadow.camera.top = d; mainLight.shadow.camera.bottom = -d;
       scene.add(mainLight);
 
-      const fillLight = new THREE.DirectionalLight(0x4fd1c2, 0.35);
+      const fillLight = new THREE.DirectionalLight(0xdce7f5, 0.45);
       fillLight.position.set(-30, 30, -20);
       scene.add(fillLight);
 
       // Ground Grid
       const gridGroup = new THREE.Group();
       const groundMesh = new THREE.Mesh(
-        new THREE.PlaneGeometry(160, 160),
-        new THREE.MeshStandardMaterial({ color: 0x060c14, roughness: 0.95 })
+        new THREE.PlaneGeometry(240, 240),
+        new THREE.MeshStandardMaterial({ color: 0xF2ECE1, roughness: 0.95 })
       );
       groundMesh.rotation.x = -Math.PI / 2;
       groundMesh.position.y = -0.05;
       groundMesh.receiveShadow = true;
       gridGroup.add(groundMesh);
 
-      const gridHelper = new THREE.GridHelper(160, 80, 0x4fd1c2, 0x142735);
+      const gridHelper = new THREE.GridHelper(240, 80, 0xD1C9BC, 0xE4DDD2);
       gridHelper.position.y = -0.04;
-      gridHelper.material.opacity = 0.4;
+      gridHelper.material.opacity = 0.55;
       gridHelper.material.transparent = true;
       gridGroup.add(gridHelper);
       scene.add(gridGroup);
@@ -178,15 +178,15 @@
       const labelSprites = [];
 
       const wallMaterial = new THREE.MeshPhysicalMaterial({
-        color: 0xbcd6e6,
+        color: 0xbed2e0,
         transparent: true,
-        opacity: 0.30,
+        opacity: 0.35,
         roughness: 0.35,
         transmission: 0.2,
         side: THREE.DoubleSide,
         depthWrite: false
       });
-      const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x4fd1c2, transparent: true, opacity: 0.8 });
+      const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x1A73E8, transparent: true, opacity: 0.65 });
 
       function createRoomLabel(text, typeName) {
         const canvas = document.createElement('canvas');
@@ -194,8 +194,8 @@
         canvas.width = 256 * scale;
         canvas.height = 96 * scale;
         const ctx = canvas.getContext('2d');
-        ctx.fillStyle = 'rgba(8, 16, 24, 0.82)';
-        ctx.strokeStyle = 'rgba(79, 209, 194, 0.6)';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.96)';
+        ctx.strokeStyle = 'rgba(218, 220, 224, 0.95)';
         ctx.lineWidth = 3 * scale;
         ctx.beginPath();
         ctx.roundRect(10 * scale, 10 * scale, canvas.width - 20 * scale, canvas.height - 20 * scale, 14 * scale);
@@ -204,12 +204,12 @@
 
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#ffffff';
-        ctx.font = `700 ${32 * scale / 2}px monospace`;
+        ctx.fillStyle = '#202124';
+        ctx.font = `700 ${30 * scale / 2}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
         ctx.fillText(text, canvas.width / 2, canvas.height / 2 - 8 * scale);
 
-        ctx.fillStyle = '#4fd1c2';
-        ctx.font = `500 ${18 * scale / 2}px sans-serif`;
+        ctx.fillStyle = '#1A73E8';
+        ctx.font = `600 ${17 * scale / 2}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
         ctx.fillText(typeName.toUpperCase(), canvas.width / 2, canvas.height / 2 + 18 * scale);
 
         const texture = new THREE.CanvasTexture(canvas);
@@ -588,24 +588,82 @@
         }
       }
 
-      // G. Mode Setter
-      function setMode(mode) {
-        if (mode === 'emergency') {
-          ambientLight.intensity = 0.45;
-          mainLight.color.setHex(0xffaaaa);
+      // G. Theme & Mode Setter
+      function setTheme(theme) {
+        if (theme === 'dark') {
+          scene.background.set(0x1a1f3a);
+          scene.fog.color.set(0x1a1f3a);
+          groundMesh.material.color.set(0x13172c);
+          document.body.style.backgroundColor = '#1a1f3a';
+        } else if (theme === 'emergency') {
+          scene.background.set(0xffebea);
+          scene.fog.color.set(0xffebea);
+          groundMesh.material.color.set(0xf5dede);
+          document.body.style.backgroundColor = '#ffebea';
         } else {
-          ambientLight.intensity = 0.65;
-          mainLight.color.setHex(0xfff2e0);
+          scene.background.set(0xF8F6F0);
+          scene.fog.color.set(0xF8F6F0);
+          groundMesh.material.color.set(0xF2ECE1);
+          document.body.style.backgroundColor = '#F8F6F0';
         }
       }
 
-      // H. Clear All
+      function setMode(mode) {
+        if (mode === 'emergency') {
+          ambientLight.intensity = 0.55;
+          mainLight.color.setHex(0xff7777);
+          setTheme('emergency');
+        } else if (mode === 'dark') {
+          setTheme('dark');
+        } else {
+          ambientLight.intensity = 0.85;
+          mainLight.color.setHex(0xfff7ea);
+          setTheme('light');
+        }
+      }
+
+      // H. Camera Zoom & View Helpers
+      function zoomCamera(factor) {
+        const offset = new THREE.Vector3().subVectors(camera.position, controls.target);
+        offset.multiplyScalar(factor);
+        transitionTo(new THREE.Vector3().addVectors(controls.target, offset), controls.target);
+      }
+
+      function resetCamera() {
+        transitionTo(new THREE.Vector3(0, 36, 42), new THREE.Vector3(0, 0.5, 0));
+      }
+
+      // I. Category Filter (dims non-matching rooms)
+      function filterRoomsByCategory(category) {
+        const cat = (category || 'all').toLowerCase().trim();
+        floorMeshes.forEach(mesh => {
+          const r = mesh.userData;
+          if (!r) return;
+          if (cat === 'all' || !cat) {
+            mesh.material.opacity = 0.85;
+            return;
+          }
+          let match = false;
+          if (cat === 'classrooms') match = (r.type === 'office');
+          else if (cat === 'washrooms') match = (r.type === 'washroom');
+          else if (cat === 'stairs') match = (r.type === 'stair');
+          else if (cat === 'exits') match = (r.type === 'stair' || (r.id && r.id.includes('stair')) || r.id === 'balcony');
+          else if (cat === 'refuges') match = (r.type === 'stair' || r.id === 'balcony');
+          else if (cat === 'help points') match = (r.type === 'office' || r.type === 'stair');
+          else match = (r.type === cat || (r.label && r.label.toLowerCase().includes(cat)));
+
+          mesh.material.opacity = match ? 0.95 : 0.16;
+        });
+      }
+
+      // J. Clear All
       function clearAllOverlays() {
         clearRouteOverlay();
         hazardsMap.forEach((_, id) => clearHazard(id));
         updateSmokeForecast(0);
         updateUserAvatars([]);
         userBeaconGroup.visible = false;
+        filterRoomsByCategory('all');
         setMode('normal');
       }
 
@@ -655,6 +713,21 @@
           case 'FOCUS_ROOM':
             focusRoomById(msg.roomId, msg.animate !== false);
             break;
+          case 'FILTER_CATEGORY':
+            filterRoomsByCategory(msg.category || msg.payload);
+            break;
+          case 'ZOOM_IN':
+            zoomCamera(0.8);
+            break;
+          case 'ZOOM_OUT':
+            zoomCamera(1.25);
+            break;
+          case 'RESET_VIEW':
+            resetCamera();
+            break;
+          case 'SET_THEME':
+            setTheme(msg.theme || msg.payload);
+            break;
           case 'SET_MODE':
             setMode(msg.mode || msg.payload);
             break;
@@ -699,6 +772,14 @@
         const hits = raycaster.intersectObjects(floorMeshes, false);
         if (hits.length > 0 && hits[0].object.userData && hits[0].object.userData.id) {
           emitRoomSelected(hits[0].object.userData);
+        } else {
+          const groundHits = raycaster.intersectObject(groundMesh, false);
+          if (groundHits.length > 0 && window.parent && window.parent !== window) {
+            window.parent.postMessage({
+              type: 'USER_CLICKED_MAP',
+              position: { x: groundHits[0].point.x, y: groundHits[0].point.z }
+            }, '*');
+          }
         }
       });
 

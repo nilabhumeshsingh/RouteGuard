@@ -1,24 +1,28 @@
 import React, { useRef } from "react";
-import { SnapPoint } from "../../types";
+
+export type SheetSnapPoint = "peek" | "half" | "full";
 
 interface BottomSheetProps {
-  snapPoint: SnapPoint;
-  onSnapChange: (point: SnapPoint) => void;
+  snapPoint: SheetSnapPoint;
+  onSnapChange: (point: SheetSnapPoint) => void;
   children: React.ReactNode;
+  headerContent?: React.ReactNode;
 }
 
 export const BottomSheet: React.FC<BottomSheetProps> = ({
   snapPoint,
   onSnapChange,
-  children
+  children,
+  headerContent
 }) => {
   const dragStartY = useRef<number | null>(null);
 
-  // Height configurations per snap point
-  const heightClasses: Record<SnapPoint, string> = {
-    collapsed: "h-[76px]",
-    half: "h-[390px]",
-    expanded: "h-[82vh]"
+  // Height configurations per snap point as specified:
+  // 80px (peek) / 50vh (half) / 90vh (full)
+  const heightClasses: Record<SheetSnapPoint, string> = {
+    peek: "h-[80px]",
+    half: "h-[50vh]",
+    full: "h-[90vh]"
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -32,36 +36,43 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
 
     if (deltaY < -40) {
       // Swiped up
-      if (snapPoint === "collapsed") onSnapChange("half");
-      else if (snapPoint === "half") onSnapChange("expanded");
+      if (snapPoint === "peek") onSnapChange("half");
+      else if (snapPoint === "half") onSnapChange("full");
     } else if (deltaY > 40) {
       // Swiped down
-      if (snapPoint === "expanded") onSnapChange("half");
-      else if (snapPoint === "half") onSnapChange("collapsed");
+      if (snapPoint === "full") onSnapChange("half");
+      else if (snapPoint === "half") onSnapChange("peek");
     }
   };
 
   const cycleSnap = () => {
-    if (snapPoint === "collapsed") onSnapChange("half");
-    else if (snapPoint === "half") onSnapChange("expanded");
-    else onSnapChange("collapsed");
+    if (snapPoint === "peek") onSnapChange("half");
+    else if (snapPoint === "half") onSnapChange("full");
+    else onSnapChange("peek");
   };
 
   return (
     <div
-      className={`fixed inset-x-0 bottom-0 z-20 bg-white/95 backdrop-blur-2xl border-t border-black/8 rounded-t-[28px] shadow-drawer transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] flex flex-col ${heightClasses[snapPoint]}`}
+      className={`fixed inset-x-0 bottom-0 z-30 md:left-20 md:max-w-[440px] bg-white rounded-t-[16px] shadow-[0_-1px_3px_rgba(0,0,0,0.1)] transition-all duration-300 ease-[cubic-bezier(0.2,0,0,1)] flex flex-col ${heightClasses[snapPoint]}`}
     >
-      {/* Drag Handle Bar */}
+      {/* Drag Handle Container (36px wide, 4px tall, #DADCE0) */}
       <div
-        className="pt-2.5 pb-1.5 px-4 flex flex-col items-center cursor-pointer select-none"
+        className="pt-2 pb-1.5 px-4 flex flex-col items-center cursor-pointer select-none shrink-0"
         onClick={cycleSnap}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        <div className="w-10 h-1 rounded-full bg-black/20 transition-colors hover:bg-black/30" />
+        <div className="w-[36px] h-[4px] rounded-full bg-[#DADCE0] transition-colors hover:bg-[#BDC1C6]" />
       </div>
 
-      {/* Sheet Content Container */}
+      {/* Optional persistent Header Content */}
+      {headerContent && (
+        <div className="px-4 pb-2 shrink-0 border-b border-[#F1F3F4]">
+          {headerContent}
+        </div>
+      )}
+
+      {/* Scrollable Body Content */}
       <div className="flex-1 overflow-y-auto px-4 pb-6 scrollbar-thin">
         {children}
       </div>
