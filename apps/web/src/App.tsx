@@ -2,8 +2,11 @@ import React, { useState } from "react";
 import { HeaderNav } from "./components/common/HeaderNav";
 import { FloatingControls } from "./components/controls/FloatingControls";
 import { BottomSheet } from "./components/sheet/BottomSheet";
+import { CampusMapContainer } from "./components/map/CampusMapContainer";
 import { FloorId, MapLayerConfig, SnapPoint, UserPositionState } from "./types";
-import { Search, Compass, MapPin, Sparkles } from "lucide-react";
+import { Search, MapPin, Sparkles } from "lucide-react";
+import { HazardOverlay, RoutePoint } from "@routeguard/shared";
+import { ArchitecturalRoom } from "./data/floor2Data";
 
 export const App: React.FC = () => {
   const [currentFloor, setCurrentFloor] = useState<FloorId>("floor-2");
@@ -27,13 +30,42 @@ export const App: React.FC = () => {
   });
 
   const [isAlarmActive, setIsAlarmActive] = useState(false);
+  const [smokeMinutes, setSmokeMinutes] = useState<0 | 2 | 5 | 10>(0);
+
+  // Sample route preview points
+  const [activeRoutePoints, setActiveRoutePoints] = useState<RoutePoint[] | null>([
+    { x: 120, y: 220, floorId: "floor-2" },
+    { x: 120, y: 280, floorId: "floor-2" },
+    { x: 80, y: 280, floorId: "floor-2" }
+  ]);
+
+  const [hazardOverlays, setHazardOverlays] = useState<HazardOverlay[]>([
+    {
+      zoneId: "room-208",
+      floorId: "floor-2",
+      severity: "fire",
+      polygon: [
+        { x: 185, y: 170 },
+        { x: 255, y: 170 },
+        { x: 255, y: 255 },
+        { x: 185, y: 255 }
+      ],
+      pulsed: true,
+      smokeIntensity: 0.8
+    }
+  ]);
 
   const toggleLayer = (layer: keyof MapLayerConfig) => {
     setLayers((prev) => ({ ...prev, [layer]: !prev[layer] }));
   };
 
   const handleRecenter = () => {
-    // Recenter triggered
+    setUserPos((prev) => ({ ...prev }));
+  };
+
+  const handleSelectRoom = (room: ArchitecturalRoom) => {
+    setSearchQuery(room.name);
+    if (snapPoint === "collapsed") setSnapPoint("half");
   };
 
   return (
@@ -46,25 +78,19 @@ export const App: React.FC = () => {
         onOpenEmergency={() => setIsAlarmActive(!isAlarmActive)}
       />
 
-      {/* Map Surface Viewport Canvas */}
-      <main className="relative flex-1 w-full h-full pt-11 pb-20 overflow-hidden flex items-center justify-center">
-        <div className="absolute inset-0 bg-[#f5f5f7] flex items-center justify-center">
-          <div className="text-center p-8 max-w-md">
-            <div className="w-16 h-16 rounded-full bg-white shadow-sm border border-black/5 flex items-center justify-center mx-auto mb-4">
-              <Compass className="w-8 h-8 text-[#0066cc]" />
-            </div>
-            <h2 className="text-xl font-semibold tracking-tight text-[#1d1d1f] mb-1">
-              CampusSafe Interactive Map
-            </h2>
-            <p className="text-[14px] text-[#86868b] leading-relaxed mb-4">
-              PWA layout initialized with SF Pro typography, #F5F5F7 parchment canvas, and frosted glass controls.
-            </p>
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-black/5 text-[13px] text-[#1d1d1f] shadow-sm">
-              <span className="w-2 h-2 rounded-full bg-[#34c759]" />
-              <span>Location: {userPos.nearestPlaceName} (2F)</span>
-            </div>
-          </div>
-        </div>
+      {/* Main Map Viewport */}
+      <main className="relative flex-1 w-full h-full pt-11 pb-20 overflow-hidden">
+        <CampusMapContainer
+          currentFloor={currentFloor}
+          layers={layers}
+          userPosition={userPos}
+          routePoints={activeRoutePoints}
+          routeIsStepFree={true}
+          isEmergencyRoute={false}
+          hazardOverlays={hazardOverlays}
+          smokeMinutes={smokeMinutes}
+          onSelectRoom={handleSelectRoom}
+        />
 
         {/* Floating Action Controls */}
         <FloatingControls
@@ -121,7 +147,7 @@ export const App: React.FC = () => {
                   {userPos.nearestPlaceName}
                 </h4>
                 <p className="text-[12px] text-[#86868b]">
-                  Academic Block 1 • Floor 2 • ±2.5m precision
+                  Academic Block 1 • Floor 2 • ±{userPos.uncertaintyRadius}m precision
                 </p>
               </div>
             </div>
