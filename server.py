@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 iBUS@MUJ WiFi BSSID Mapper - Local Server
-Saves each location as a single row with all its BSSIDs as key-value pairs.
+Strictly filters and captures genuine iBUS@MUJ enterprise APs.
+Saves each location as a single row with all BSSIDs as key-value pairs.
 """
 
 import os
@@ -36,6 +37,28 @@ def init_db():
 
 init_db()
 
+def is_ibus_muj_ap(bssid, ssid):
+    """
+    Validates genuine iBUS@MUJ Enterprise Access Points:
+    1. SSID contains MUJ or IBUS.
+    2. OUI Hardware Prefix: Aruba/HPE campus APs (90:14:AF:5F or FC:11:65).
+    3. Last Hex Digit: Always ends in '0' due to Aruba 16-BSSID VAP allocation.
+    """
+    b = bssid.upper()
+    s = ssid.upper()
+    
+    # 1. Check SSID
+    if not ("MUJ" in s or "IBUS" in s):
+        return False
+        
+    # 2. Check Aruba Enterprise Hardware Signature at MUJ
+    is_aruba = b.startswith("90:14:AF:5F") or b.startswith("FC:11:65")
+    
+    # 3. Check VAP offset alignment (Aruba BSSIDs end in 0)
+    ends_with_zero = b.endswith("0")
+    
+    return is_aruba and ends_with_zero
+
 def scan_wifi_chip(rescan=False):
     """Scans nearby WiFi networks using nmcli and parses all iBUS@MUJ APs."""
     try:
@@ -64,32 +87,35 @@ def scan_wifi_chip(rescan=False):
                 rest = parts[7:]
                 ssid = rest[0]
                 
-                if bssid in seen_bssids:
+                # Strict check: only genuine iBUS@MUJ enterprise APs
+                if not is_ibus_muj_ap(bssid, ssid):
                     continue
                 
-                if "MUJ" in ssid.upper() or "IBUS" in ssid.upper():
-                    seen_bssids.add(bssid)
-                    chan = rest[2] if len(rest) > 2 else ""
-                    freq = rest[3] if len(rest) > 3 else ""
-                    rate = rest[4] if len(rest) > 4 else ""
-                    sig = rest[5] if len(rest) > 5 else "80"
+                if bssid in seen_bssids:
+                    continue
+                seen_bssids.add(bssid)
+                
+                chan = rest[2] if len(rest) > 2 else ""
+                freq = rest[3] if len(rest) > 3 else ""
+                rate = rest[4] if len(rest) > 4 else ""
+                sig = rest[5] if len(rest) > 5 else "80"
+                
+                if in_use:
+                    connected_bssid = bssid
                     
-                    if in_use:
-                        connected_bssid = bssid
-                        
-                    is_5g = "5" in freq or (chan.isdigit() and int(chan) > 14)
-                    frequency_label = "5 GHz" if is_5g else "2.4 GHz"
+                is_5g = "5" in freq or (chan.isdigit() and int(chan) > 14)
+                frequency_label = "5 GHz" if is_5g else "2.4 GHz"
 
-                    aps.append({
-                        "bssid": bssid,
-                        "ssid": ssid,
-                        "in_use": in_use,
-                        "channel": chan,
-                        "frequency": frequency_label,
-                        "rate": rate,
-                        "signal": int(sig) if sig.isdigit() else 80
-                    })
-                    
+                aps.append({
+                    "bssid": bssid,
+                    "ssid": ssid,
+                    "in_use": in_use,
+                    "channel": chan,
+                    "frequency": frequency_label,
+                    "rate": rate,
+                    "signal": int(sig) if sig.isdigit() else 80
+                })
+                
         aps.sort(key=lambda x: x["signal"], reverse=True)
         return {"aps": aps, "connected_bssid": connected_bssid, "total_visible": len(aps)}
     except Exception as e:
@@ -126,8 +152,6 @@ def save_location_row():
     if not bssids:
         return jsonify({"error": "No BSSIDs provided to save"}), 400
 
-    # Build key-value dictionary and formatted string
-    # Key: BSSID, Value: Signal% (with frequency/channel metadata)
     kv_dict = {}
     text_pairs = []
 
@@ -197,7 +221,6 @@ def export_csv():
         
     output = io.StringIO()
     writer = csv.writer(output)
-    # Header: Each location is a single row with all BSSIDs as key-value pairs
     writer.writerow(["Location", "BSSID_Key_Value_Pairs", "BSSID_JSON", "AP_Count", "Timestamp"])
     for r in rows:
         writer.writerow([
@@ -234,5 +257,5 @@ def export_json():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    print(f"📡 iBUS@MUJ Single-Row Key-Value Server at http://localhost:{port}")
+    print(f"📡 iBUS@MUJ Strict AP Mapper Server at http://localhost:{port}")
     app.run(host="0.0.0.0", port=port, debug=False)
