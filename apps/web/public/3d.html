@@ -3,893 +3,41 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Second Floor Architectural Plan — Standalone 3D Model</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <title>RouteGuard 3D Floorplan Renderer</title>
   <style>
-    :root {
-      --bg-dark: #081018;
-      --bg-panel: rgba(15, 27, 41, 0.88);
-      --bg-panel-hover: rgba(22, 38, 56, 0.95);
-      --border-color: rgba(64, 98, 126, 0.35);
-      --border-highlight: rgba(79, 209, 194, 0.5);
-      --text-main: #eaf2f8;
-      --text-muted: #8ea7b8;
-      --accent-cyan: #4fd1c2;
-      --accent-amber: #f0a24a;
-      --accent-blue: #54a0ff;
-      --color-office: #f0a24a;
-      --color-washroom: #4fd1c2;
-      --color-stair: #ef6f6f;
-      --color-void: #8f8ff0;
-      --color-balcony: #79d189;
-      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      --font-mono: 'IBM Plex Mono', monospace;
-      --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-    }
-
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
       user-select: none;
     }
-
     html, body {
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background-color: var(--bg-dark);
-      font-family: var(--font-sans);
-      color: var(--text-main);
-      -webkit-font-smoothing: antialiased;
+      background-color: #081018;
     }
-
     #canvas-container {
       position: absolute;
       inset: 0;
-      z-index: 1;
     }
-
     canvas {
       display: block;
       width: 100%;
       height: 100%;
       cursor: grab;
     }
-
     canvas:active {
       cursor: grabbing;
     }
-
-    /* Header HUD */
-    .hud-header {
-      position: absolute;
-      top: 16px;
-      left: 16px;
-      right: 16px;
-      z-index: 10;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      pointer-events: none;
-    }
-
-    .hud-header > * {
-      pointer-events: auto;
-    }
-
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      background: var(--bg-panel);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border: 1px solid var(--border-color);
-      padding: 10px 18px;
-      border-radius: 10px;
-      box-shadow: var(--glass-shadow);
-    }
-
-    .logo-icon {
-      width: 38px;
-      height: 38px;
-      border-radius: 8px;
-      background: linear-gradient(135deg, rgba(79, 209, 194, 0.2), rgba(240, 162, 74, 0.2));
-      border: 1px solid var(--accent-cyan);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--accent-cyan);
-    }
-
-    .brand h1 {
-      font-size: 16px;
-      font-weight: 700;
-      letter-spacing: 0.3px;
-      background: linear-gradient(90deg, #ffffff, #b0cbe0);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .brand .subtitle {
-      font-size: 11px;
-      font-family: var(--font-mono);
-      color: var(--text-muted);
-    }
-
-    /* Search Bar */
-    .search-container {
-      position: relative;
-      width: 320px;
-    }
-
-    .search-input-wrapper {
-      display: flex;
-      align-items: center;
-      background: var(--bg-panel);
-      backdrop-filter: blur(12px);
-      border: 1px solid var(--border-color);
-      border-radius: 10px;
-      padding: 8px 14px;
-      box-shadow: var(--glass-shadow);
-      transition: border-color 0.2s, box-shadow 0.2s;
-    }
-
-    .search-input-wrapper:focus-within {
-      border-color: var(--accent-cyan);
-      box-shadow: 0 0 16px rgba(79, 209, 194, 0.25);
-    }
-
-    .search-icon {
-      color: var(--text-muted);
-      margin-right: 10px;
-      flex-shrink: 0;
-    }
-
-    #search-input {
-      width: 100%;
-      background: transparent;
-      border: none;
-      outline: none;
-      color: var(--text-main);
-      font-family: var(--font-sans);
-      font-size: 13px;
-    }
-
-    #search-input::placeholder {
-      color: var(--text-muted);
-    }
-
-    .btn-icon {
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      cursor: pointer;
-      padding: 2px 6px;
-      font-size: 14px;
-    }
-
-    .btn-icon:hover {
-      color: var(--text-main);
-    }
-
-    .search-results {
-      position: absolute;
-      top: calc(100% + 6px);
-      left: 0;
-      right: 0;
-      background: var(--bg-panel);
-      backdrop-filter: blur(16px);
-      border: 1px solid var(--border-color);
-      border-radius: 10px;
-      max-height: 280px;
-      overflow-y: auto;
-      box-shadow: var(--glass-shadow);
-    }
-
-    .search-result-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 14px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-
-    .search-result-item:last-child {
-      border-bottom: none;
-    }
-
-    .search-result-item:hover {
-      background: rgba(79, 209, 194, 0.15);
-    }
-
-    .result-name {
-      font-weight: 600;
-      font-size: 13px;
-    }
-
-    .result-type {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      color: var(--text-muted);
-      background: rgba(255, 255, 255, 0.07);
-      padding: 2px 6px;
-      border-radius: 4px;
-    }
-
-    /* Left Sidebar */
-    .hud-sidebar {
-      position: absolute;
-      top: 80px;
-      left: 16px;
-      bottom: 60px;
-      width: 270px;
-      z-index: 10;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      overflow-y: auto;
-      pointer-events: none;
-    }
-
-    .hud-sidebar > * {
-      pointer-events: auto;
-    }
-
-    .panel-section {
-      background: var(--bg-panel);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border: 1px solid var(--border-color);
-      border-radius: 12px;
-      padding: 14px;
-      box-shadow: var(--glass-shadow);
-    }
-
-    .section-title {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 12px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      color: var(--accent-cyan);
-      margin-bottom: 12px;
-    }
-
-    .preset-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px;
-    }
-
-    .preset-btn {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--border-color);
-      color: var(--text-main);
-      font-family: var(--font-sans);
-      font-size: 11px;
-      font-weight: 500;
-      padding: 8px 10px;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: all 0.2s;
-      text-align: center;
-    }
-
-    .preset-btn:hover {
-      background: rgba(79, 209, 194, 0.15);
-      border-color: var(--accent-cyan);
-    }
-
-    .preset-btn.active {
-      background: linear-gradient(135deg, rgba(79, 209, 194, 0.3), rgba(34, 112, 147, 0.4));
-      border-color: var(--accent-cyan);
-      color: #ffffff;
-      font-weight: 600;
-      box-shadow: 0 0 10px rgba(79, 209, 194, 0.2);
-    }
-
-    .slider-group {
-      margin-bottom: 12px;
-    }
-
-    .slider-group:last-child {
-      margin-bottom: 0;
-    }
-
-    .slider-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 11px;
-      margin-bottom: 6px;
-    }
-
-    .slider-header label {
-      color: var(--text-muted);
-    }
-
-    .slider-value {
-      font-family: var(--font-mono);
-      color: var(--accent-cyan);
-      font-weight: 600;
-    }
-
-    input[type="range"] {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 100%;
-      height: 5px;
-      border-radius: 3px;
-      background: rgba(255, 255, 255, 0.12);
-      outline: none;
-    }
-
-    input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background: var(--accent-cyan);
-      cursor: pointer;
-      box-shadow: 0 0 8px var(--accent-cyan);
-      transition: transform 0.15s;
-    }
-
-    input[type="range"]::-webkit-slider-thumb:hover {
-      transform: scale(1.2);
-    }
-
-    .toggle-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .toggle-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 11px;
-      color: var(--text-muted);
-      cursor: pointer;
-    }
-
-    .toggle-item input[type="checkbox"] {
-      display: none;
-    }
-
-    .toggle-slider {
-      width: 30px;
-      height: 16px;
-      border-radius: 10px;
-      background: rgba(255, 255, 255, 0.12);
-      position: relative;
-      transition: background 0.2s;
-      flex-shrink: 0;
-    }
-
-    .toggle-slider::after {
-      content: '';
-      position: absolute;
-      top: 2px;
-      left: 2px;
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: #ffffff;
-      transition: transform 0.2s;
-    }
-
-    .toggle-item input[type="checkbox"]:checked + .toggle-slider {
-      background: var(--accent-cyan);
-    }
-
-    .toggle-item input[type="checkbox"]:checked + .toggle-slider::after {
-      transform: translateX(14px);
-    }
-
-    .toggle-item:hover .toggle-label {
-      color: var(--text-main);
-    }
-
-    /* Right Inspector Drawer */
-    .hud-drawer {
-      position: absolute;
-      top: 80px;
-      right: 16px;
-      bottom: 60px;
-      width: 320px;
-      z-index: 20;
-      background: var(--bg-panel);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 1px solid var(--border-color);
-      border-radius: 14px;
-      padding: 20px;
-      box-shadow: var(--glass-shadow);
-      display: flex;
-      flex-direction: column;
-      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s;
-    }
-
-    .hud-drawer.hidden {
-      transform: translateX(360px);
-      opacity: 0;
-      pointer-events: none;
-    }
-
-    .drawer-close-btn {
-      position: absolute;
-      top: 14px;
-      right: 14px;
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      font-size: 20px;
-      cursor: pointer;
-      line-height: 1;
-    }
-
-    .drawer-close-btn:hover {
-      color: var(--text-main);
-    }
-
-    .drawer-header {
-      border-bottom: 1px solid var(--border-color);
-      padding-bottom: 14px;
-      margin-bottom: 16px;
-    }
-
-    .room-tag {
-      display: inline-block;
-      font-family: var(--font-mono);
-      font-size: 10px;
-      font-weight: 600;
-      color: var(--accent-amber);
-      background: rgba(240, 162, 74, 0.15);
-      border: 1px solid rgba(240, 162, 74, 0.3);
-      padding: 3px 8px;
-      border-radius: 4px;
-      margin-bottom: 8px;
-      letter-spacing: 0.5px;
-    }
-
-    .room-title {
-      font-size: 20px;
-      font-weight: 700;
-      margin-bottom: 4px;
-    }
-
-    .room-subtitle {
-      font-size: 12px;
-      color: var(--text-muted);
-    }
-
-    .drawer-body {
-      flex: 1;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .stats-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
-
-    .stat-card {
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      padding: 10px;
-      border-radius: 8px;
-    }
-
-    .stat-label {
-      font-size: 10px;
-      color: var(--text-muted);
-      margin-bottom: 2px;
-      text-transform: uppercase;
-    }
-
-    .stat-value {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text-main);
-    }
-
-    .inspector-section h3 {
-      font-size: 12px;
-      color: var(--accent-cyan);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 8px;
-    }
-
-    .fixture-list {
-      list-style: none;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .fixture-list li {
-      font-size: 12px;
-      color: var(--text-main);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: rgba(255, 255, 255, 0.03);
-      padding: 6px 10px;
-      border-radius: 6px;
-    }
-
-    .fixture-list li::before {
-      content: '•';
-      color: var(--accent-amber);
-      font-size: 14px;
-    }
-
-    .room-desc {
-      font-size: 12px;
-      line-height: 1.5;
-      color: var(--text-muted);
-    }
-
-    .drawer-footer {
-      margin-top: 16px;
-      padding-top: 14px;
-      border-top: 1px solid var(--border-color);
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .action-btn {
-      width: 100%;
-      padding: 10px 14px;
-      border-radius: 8px;
-      font-family: var(--font-sans);
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      transition: all 0.2s;
-    }
-
-    .action-btn.primary {
-      background: linear-gradient(135deg, var(--accent-cyan), #2b988a);
-      border: none;
-      color: #081018;
-    }
-
-    .action-btn.primary:hover {
-      box-shadow: 0 0 16px rgba(79, 209, 194, 0.4);
-      transform: translateY(-1px);
-    }
-
-    .action-btn.secondary {
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid var(--border-color);
-      color: var(--text-main);
-    }
-
-    .action-btn.secondary:hover {
-      background: rgba(255, 255, 255, 0.12);
-    }
-
-    /* Footer Legend */
-    .hud-footer {
-      position: absolute;
-      bottom: 12px;
-      left: 16px;
-      right: 16px;
-      z-index: 10;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: var(--bg-panel);
-      backdrop-filter: blur(12px);
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      padding: 8px 16px;
-      box-shadow: var(--glass-shadow);
-      pointer-events: auto;
-    }
-
-    .legend-items {
-      display: flex;
-      gap: 16px;
-    }
-
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 11px;
-    }
-
-    .swatch {
-      width: 10px;
-      height: 10px;
-      border-radius: 2px;
-    }
-
-    .swatch.office { background: var(--color-office); }
-    .swatch.washroom { background: var(--color-washroom); }
-    .swatch.stair { background: var(--color-stair); }
-    .swatch.void { background: var(--color-void); }
-    .swatch.balcony { background: var(--color-balcony); }
-
-    .legend-text {
-      color: var(--text-muted);
-    }
-
-    .hud-hint {
-      font-family: var(--font-mono);
-      font-size: 10px;
-      color: var(--text-muted);
-    }
-
-    /* Hover Tooltip */
-    #hover-tooltip {
-      position: absolute;
-      z-index: 30;
-      background: rgba(8, 16, 24, 0.9);
-      backdrop-filter: blur(8px);
-      border: 1px solid var(--accent-cyan);
-      border-radius: 6px;
-      padding: 6px 12px;
-      pointer-events: none;
-      transform: translate(-50%, -120%);
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-      transition: opacity 0.15s;
-    }
-
-    #hover-tooltip.hidden {
-      opacity: 0;
-    }
-
-    .tooltip-title {
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--accent-cyan);
-    }
-
-    .tooltip-sub {
-      font-size: 10px;
-      color: var(--text-muted);
-      font-family: var(--font-mono);
-    }
-
-    .hidden {
-      display: none !important;
-    }
   </style>
-</head>
-<body>
-
-  <!-- WebGL 3D Viewport -->
-  <div id="canvas-container"></div>
-
-  <!-- Hover Tooltip -->
-  <div id="hover-tooltip" class="hidden">
-    <div class="tooltip-title" id="tooltip-name">Room 204</div>
-    <div class="tooltip-sub" id="tooltip-type">Classroom • Cap: 36</div>
-  </div>
-
-  <!-- Header HUD -->
-  <header class="hud-header">
-    <div class="brand">
-      <div class="logo-icon">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M3 9l9-7 9 7v11a2 2 1 0 0 1-2 2H5a2 2 1 0 0 1-2-2z"/>
-          <polyline points="9 22 9 12 15 12 15 22"/>
-        </svg>
-      </div>
-      <div>
-        <h1>Second Floor Plan</h1>
-        <div class="subtitle">Interactive 3D Dollhouse & Architectural Inspector</div>
-      </div>
-    </div>
-
-    <!-- Search Box -->
-    <div class="search-container">
-      <div class="search-input-wrapper">
-        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="11" cy="11" r="8"/>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-        </svg>
-        <input type="text" id="search-input" placeholder="Search room (e.g. 204, Washroom, Balcony)..." autocomplete="off">
-        <button id="search-clear" class="btn-icon hidden">✕</button>
-      </div>
-      <div id="search-results" class="search-results hidden"></div>
-    </div>
-    <!-- Live Positioning HUD Pill -->
-    <div id="live-pos-pill" style="display:none; align-items:center; gap:8px; background:var(--bg-panel); backdrop-filter:blur(12px); border:1px solid var(--accent-cyan); padding:8px 14px; border-radius:8px; box-shadow:var(--glass-shadow); cursor:pointer;" title="Click to center camera on live location">
-      <span style="width:8px; height:8px; border-radius:50%; background:var(--accent-cyan); box-shadow:0 0 8px var(--accent-cyan); display:inline-block;"></span>
-      <span style="font-size:12px; font-weight:600; color:var(--accent-cyan);" id="live-pos-label">Live: Room 204</span>
-    </div>
-  </header>
-
-  <!-- Left Sidebar Controls -->
-  <aside class="hud-sidebar left-sidebar">
-    <!-- Camera View Presets -->
-    <div class="panel-section">
-      <div class="section-title">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 10l5 5-5 5"/><path d="M4 4v7a4 4 0 0 0 4 4h12"/></svg>
-        Camera Presets
-      </div>
-      <div class="preset-grid">
-        <button class="preset-btn active" data-preset="iso">
-          <span class="btn-label">3D Isometric</span>
-        </button>
-        <button class="preset-btn" data-preset="top">
-          <span class="btn-label">Top Blueprint</span>
-        </button>
-        <button class="preset-btn" data-preset="balcony">
-          <span class="btn-label">Circular Balcony</span>
-        </button>
-        <button class="preset-btn" data-preset="east">
-          <span class="btn-label">East Wing</span>
-        </button>
-        <button class="preset-btn" data-preset="corridor">
-          <span class="btn-label">Corridor Walk</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- Architectural Controls -->
-    <div class="panel-section">
-      <div class="section-title">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
-        Dollhouse Controls
-      </div>
-
-      <div class="slider-group">
-        <div class="slider-header">
-          <label for="slider-wall-height">Wall Height Cutaway</label>
-          <span class="slider-value" id="val-wall-height">3.0m</span>
-        </div>
-        <input type="range" id="slider-wall-height" min="0.2" max="3.5" step="0.1" value="3.0">
-      </div>
-
-      <div class="slider-group">
-        <div class="slider-header">
-          <label for="slider-wall-opacity">Wall Transparency</label>
-          <span class="slider-value" id="val-wall-opacity">30%</span>
-        </div>
-        <input type="range" id="slider-wall-opacity" min="0.0" max="1.0" step="0.05" value="0.30">
-      </div>
-
-      <div class="slider-group">
-        <div class="slider-header">
-          <label for="slider-object-opacity">Furniture Transparency</label>
-          <span class="slider-value" id="val-object-opacity">85%</span>
-        </div>
-        <input type="range" id="slider-object-opacity" min="0.1" max="1.0" step="0.05" value="0.85">
-      </div>
-    </div>
-
-    <!-- Display Toggles -->
-    <div class="panel-section">
-      <div class="section-title">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-        Display Layers
-      </div>
-      <div class="toggle-list">
-        <label class="toggle-item">
-          <input type="checkbox" id="toggle-furniture" checked>
-          <span class="toggle-slider"></span>
-          <span class="toggle-label">Interior Furniture & Seating</span>
-        </label>
-        <label class="toggle-item">
-          <input type="checkbox" id="toggle-labels" checked>
-          <span class="toggle-slider"></span>
-          <span class="toggle-label">Room Number Badges</span>
-        </label>
-        <label class="toggle-item">
-          <input type="checkbox" id="toggle-edges" checked>
-          <span class="toggle-slider"></span>
-          <span class="toggle-label">Structural Edge Glow</span>
-        </label>
-        <label class="toggle-item">
-          <input type="checkbox" id="toggle-grid" checked>
-          <span class="toggle-slider"></span>
-          <span class="toggle-label">Ground Blueprint Grid</span>
-        </label>
-        <label class="toggle-item">
-          <input type="checkbox" id="toggle-xray">
-          <span class="toggle-slider"></span>
-          <span class="toggle-label">X-Ray Wireframe Mode</span>
-        </label>
-      </div>
-    </div>
-  </aside>
-
-  <!-- Right Inspector Drawer -->
-  <aside id="room-inspector" class="hud-drawer hidden">
-    <button id="drawer-close" class="drawer-close-btn">&times;</button>
-    <div class="drawer-header">
-      <span class="room-tag" id="drawer-room-type">CLASSROOM</span>
-      <h2 class="room-title" id="drawer-room-title">Room 204</h2>
-      <div class="room-subtitle" id="drawer-room-subtitle">North Wing • Second Floor</div>
-    </div>
-
-    <div class="drawer-body">
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-label">Capacity</div>
-          <div class="stat-value" id="drawer-cap">36 Students</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Area</div>
-          <div class="stat-value" id="drawer-area">54 m²</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Seating Layout</div>
-          <div class="stat-value" id="drawer-layout">Tiered Desks</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Wing</div>
-          <div class="stat-value" id="drawer-wing">North Corridor</div>
-        </div>
-      </div>
-
-      <div class="inspector-section">
-        <h3>Room Fixtures & Equipment</h3>
-        <ul class="fixture-list" id="drawer-fixtures"></ul>
-      </div>
-
-      <div class="inspector-section">
-        <h3>Description</h3>
-        <p class="room-desc" id="drawer-desc">Standard lecture classroom equipped with modular desks, AV projector setup, front lecturer podium, and double whiteboards.</p>
-      </div>
-    </div>
-
-    <div class="drawer-footer">
-      <button id="btn-focus-room" class="action-btn primary">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
-        Focus Camera into Room
-      </button>
-      <button id="btn-isolate-room" class="action-btn secondary">
-        Highlight & Isolate
-      </button>
-    </div>
-  </aside>
-
-  <!-- Bottom Legend Bar -->
-  <footer class="hud-footer">
-    <div class="legend-items">
-      <div class="legend-item"><span class="swatch office"></span><span class="legend-text">Classrooms & Offices (201-220)</span></div>
-      <div class="legend-item"><span class="swatch washroom"></span><span class="legend-text">Male & Female Washrooms</span></div>
-      <div class="legend-item"><span class="swatch stair"></span><span class="legend-text">Staircases & Elevators</span></div>
-      <div class="legend-item"><span class="swatch void"></span><span class="legend-text">Lightwell Structural Voids [X]</span></div>
-      <div class="legend-item"><span class="swatch balcony"></span><span class="legend-text">Circular Balcony Facade</span></div>
-    </div>
-    <div class="hud-hint">
-      Drag left click to rotate • Right click drag to pan • Scroll wheel to zoom • Click any room to inspect
-    </div>
-  </footer>
-
-  <!-- Include Three.js & OrbitControls via CDN -->
+  <!-- Three.js r128 + OrbitControls via CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+  <div id="canvas-container"></div>
 
-  <!-- Single Standalone Engine & Logic -->
   <script>
     (function () {
       "use strict";
@@ -943,471 +91,648 @@
         { id: 'balcony', label: 'Circular Balcony', type: 'balcony', wing: 'West Facade', x0: -27.0, x1: -21.0, z0: -7.5, z1: 7.5, capacity: 'Open Terrace', area: '85 m²', fixtures: ['Curved Glass Balustrade', 'Support Columns', 'Atrium Doors', 'Grand Stairs'], desc: 'Semicircular outdoor balcony terrace on the west elevation.' }
       ];
 
-      // 2. MAIN APP INITIALIZATION
-      document.addEventListener('DOMContentLoaded', () => {
-        const container = document.getElementById('canvas-container');
+      // 2. SCENE SETUP
+      const container = document.getElementById('canvas-container');
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x081018);
+      scene.fog = new THREE.FogExp2(0x081018, 0.008);
 
-        // Scene
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x081018);
-        scene.fog = new THREE.FogExp2(0x081018, 0.008);
+      const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 500);
+      camera.position.set(0, 36, 42);
 
-        // Camera
-        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 500);
-        camera.position.set(0, 36, 42);
+      const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.1;
+      container.appendChild(renderer.domElement);
 
-        // Renderer
-        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 1.1;
-        container.appendChild(renderer.domElement);
+      // Lights
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+      scene.add(ambientLight);
 
-        // Lights
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
-        scene.add(ambientLight);
+      const mainLight = new THREE.DirectionalLight(0xfff2e0, 0.9);
+      mainLight.position.set(25, 45, 30);
+      mainLight.castShadow = true;
+      mainLight.shadow.mapSize.width = 2048;
+      mainLight.shadow.mapSize.height = 2048;
+      const d = 35;
+      mainLight.shadow.camera.left = -d; mainLight.shadow.camera.right = d;
+      mainLight.shadow.camera.top = d; mainLight.shadow.camera.bottom = -d;
+      scene.add(mainLight);
 
-        const mainLight = new THREE.DirectionalLight(0xfff2e0, 0.9);
-        mainLight.position.set(25, 45, 30);
-        mainLight.castShadow = true;
-        mainLight.shadow.mapSize.width = 2048;
-        mainLight.shadow.mapSize.height = 2048;
-        const d = 35;
-        mainLight.shadow.camera.left = -d; mainLight.shadow.camera.right = d;
-        mainLight.shadow.camera.top = d; mainLight.shadow.camera.bottom = -d;
-        scene.add(mainLight);
+      const fillLight = new THREE.DirectionalLight(0x4fd1c2, 0.35);
+      fillLight.position.set(-30, 30, -20);
+      scene.add(fillLight);
 
-        const fillLight = new THREE.DirectionalLight(0x4fd1c2, 0.35);
-        fillLight.position.set(-30, 30, -20);
-        scene.add(fillLight);
+      // Ground Grid
+      const gridGroup = new THREE.Group();
+      const groundMesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(160, 160),
+        new THREE.MeshStandardMaterial({ color: 0x060c14, roughness: 0.95 })
+      );
+      groundMesh.rotation.x = -Math.PI / 2;
+      groundMesh.position.y = -0.05;
+      groundMesh.receiveShadow = true;
+      gridGroup.add(groundMesh);
 
-        // Ground Grid
-        const gridGroup = new THREE.Group();
-        const groundMesh = new THREE.Mesh(
-          new THREE.PlaneGeometry(160, 160),
-          new THREE.MeshStandardMaterial({ color: 0x060c14, roughness: 0.95 })
-        );
-        groundMesh.rotation.x = -Math.PI / 2;
-        groundMesh.position.y = -0.05;
-        groundMesh.receiveShadow = true;
-        gridGroup.add(groundMesh);
+      const gridHelper = new THREE.GridHelper(160, 80, 0x4fd1c2, 0x142735);
+      gridHelper.position.y = -0.04;
+      gridHelper.material.opacity = 0.4;
+      gridHelper.material.transparent = true;
+      gridGroup.add(gridHelper);
+      scene.add(gridGroup);
 
-        const gridHelper = new THREE.GridHelper(160, 80, 0x4fd1c2, 0x142735);
-        gridHelper.position.y = -0.04;
-        gridHelper.material.opacity = 0.4;
-        gridHelper.material.transparent = true;
-        gridGroup.add(gridHelper);
-        scene.add(gridGroup);
+      // Orbit Controls
+      const controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.maxPolarAngle = Math.PI / 2 - 0.02;
+      controls.minDistance = 5;
+      controls.maxDistance = 120;
+      controls.target.set(0, 0.5, 0);
 
-        // Orbit Controls
-        const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.05;
-        controls.maxPolarAngle = Math.PI / 2 - 0.02;
-        controls.minDistance = 5;
-        controls.maxDistance = 120;
-        controls.target.set(0, 0.5, 0);
+      // Camera Smooth Flight
+      let isAnimating = false;
+      let animStartTime = 0;
+      const animDuration = 900;
+      const startCamPos = new THREE.Vector3(), startTarget = new THREE.Vector3();
+      const endCamPos = new THREE.Vector3(), endTarget = new THREE.Vector3();
 
-        // Camera Preset Manager
-        let isAnimating = false;
-        let animStartTime = 0;
-        const animDuration = 1000;
-        let startCamPos = new THREE.Vector3(), startTarget = new THREE.Vector3();
-        let endCamPos = new THREE.Vector3(), endTarget = new THREE.Vector3();
+      function transitionTo(targetCamPos, targetLookAt) {
+        startCamPos.copy(camera.position);
+        startTarget.copy(controls.target);
+        endCamPos.copy(targetCamPos);
+        endTarget.copy(targetLookAt);
+        animStartTime = performance.now();
+        isAnimating = true;
+      }
 
-        const presets = {
-          iso: { cam: new THREE.Vector3(0, 36, 42), target: new THREE.Vector3(0, 0.5, 0) },
-          top: { cam: new THREE.Vector3(0, 62, 0.1), target: new THREE.Vector3(0, 0, 0) },
-          balcony: { cam: new THREE.Vector3(-42, 14, 0), target: new THREE.Vector3(-24, 1.5, 0) },
-          east: { cam: new THREE.Vector3(38, 22, 18), target: new THREE.Vector3(18, 1, 0) },
-          corridor: { cam: new THREE.Vector3(-20, 2.2, 3.25), target: new THREE.Vector3(20, 2.2, 3.25) }
-        };
+      // 3. BUILD FLOORPLAN STRUCTURE
+      const floorGroup = new THREE.Group();
+      const wallMeshes = [];
+      const edgeLines = [];
+      const floorMeshes = [];
+      const labelSprites = [];
 
-        function transitionTo(targetCamPos, targetLookAt) {
-          startCamPos.copy(camera.position);
-          startTarget.copy(controls.target);
-          endCamPos.copy(targetCamPos);
-          endTarget.copy(targetLookAt);
-          animStartTime = performance.now();
-          isAnimating = true;
-        }
-
-        function focusRoom(roomData) {
-          const cx = (roomData.x0 + roomData.x1) / 2;
-          const cz = (roomData.z0 + roomData.z1) / 2;
-          const roomWidth = roomData.x1 - roomData.x0;
-          const roomDepth = roomData.z1 - roomData.z0;
-          const dist = Math.max(roomWidth, roomDepth) * 2.8;
-          transitionTo(new THREE.Vector3(cx, dist * 0.9, cz + dist * 0.9), new THREE.Vector3(cx, 0.8, cz));
-        }
-
-        // 3. BUILD FLOORPLAN STRUCTURE
-        const floorGroup = new THREE.Group();
-        const wallMeshes = [];
-        const edgeLines = [];
-        const floorMeshes = [];
-        const labelSprites = [];
-
-        const wallMaterial = new THREE.MeshPhysicalMaterial({
-          color: 0xbcd6e6, transparent: true, opacity: 0.30, roughness: 0.35, transmission: 0.2, side: THREE.DoubleSide, depthWrite: false
-        });
-        const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x4fd1c2, transparent: true, opacity: 0.8 });
-
-        function createRoomLabel(text, typeName) {
-          const canvas = document.createElement('canvas');
-          const scale = 4;
-          canvas.width = 256 * scale; canvas.height = 96 * scale;
-          const ctx = canvas.getContext('2d');
-          ctx.fillStyle = 'rgba(8, 16, 24, 0.82)';
-          ctx.strokeStyle = 'rgba(79, 209, 194, 0.6)';
-          ctx.lineWidth = 3 * scale;
-          ctx.beginPath(); ctx.roundRect(10 * scale, 10 * scale, canvas.width - 20 * scale, canvas.height - 20 * scale, 14 * scale); ctx.fill(); ctx.stroke();
-          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          ctx.fillStyle = '#ffffff'; ctx.font = `700 ${32 * scale / 2}px 'IBM Plex Mono', monospace`;
-          ctx.fillText(text, canvas.width / 2, canvas.height / 2 - 8 * scale);
-          ctx.fillStyle = '#4fd1c2'; ctx.font = `500 ${18 * scale / 2}px 'Inter', sans-serif`;
-          ctx.fillText(typeName.toUpperCase(), canvas.width / 2, canvas.height / 2 + 18 * scale);
-
-          const texture = new THREE.CanvasTexture(canvas);
-          const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false }));
-          sprite.scale.set(3.2, 1.2, 1);
-          sprite.renderOrder = 999;
-          return sprite;
-        }
-
-        ROOMS_DATA.forEach(room => {
-          if (room.id === 'balcony') return;
-          const w = room.x1 - room.x0, d = room.z1 - room.z0;
-          const cx = (room.x0 + room.x1) / 2, cz = (room.z0 + room.z1) / 2;
-          const cat = ROOM_CATEGORIES[room.type] || ROOM_CATEGORIES.office;
-
-          const roomNode = new THREE.Group();
-          roomNode.position.set(cx, 0, cz);
-          roomNode.userData = room;
-
-          // Floor
-          const floorMesh = new THREE.Mesh(new THREE.BoxGeometry(w - 0.04, 0.12, d - 0.04), new THREE.MeshStandardMaterial({ color: cat.color, roughness: 0.8 }));
-          floorMesh.position.y = 0.06; floorMesh.receiveShadow = true; floorMesh.userData = room;
-          roomNode.add(floorMesh); floorMeshes.push(floorMesh);
-
-          // Walls & Edge lines
-          if (room.type !== 'void') {
-            const wallH = 3.0, t = 0.10;
-            const wallN = new THREE.Mesh(new THREE.BoxGeometry(w, wallH, t), wallMaterial); wallN.position.set(0, wallH / 2, d / 2);
-            const wallS = wallN.clone(); wallS.position.z = -d / 2;
-            const wallE = new THREE.Mesh(new THREE.BoxGeometry(t, wallH, d), wallMaterial); wallE.position.set(w / 2, wallH / 2, 0);
-            const wallW = wallE.clone(); wallW.position.x = -w / 2;
-            [wallN, wallS, wallE, wallW].forEach(wMesh => {
-              roomNode.add(wMesh); wallMeshes.push(wMesh);
-              const line = new THREE.LineSegments(new THREE.EdgesGeometry(wMesh.geometry), edgeMaterial);
-              wMesh.add(line); edgeLines.push(line);
-            });
-          } else {
-            // Void cross bracing
-            const lineMat = new THREE.LineBasicMaterial({ color: 0x8f8ff0 });
-            const cross1 = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-w / 2 + 0.2, 0.15, -d / 2 + 0.2), new THREE.Vector3(w / 2 - 0.2, 0.15, d / 2 - 0.2)]), lineMat);
-            const cross2 = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-w / 2 + 0.2, 0.15, d / 2 - 0.2), new THREE.Vector3(w / 2 - 0.2, 0.15, -d / 2 + 0.2)]), lineMat);
-            roomNode.add(cross1, cross2);
-          }
-
-          const label = createRoomLabel(room.label, cat.name);
-          label.position.set(0, 3.8, 0);
-          roomNode.add(label); labelSprites.push(label);
-
-          floorGroup.add(roomNode);
-        });
-
-        // Corridors
-        const corrMat = new THREE.MeshStandardMaterial({ color: 0x16283a, roughness: 0.9 });
-        const nCorr = new THREE.Mesh(new THREE.BoxGeometry(48, 0.10, 1.5), corrMat); nCorr.position.set(3, 0.05, 3.25);
-        const sCorr = new THREE.Mesh(new THREE.BoxGeometry(48, 0.10, 1.5), corrMat); sCorr.position.set(3, 0.05, -3.25);
-        const wAtrium = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.10, 8.0), corrMat); wAtrium.position.set(-19.25, 0.05, 0);
-        floorGroup.add(nCorr, sCorr, wAtrium);
-
-        // Circular Balcony
-        (function buildBalcony() {
-          const balconyData = ROOMS_DATA.find(r => r.id === 'balcony');
-          const radius = 7.5, cx = -21.0;
-          const balconyNode = new THREE.Group(); balconyNode.position.set(cx, 0, 0); balconyNode.userData = balconyData;
-
-          const shape = new THREE.Shape(); shape.moveTo(0, -radius); shape.absarc(0, 0, radius, -Math.PI / 2, Math.PI / 2, false); shape.lineTo(0, -radius);
-          const floorGeo = new THREE.ShapeGeometry(shape, 64); floorGeo.rotateX(-Math.PI / 2);
-          const floorMesh = new THREE.Mesh(floorGeo, new THREE.MeshStandardMaterial({ color: ROOM_CATEGORIES.balcony.color, roughness: 0.75 }));
-          floorMesh.position.y = 0.06; floorMesh.userData = balconyData;
-          balconyNode.add(floorMesh); floorMeshes.push(floorMesh);
-
-          const curvedWall = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, 3.0, 64, 1, true, -Math.PI / 2, Math.PI), wallMaterial);
-          curvedWall.position.y = 1.5; balconyNode.add(curvedWall); wallMeshes.push(curvedWall);
-          const line = new THREE.LineSegments(new THREE.EdgesGeometry(curvedWall.geometry), edgeMaterial);
-          curvedWall.add(line); edgeLines.push(line);
-
-          const colMat = new THREE.MeshStandardMaterial({ color: 0xeaf2f8 });
-          [-5.5, -2.5, 2.5, 5.5].forEach(zOffset => {
-            const col = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 3.0, 16), colMat);
-            const angle = Math.asin(zOffset / radius); col.position.set(-radius * Math.cos(angle) + 0.3, 1.5, zOffset);
-            balconyNode.add(col);
-          });
-
-          const label = createRoomLabel('Circular Balcony', 'Circulation'); label.position.set(-radius * 0.5, 3.8, 0);
-          balconyNode.add(label); labelSprites.push(label);
-          floorGroup.add(balconyNode);
-        })();
-
-        scene.add(floorGroup);
-
-        // 4. FURNITURE & FIXTURES
-        const furnitureGroup = new THREE.Group();
-        const woodMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.6 });
-        const deskFrameMat = new THREE.MeshStandardMaterial({ color: 0x2c3e50 });
-        const chairMat = new THREE.MeshStandardMaterial({ color: 0x1e272e });
-        const porcelainMat = new THREE.MeshStandardMaterial({ color: 0xf5f6fa });
-        const metalMat = new THREE.MeshStandardMaterial({ color: 0xdcdde1 });
-
-        ROOMS_DATA.forEach(room => {
-          if (room.id === 'balcony' || room.type === 'void') return;
-          const w = room.x1 - room.x0, d = room.z1 - room.z0;
-          const cx = (room.x0 + room.x1) / 2, cz = (room.z0 + room.z1) / 2;
-          const g = new THREE.Group(); g.position.set(cx, 0, cz);
-
-          if (room.type === 'office') {
-            const cols = Math.floor((w - 1.2) / 1.5);
-            for (let r = 0; r < 3; r++) {
-              for (let c = 0; c < cols; c++) {
-                const desk = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.06, 0.6), woodMat);
-                desk.position.set(-((cols - 1) * 1.5) / 2 + c * 1.5, 0.72, -d * 0.1 + r * 1.1);
-                g.add(desk);
-              }
-            }
-            const pod = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.05, 0.6), woodMat);
-            pod.position.set(-w * 0.25, 0.525, -d * 0.3); g.add(pod);
-          } else if (room.type === 'washroom') {
-            const counter = new THREE.Mesh(new THREE.BoxGeometry(w * 0.7, 0.1, 0.5), chairMat);
-            counter.position.set(0, 0.8, d / 2 - 0.4); g.add(counter);
-          } else if (room.type === 'stair') {
-            for (let i = 0; i < 8; i++) {
-              const step = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.15, 0.28), metalMat);
-              step.position.set(-w * 0.25, i * 0.15 + 0.075, -d * 0.35 + i * 0.28); g.add(step);
-            }
-          }
-          furnitureGroup.add(g);
-        });
-        scene.add(furnitureGroup);
-
-        // 5. UI BINDINGS
-        const searchInput = document.getElementById('search-input');
-        const searchResults = document.getElementById('search-results');
-        const drawer = document.getElementById('room-inspector');
-        const tooltip = document.getElementById('hover-tooltip');
-
-        function selectRoom(r) {
-          document.getElementById('drawer-room-type').textContent = r.type.toUpperCase();
-          document.getElementById('drawer-room-title').textContent = r.label;
-          document.getElementById('drawer-room-subtitle').textContent = r.wing;
-          document.getElementById('drawer-cap').textContent = r.capacity;
-          document.getElementById('drawer-area').textContent = r.area;
-          document.getElementById('drawer-desc').textContent = r.desc;
-
-          const fixList = document.getElementById('drawer-fixtures');
-          fixList.innerHTML = '';
-          if (r.fixtures) {
-            r.fixtures.forEach(f => {
-              const li = document.createElement('li'); li.textContent = f; fixList.appendChild(li);
-            });
-          }
-
-          drawer.classList.remove('hidden');
-          focusRoom(r);
-        }
-
-        searchInput.addEventListener('input', e => {
-          const q = e.target.value.toLowerCase().trim();
-          if (!q) { searchResults.classList.add('hidden'); return; }
-          searchResults.innerHTML = '';
-          ROOMS_DATA.filter(r => r.label.toLowerCase().includes(q) || r.type.includes(q)).forEach(r => {
-            const div = document.createElement('div'); div.className = 'search-result-item';
-            div.innerHTML = `<span class="result-name">${r.label}</span><span class="result-type">${r.type}</span>`;
-            div.addEventListener('click', () => { selectRoom(r); searchResults.classList.add('hidden'); });
-            searchResults.appendChild(div);
-          });
-          searchResults.classList.remove('hidden');
-        });
-
-        document.querySelectorAll('.preset-btn').forEach(btn => {
-          btn.addEventListener('click', () => {
-            document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            const p = presets[btn.getAttribute('data-preset')];
-            if (p) transitionTo(p.cam, p.target);
-          });
-        });
-
-        document.getElementById('slider-wall-height').addEventListener('input', e => {
-          const h = parseFloat(e.target.value);
-          document.getElementById('val-wall-height').textContent = h.toFixed(1) + 'm';
-          wallMeshes.forEach(m => { m.scale.y = h / 3.0; m.position.y = h / 2; });
-        });
-
-        document.getElementById('slider-wall-opacity').addEventListener('input', e => {
-          const val = parseFloat(e.target.value);
-          document.getElementById('val-wall-opacity').textContent = Math.round(val * 100) + '%';
-          wallMaterial.opacity = val;
-        });
-
-        document.getElementById('toggle-furniture').addEventListener('change', e => furnitureGroup.visible = e.target.checked);
-        document.getElementById('toggle-labels').addEventListener('change', e => labelSprites.forEach(s => s.visible = e.target.checked));
-        document.getElementById('toggle-edges').addEventListener('change', e => edgeLines.forEach(l => l.visible = e.target.checked));
-        document.getElementById('toggle-grid').addEventListener('change', e => gridGroup.visible = e.target.checked);
-        document.getElementById('drawer-close').addEventListener('click', () => drawer.classList.add('hidden'));
-
-        // Raycasting
-        const raycaster = new THREE.Raycaster();
-        const mouse = new THREE.Vector2();
-
-        window.addEventListener('pointermove', e => {
-          mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-          mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-          raycaster.setFromCamera(mouse, camera);
-          const hits = raycaster.intersectObjects(floorMeshes, false);
-          if (hits.length > 0) {
-            const r = hits[0].object.userData;
-            document.getElementById('tooltip-name').textContent = r.label;
-            document.getElementById('tooltip-type').textContent = `${r.type} • ${r.area}`;
-            tooltip.style.left = e.clientX + 'px'; tooltip.style.top = e.clientY + 'px';
-            tooltip.classList.remove('hidden');
-          } else { tooltip.classList.add('hidden'); }
-        });
-
-        window.addEventListener('click', e => {
-          mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-          mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-          raycaster.setFromCamera(mouse, camera);
-          const hits = raycaster.intersectObjects(floorMeshes, false);
-          if (hits.length > 0 && hits[0].object.userData.id) {
-            selectRoom(hits[0].object.userData);
-          }
-        });
-
-        window.addEventListener('resize', () => {
-          camera.aspect = window.innerWidth / window.innerHeight;
-          camera.updateProjectionMatrix();
-          renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-
-        // 5B. LIVE USER POSITION BEACON
-        const userBeaconGroup = new THREE.Group();
-        userBeaconGroup.visible = false;
-        scene.add(userBeaconGroup);
-
-        const pinGeo = new THREE.ConeGeometry(0.45, 1.4, 16);
-        pinGeo.rotateX(Math.PI);
-        const pinMat = new THREE.MeshStandardMaterial({
-          color: 0x00a8ff,
-          emissive: 0x0055ff,
-          emissiveIntensity: 0.9,
-          roughness: 0.2
-        });
-        const pinMesh = new THREE.Mesh(pinGeo, pinMat);
-        pinMesh.position.y = 1.8;
-        userBeaconGroup.add(pinMesh);
-
-        const pinHeadGeo = new THREE.SphereGeometry(0.35, 16, 16);
-        const pinHeadMat = new THREE.MeshStandardMaterial({
-          color: 0x4fd1c2,
-          emissive: 0x4fd1c2,
-          emissiveIntensity: 1.0
-        });
-        const pinHeadMesh = new THREE.Mesh(pinHeadGeo, pinHeadMat);
-        pinHeadMesh.position.y = 2.4;
-        userBeaconGroup.add(pinHeadMesh);
-
-        const ringGeo = new THREE.RingGeometry(0.4, 0.8, 32);
-        ringGeo.rotateX(-Math.PI / 2);
-        const ringMat = new THREE.MeshBasicMaterial({
-          color: 0x4fd1c2,
-          side: THREE.DoubleSide,
-          transparent: true,
-          opacity: 0.85
-        });
-        const ringMesh = new THREE.Mesh(ringGeo, ringMat);
-        ringMesh.position.y = 0.12;
-        userBeaconGroup.add(ringMesh);
-
-        function updateUserPosition(pos) {
-          if (!pos) return;
-          let x3d = 0;
-          let z3d = 0;
-          if (typeof pos.x3d === 'number' && typeof pos.z3d === 'number') {
-            x3d = pos.x3d;
-            z3d = pos.z3d;
-          } else if (typeof pos.x === 'number' && typeof pos.y === 'number') {
-            if (pos.x > 50) {
-              x3d = (pos.x - 480) / 15;
-              z3d = (242.5 - pos.y) / 15;
-            } else {
-              x3d = pos.x;
-              z3d = pos.y;
-            }
-          }
-          userBeaconGroup.position.set(x3d, 0, z3d);
-          userBeaconGroup.visible = true;
-
-          const pill = document.getElementById('live-pos-pill');
-          const label = document.getElementById('live-pos-label');
-          if (pill && label) {
-            pill.style.display = 'flex';
-            label.textContent = `Live: ${pos.nearestPlaceName || 'Floor 2'}`;
-          }
-        }
-
-        const livePillEl = document.getElementById('live-pos-pill');
-        if (livePillEl) {
-          livePillEl.addEventListener('click', () => {
-            if (userBeaconGroup.visible) {
-              flyTo(
-                new THREE.Vector3(userBeaconGroup.position.x, 26, userBeaconGroup.position.z + 24),
-                new THREE.Vector3(userBeaconGroup.position.x, 0, userBeaconGroup.position.z)
-              );
-            }
-          });
-        }
-
-        window.onNativePositionUpdate = updateUserPosition;
-        window.addEventListener('nativePositionUpdate', (e) => {
-          if (e.detail) updateUserPosition(e.detail);
-        });
-        window.addEventListener('message', (e) => {
-          if (e.data && (e.data.type === 'nativePositionUpdate' || e.data.type === 'positionUpdate')) {
-            updateUserPosition(e.data.payload || e.data);
-          }
-        });
-
-        // 6. RENDER LOOP
-        function animate() {
-          requestAnimationFrame(animate);
-          if (isAnimating) {
-            const elapsed = performance.now() - animStartTime;
-            let progress = Math.min(elapsed / animDuration, 1.0);
-            progress = 1 - Math.pow(1 - progress, 3);
-            camera.position.lerpVectors(startCamPos, endCamPos, progress);
-            controls.target.lerpVectors(startTarget, endTarget, progress);
-            if (progress >= 1.0) isAnimating = false;
-          }
-          if (userBeaconGroup.visible) {
-            const t = performance.now() * 0.003;
-            pinMesh.position.y = 1.8 + Math.sin(t * 3) * 0.22;
-            pinHeadMesh.position.y = 2.4 + Math.sin(t * 3) * 0.22;
-            const s = 1.0 + (Math.sin(t * 4) * 0.5 + 0.5) * 1.8;
-            ringMesh.scale.set(s, s, s);
-            ringMat.opacity = Math.max(0.1, 1.0 - (s - 1.0) / 1.8);
-          }
-          controls.update();
-          renderer.render(scene, camera);
-        }
-        animate();
+      const wallMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0xbcd6e6,
+        transparent: true,
+        opacity: 0.30,
+        roughness: 0.35,
+        transmission: 0.2,
+        side: THREE.DoubleSide,
+        depthWrite: false
       });
+      const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x4fd1c2, transparent: true, opacity: 0.8 });
+
+      function createRoomLabel(text, typeName) {
+        const canvas = document.createElement('canvas');
+        const scale = 4;
+        canvas.width = 256 * scale;
+        canvas.height = 96 * scale;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = 'rgba(8, 16, 24, 0.82)';
+        ctx.strokeStyle = 'rgba(79, 209, 194, 0.6)';
+        ctx.lineWidth = 3 * scale;
+        ctx.beginPath();
+        ctx.roundRect(10 * scale, 10 * scale, canvas.width - 20 * scale, canvas.height - 20 * scale, 14 * scale);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `700 ${32 * scale / 2}px monospace`;
+        ctx.fillText(text, canvas.width / 2, canvas.height / 2 - 8 * scale);
+
+        ctx.fillStyle = '#4fd1c2';
+        ctx.font = `500 ${18 * scale / 2}px sans-serif`;
+        ctx.fillText(typeName.toUpperCase(), canvas.width / 2, canvas.height / 2 + 18 * scale);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false }));
+        sprite.scale.set(3.2, 1.2, 1);
+        sprite.renderOrder = 999;
+        return sprite;
+      }
+
+      ROOMS_DATA.forEach(room => {
+        if (room.id === 'balcony') return;
+        const w = room.x1 - room.x0, d = room.z1 - room.z0;
+        const cx = (room.x0 + room.x1) / 2, cz = (room.z0 + room.z1) / 2;
+        const cat = ROOM_CATEGORIES[room.type] || ROOM_CATEGORIES.office;
+
+        const roomNode = new THREE.Group();
+        roomNode.position.set(cx, 0, cz);
+        roomNode.userData = room;
+
+        // Floor Mesh
+        const floorMesh = new THREE.Mesh(
+          new THREE.BoxGeometry(w - 0.04, 0.12, d - 0.04),
+          new THREE.MeshStandardMaterial({ color: cat.color, roughness: 0.8 })
+        );
+        floorMesh.position.y = 0.06;
+        floorMesh.receiveShadow = true;
+        floorMesh.userData = room;
+        roomNode.add(floorMesh);
+        floorMeshes.push(floorMesh);
+
+        // Walls & Edge lines
+        if (room.type !== 'void') {
+          const wallH = 3.0, t = 0.10;
+          const wallN = new THREE.Mesh(new THREE.BoxGeometry(w, wallH, t), wallMaterial);
+          wallN.position.set(0, wallH / 2, d / 2);
+          const wallS = wallN.clone();
+          wallS.position.z = -d / 2;
+          const wallE = new THREE.Mesh(new THREE.BoxGeometry(t, wallH, d), wallMaterial);
+          wallE.position.set(w / 2, wallH / 2, 0);
+          const wallW = wallE.clone();
+          wallW.position.x = -w / 2;
+
+          [wallN, wallS, wallE, wallW].forEach(wMesh => {
+            roomNode.add(wMesh);
+            wallMeshes.push(wMesh);
+            const line = new THREE.LineSegments(new THREE.EdgesGeometry(wMesh.geometry), edgeMaterial);
+            wMesh.add(line);
+            edgeLines.push(line);
+          });
+        } else {
+          // Void cross bracing
+          const lineMat = new THREE.LineBasicMaterial({ color: 0x8f8ff0 });
+          const cross1 = new THREE.Line(new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(-w / 2 + 0.2, 0.15, -d / 2 + 0.2),
+            new THREE.Vector3(w / 2 - 0.2, 0.15, d / 2 - 0.2)
+          ]), lineMat);
+          const cross2 = new THREE.Line(new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(-w / 2 + 0.2, 0.15, d / 2 - 0.2),
+            new THREE.Vector3(w / 2 - 0.2, 0.15, -d / 2 + 0.2)
+          ]), lineMat);
+          roomNode.add(cross1, cross2);
+        }
+
+        const label = createRoomLabel(room.label, cat.name);
+        label.position.set(0, 3.8, 0);
+        roomNode.add(label);
+        labelSprites.push(label);
+
+        floorGroup.add(roomNode);
+      });
+
+      // Corridors
+      const corrMat = new THREE.MeshStandardMaterial({ color: 0x16283a, roughness: 0.9 });
+      const nCorr = new THREE.Mesh(new THREE.BoxGeometry(48, 0.10, 1.5), corrMat);
+      nCorr.position.set(3, 0.05, 3.25);
+      const sCorr = new THREE.Mesh(new THREE.BoxGeometry(48, 0.10, 1.5), corrMat);
+      sCorr.position.set(3, 0.05, -3.25);
+      const wAtrium = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.10, 8.0), corrMat);
+      wAtrium.position.set(-19.25, 0.05, 0);
+      floorGroup.add(nCorr, sCorr, wAtrium);
+
+      // Circular Balcony
+      (function buildBalcony() {
+        const balconyData = ROOMS_DATA.find(r => r.id === 'balcony');
+        const radius = 7.5, cx = -21.0;
+        const balconyNode = new THREE.Group();
+        balconyNode.position.set(cx, 0, 0);
+        balconyNode.userData = balconyData;
+
+        const shape = new THREE.Shape();
+        shape.moveTo(0, -radius);
+        shape.absarc(0, 0, radius, -Math.PI / 2, Math.PI / 2, false);
+        shape.lineTo(0, -radius);
+        const floorGeo = new THREE.ShapeGeometry(shape, 64);
+        floorGeo.rotateX(-Math.PI / 2);
+        const floorMesh = new THREE.Mesh(floorGeo, new THREE.MeshStandardMaterial({ color: ROOM_CATEGORIES.balcony.color, roughness: 0.75 }));
+        floorMesh.position.y = 0.06;
+        floorMesh.userData = balconyData;
+        balconyNode.add(floorMesh);
+        floorMeshes.push(floorMesh);
+
+        const curvedWall = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, 3.0, 64, 1, true, -Math.PI / 2, Math.PI), wallMaterial);
+        curvedWall.position.y = 1.5;
+        balconyNode.add(curvedWall);
+        wallMeshes.push(curvedWall);
+        const line = new THREE.LineSegments(new THREE.EdgesGeometry(curvedWall.geometry), edgeMaterial);
+        curvedWall.add(line);
+        edgeLines.push(line);
+
+        const colMat = new THREE.MeshStandardMaterial({ color: 0xeaf2f8 });
+        [-5.5, -2.5, 2.5, 5.5].forEach(zOffset => {
+          const col = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 3.0, 16), colMat);
+          const angle = Math.asin(zOffset / radius);
+          col.position.set(-radius * Math.cos(angle) + 0.3, 1.5, zOffset);
+          balconyNode.add(col);
+        });
+
+        const label = createRoomLabel('Circular Balcony', 'Circulation');
+        label.position.set(-radius * 0.5, 3.8, 0);
+        balconyNode.add(label);
+        labelSprites.push(label);
+        floorGroup.add(balconyNode);
+      })();
+
+      scene.add(floorGroup);
+
+      // 4. FURNITURE & FIXTURES
+      const furnitureGroup = new THREE.Group();
+      const woodMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.6 });
+      const chairMat = new THREE.MeshStandardMaterial({ color: 0x1e272e });
+      const metalMat = new THREE.MeshStandardMaterial({ color: 0xdcdde1 });
+
+      ROOMS_DATA.forEach(room => {
+        if (room.id === 'balcony' || room.type === 'void') return;
+        const w = room.x1 - room.x0, d = room.z1 - room.z0;
+        const cx = (room.x0 + room.x1) / 2, cz = (room.z0 + room.z1) / 2;
+        const g = new THREE.Group();
+        g.position.set(cx, 0, cz);
+
+        if (room.type === 'office') {
+          const cols = Math.floor((w - 1.2) / 1.5);
+          for (let r = 0; r < 3; r++) {
+            for (let c = 0; c < cols; c++) {
+              const desk = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.06, 0.6), woodMat);
+              desk.position.set(-((cols - 1) * 1.5) / 2 + c * 1.5, 0.72, -d * 0.1 + r * 1.1);
+              g.add(desk);
+            }
+          }
+          const pod = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.05, 0.6), woodMat);
+          pod.position.set(-w * 0.25, 0.525, -d * 0.3);
+          g.add(pod);
+        } else if (room.type === 'washroom') {
+          const counter = new THREE.Mesh(new THREE.BoxGeometry(w * 0.7, 0.1, 0.5), chairMat);
+          counter.position.set(0, 0.8, d / 2 - 0.4);
+          g.add(counter);
+        } else if (room.type === 'stair') {
+          for (let i = 0; i < 8; i++) {
+            const step = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.15, 0.28), metalMat);
+            step.position.set(-w * 0.25, i * 0.15 + 0.075, -d * 0.35 + i * 0.28);
+            g.add(step);
+          }
+        }
+        furnitureGroup.add(g);
+      });
+      scene.add(furnitureGroup);
+
+      // 5. DYNAMIC OVERLAYS (USER BEACON, ROUTES, HAZARDS, SMOKE, AVATARS)
+      // A. User Position Beacon
+      const userBeaconGroup = new THREE.Group();
+      userBeaconGroup.visible = false;
+      scene.add(userBeaconGroup);
+
+      const pinGeo = new THREE.ConeGeometry(0.45, 1.4, 16);
+      pinGeo.rotateX(Math.PI);
+      const pinMat = new THREE.MeshStandardMaterial({
+        color: 0x00a8ff,
+        emissive: 0x0055ff,
+        emissiveIntensity: 0.9,
+        roughness: 0.2
+      });
+      const pinMesh = new THREE.Mesh(pinGeo, pinMat);
+      pinMesh.position.y = 1.8;
+      userBeaconGroup.add(pinMesh);
+
+      const pinHeadGeo = new THREE.SphereGeometry(0.35, 16, 16);
+      const pinHeadMat = new THREE.MeshStandardMaterial({
+        color: 0x4fd1c2,
+        emissive: 0x4fd1c2,
+        emissiveIntensity: 1.0
+      });
+      const pinHeadMesh = new THREE.Mesh(pinHeadGeo, pinHeadMat);
+      pinHeadMesh.position.y = 2.4;
+      userBeaconGroup.add(pinHeadMesh);
+
+      const ringGeo = new THREE.RingGeometry(0.4, 0.8, 32);
+      ringGeo.rotateX(-Math.PI / 2);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: 0x4fd1c2,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.85
+      });
+      const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+      ringMesh.position.y = 0.12;
+      userBeaconGroup.add(ringMesh);
+
+      function parseCoord(val, isY) {
+        if (typeof val !== 'number') return 0;
+        // SVG coordinate mapping fallback
+        if (val > 50) {
+          return isY ? (242.5 - val) / 15 : (val - 480) / 15;
+        }
+        return val;
+      }
+
+      function updatePositionMarker(pos) {
+        if (!pos) return;
+        const x3d = parseCoord(pos.x3d !== undefined ? pos.x3d : pos.x, false);
+        const z3d = parseCoord(pos.z3d !== undefined ? pos.z3d : (pos.z !== undefined ? pos.z : pos.y), true);
+        userBeaconGroup.position.set(x3d, 0, z3d);
+        userBeaconGroup.visible = true;
+      }
+
+      // B. Route Overlay
+      const routeGroup = new THREE.Group();
+      scene.add(routeGroup);
+
+      function updateRouteOverlay(route) {
+        clearRouteOverlay();
+        if (!route) return;
+        const points = Array.isArray(route) ? route : (route.pathPoints || route.points || []);
+        if (points.length < 2) return;
+
+        const vectors = points.map(pt => {
+          const x = parseCoord(pt.x3d !== undefined ? pt.x3d : pt.x, false);
+          const z = parseCoord(pt.z3d !== undefined ? pt.z3d : (pt.z !== undefined ? pt.z : pt.y), true);
+          return new THREE.Vector3(x, 0.25, z);
+        });
+
+        const curve = new THREE.CatmullRomCurve3(vectors);
+        const tubeGeo = new THREE.TubeGeometry(curve, 64, 0.15, 8, false);
+        const tubeMat = new THREE.MeshStandardMaterial({
+          color: 0x4fd1c2,
+          emissive: 0x1f9d92,
+          roughness: 0.3
+        });
+        const routeMesh = new THREE.Mesh(tubeGeo, tubeMat);
+        routeGroup.add(routeMesh);
+      }
+
+      function clearRouteOverlay() {
+        while (routeGroup.children.length > 0) {
+          const child = routeGroup.children[0];
+          routeGroup.remove(child);
+          if (child.geometry) child.geometry.dispose();
+          if (child.material) child.material.dispose();
+        }
+      }
+
+      // C. Hazard Overlays
+      const hazardsMap = new Map();
+
+      function setHazard(hazard) {
+        if (!hazard) return;
+        const id = hazard.id || hazard.roomId || 'hazard-default';
+        clearHazard(id);
+
+        const roomId = hazard.roomId || hazard.id;
+        const targetRoom = ROOMS_DATA.find(r => r.id === roomId);
+        if (!targetRoom) return;
+
+        const cx = (targetRoom.x0 + targetRoom.x1) / 2;
+        const cz = (targetRoom.z0 + targetRoom.z1) / 2;
+        const w = targetRoom.x1 - targetRoom.x0;
+        const d = targetRoom.z1 - targetRoom.z0;
+
+        const hGroup = new THREE.Group();
+        hGroup.position.set(cx, 0, cz);
+
+        // Highlight floor box in pulsating red
+        const hFloorGeo = new THREE.BoxGeometry(w, 0.14, d);
+        const hFloorMat = new THREE.MeshStandardMaterial({
+          color: 0xff3b30,
+          emissive: 0xff3b30,
+          emissiveIntensity: 0.6,
+          roughness: 0.5
+        });
+        const hFloor = new THREE.Mesh(hFloorGeo, hFloorMat);
+        hFloor.position.y = 0.08;
+        hGroup.add(hFloor);
+
+        scene.add(hGroup);
+        hazardsMap.set(id, hGroup);
+      }
+
+      function clearHazard(id) {
+        const hGroup = hazardsMap.get(id);
+        if (hGroup) {
+          scene.remove(hGroup);
+          hazardsMap.delete(id);
+        }
+      }
+
+      // D. Smoke Forecast
+      const smokeGroup = new THREE.Group();
+      scene.add(smokeGroup);
+
+      function updateSmokeForecast(forecast) {
+        while (smokeGroup.children.length > 0) {
+          const child = smokeGroup.children[0];
+          smokeGroup.remove(child);
+          if (child.geometry) child.geometry.dispose();
+          if (child.material) child.material.dispose();
+        }
+        if (!forecast) return;
+
+        const minutes = typeof forecast === 'number' ? forecast : (forecast.minutes || 0);
+        if (minutes <= 0) return;
+
+        const r = minutes === 2 ? 3.5 : minutes === 5 ? 7.0 : 12.0;
+        const smokeGeo = new THREE.SphereGeometry(r, 16, 16);
+        const smokeMat = new THREE.MeshStandardMaterial({
+          color: 0x11161f,
+          transparent: true,
+          opacity: 0.5,
+          roughness: 0.95
+        });
+        const smokeMesh = new THREE.Mesh(smokeGeo, smokeMat);
+        // Default epicenter at IoT Lab 208
+        smokeMesh.position.set(20.5, 1.5, 0);
+        smokeGroup.add(smokeMesh);
+      }
+
+      // E. User Avatars
+      const avatarsGroup = new THREE.Group();
+      scene.add(avatarsGroup);
+
+      function updateUserAvatars(users) {
+        while (avatarsGroup.children.length > 0) {
+          const child = avatarsGroup.children[0];
+          avatarsGroup.remove(child);
+          if (child.geometry) child.geometry.dispose();
+          if (child.material) child.material.dispose();
+        }
+        if (!Array.isArray(users)) return;
+
+        users.forEach(u => {
+          const x = parseCoord(u.position ? (u.position.x3d || u.position.x) : u.x, false);
+          const z = parseCoord(u.position ? (u.position.z3d || u.position.z || u.position.y) : (u.z || u.y), true);
+          const avGeo = new THREE.CylinderGeometry(0.35, 0.35, 1.6, 16);
+          const avMat = new THREE.MeshStandardMaterial({ color: 0xf0a24a, emissive: 0xf0a24a, emissiveIntensity: 0.5 });
+          const avMesh = new THREE.Mesh(avGeo, avMat);
+          avMesh.position.set(x, 0.8, z);
+          avatarsGroup.add(avMesh);
+        });
+      }
+
+      // F. Focus Room By ID
+      function focusRoomById(roomId, animate) {
+        const room = ROOMS_DATA.find(r => r.id === roomId);
+        if (!room) return;
+        const cx = (room.x0 + room.x1) / 2;
+        const cz = (room.z0 + room.z1) / 2;
+        const roomWidth = room.x1 - room.x0;
+        const roomDepth = room.z1 - room.z0;
+        const dist = Math.max(roomWidth, roomDepth) * 2.8;
+
+        const targetCam = new THREE.Vector3(cx, dist * 0.9, cz + dist * 0.9);
+        const targetLook = new THREE.Vector3(cx, 0.8, cz);
+
+        if (animate !== false) {
+          transitionTo(targetCam, targetLook);
+        } else {
+          camera.position.copy(targetCam);
+          controls.target.copy(targetLook);
+        }
+      }
+
+      // G. Mode Setter
+      function setMode(mode) {
+        if (mode === 'emergency') {
+          ambientLight.intensity = 0.45;
+          mainLight.color.setHex(0xffaaaa);
+        } else {
+          ambientLight.intensity = 0.65;
+          mainLight.color.setHex(0xfff2e0);
+        }
+      }
+
+      // H. Clear All
+      function clearAllOverlays() {
+        clearRouteOverlay();
+        hazardsMap.forEach((_, id) => clearHazard(id));
+        updateSmokeForecast(0);
+        updateUserAvatars([]);
+        userBeaconGroup.visible = false;
+        setMode('normal');
+      }
+
+      // 6. POSTMESSAGE API FOR PARENT <-> IFRAME
+      const ALLOWED_ORIGINS = [
+        window.location.origin,
+        'http://localhost:5173',
+        'http://localhost:3000',
+        'https://muj-wifi-bssid-mapper.vercel.app'
+      ];
+
+      window.addEventListener('message', (event) => {
+        if (event.origin !== window.location.origin && !ALLOWED_ORIGINS.includes(event.origin) && event.origin !== '*') {
+          return;
+        }
+        const msg = event.data;
+        if (!msg || typeof msg !== 'object') return;
+
+        switch (msg.type) {
+          case 'PING':
+            event.source.postMessage({
+              type: 'MAP_READY',
+              rooms: ROOMS_DATA.map(r => ({ id: r.id, label: r.label, type: r.type, x0: r.x0, x1: r.x1, z0: r.z0, z1: r.z1 }))
+            }, event.origin || '*');
+            break;
+          case 'SET_POSITION':
+            updatePositionMarker(msg.position || msg.payload);
+            break;
+          case 'SET_ROUTE':
+            updateRouteOverlay(msg.route || msg.payload);
+            break;
+          case 'CLEAR_ROUTE':
+            clearRouteOverlay();
+            break;
+          case 'SET_HAZARD':
+            setHazard(msg.hazard || msg.payload);
+            break;
+          case 'CLEAR_HAZARD':
+            clearHazard(msg.id || msg.payload);
+            break;
+          case 'SET_SMOKE_FORECAST':
+            updateSmokeForecast(msg.forecast || msg.payload);
+            break;
+          case 'SET_USERS':
+            updateUserAvatars(msg.users || msg.payload);
+            break;
+          case 'FOCUS_ROOM':
+            focusRoomById(msg.roomId, msg.animate !== false);
+            break;
+          case 'SET_MODE':
+            setMode(msg.mode || msg.payload);
+            break;
+          case 'CLEAR_ALL':
+            clearAllOverlays();
+            break;
+        }
+      });
+
+      // Signal readiness on load
+      window.addEventListener('load', () => {
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({
+            type: 'MAP_READY',
+            rooms: ROOMS_DATA.map(r => ({ id: r.id, label: r.label, type: r.type, x0: r.x0, x1: r.x1, z0: r.z0, z1: r.z1 }))
+          }, '*');
+        }
+      });
+
+      // Emit on room click
+      function emitRoomSelected(roomData) {
+        const cx = (roomData.x0 + roomData.x1) / 2;
+        const cz = (roomData.z0 + roomData.z1) / 2;
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({
+            type: 'ROOM_SELECTED',
+            roomId: roomData.id,
+            label: roomData.label,
+            position: { x: cx, y: cz }
+          }, '*');
+        }
+      }
+
+      // 7. INTERACTION & RAYCASTING
+      const raycaster = new THREE.Raycaster();
+      const mouse = new THREE.Vector2();
+
+      window.addEventListener('click', e => {
+        mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+        const hits = raycaster.intersectObjects(floorMeshes, false);
+        if (hits.length > 0 && hits[0].object.userData && hits[0].object.userData.id) {
+          emitRoomSelected(hits[0].object.userData);
+        }
+      });
+
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      // 8. RENDER LOOP
+      function animate() {
+        requestAnimationFrame(animate);
+        if (isAnimating) {
+          const elapsed = performance.now() - animStartTime;
+          let progress = Math.min(elapsed / animDuration, 1.0);
+          progress = 1 - Math.pow(1 - progress, 3);
+          camera.position.lerpVectors(startCamPos, endCamPos, progress);
+          controls.target.lerpVectors(startTarget, endTarget, progress);
+          if (progress >= 1.0) isAnimating = false;
+        }
+
+        if (userBeaconGroup.visible) {
+          const t = performance.now() * 0.003;
+          pinMesh.position.y = 1.8 + Math.sin(t * 3) * 0.22;
+          pinHeadMesh.position.y = 2.4 + Math.sin(t * 3) * 0.22;
+          const s = 1.0 + (Math.sin(t * 4) * 0.5 + 0.5) * 1.8;
+          ringMesh.scale.set(s, s, s);
+          ringMat.opacity = Math.max(0.1, 1.0 - (s - 1.0) / 1.8);
+        }
+
+        controls.update();
+        renderer.render(scene, camera);
+      }
+      animate();
     })();
   </script>
 </body>

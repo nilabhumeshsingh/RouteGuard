@@ -2,7 +2,7 @@ import React, { useRef, useEffect } from "react";
 import { Indoor2DMap } from "./Indoor2DAdapter";
 import { FloorId, MapLayerConfig, UserPositionState, GuardianState } from "../../types";
 import { HazardOverlay, RoutePoint } from "@routeguard/shared";
-import { ArchitecturalRoom } from "../../data/floor2Data";
+import { ARCHITECTURAL_ROOMS, ArchitecturalRoom } from "../../data/floor2Data";
 
 interface CampusMapContainerProps {
   currentFloor: FloorId;
@@ -27,7 +27,7 @@ export const CampusMapContainer: React.FC<CampusMapContainerProps> = ({
   routeIsStepFree,
   isEmergencyRoute,
   hazardOverlays,
-  smokeMinutes,
+  smokeMinutes = 0,
   guardianState,
   onSelectNode,
   onSelectRoom,
@@ -35,18 +35,129 @@ export const CampusMapContainer: React.FC<CampusMapContainerProps> = ({
 }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  // Sync live position to 3D Three.js scene via postMessage
+  // 1. Send live user position to 3D Three.js renderer
   useEffect(() => {
-    if (viewMode === "3D" && iframeRef.current && iframeRef.current.contentWindow) {
+    if (viewMode === "3D" && iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
         {
-          type: "nativePositionUpdate",
-          payload: userPosition
+          type: "SET_POSITION",
+          position: userPosition
         },
         "*"
       );
     }
   }, [userPosition, viewMode]);
+
+  // 2. Send active route overlay
+  useEffect(() => {
+    if (viewMode === "3D" && iframeRef.current?.contentWindow) {
+      if (routePoints && routePoints.length > 1) {
+        iframeRef.current.contentWindow.postMessage(
+          {
+            type: "SET_ROUTE",
+            route: routePoints
+          },
+          "*"
+        );
+      } else {
+        iframeRef.current.contentWindow.postMessage(
+          {
+            type: "CLEAR_ROUTE"
+          },
+          "*"
+        );
+      }
+    }
+  }, [routePoints, viewMode]);
+
+  // 3. Send hazard overlays
+  useEffect(() => {
+    if (viewMode === "3D" && iframeRef.current?.contentWindow) {
+      if (hazardOverlays && hazardOverlays.length > 0) {
+        hazardOverlays.forEach((h) => {
+          iframeRef.current?.contentWindow?.postMessage(
+            {
+              type: "SET_HAZARD",
+              hazard: {
+                roomId: h.zoneId === "room-208" ? "208" : h.zoneId,
+                severity: h.severity,
+                pulsed: h.pulsed
+              }
+            },
+            "*"
+          );
+        });
+      }
+    }
+  }, [hazardOverlays, viewMode]);
+
+  // 4. Send smoke simulation forecast
+  useEffect(() => {
+    if (viewMode === "3D" && iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        {
+          type: "SET_SMOKE_FORECAST",
+          forecast: { minutes: smokeMinutes }
+        },
+        "*"
+      );
+    }
+  }, [smokeMinutes, viewMode]);
+
+  // 5. Send child/ward avatar
+  useEffect(() => {
+    if (viewMode === "3D" && iframeRef.current?.contentWindow) {
+      if (guardianState?.isPaired && guardianState.childPosition) {
+        iframeRef.current.contentWindow.postMessage(
+          {
+            type: "SET_USERS",
+            users: [
+              {
+                id: "child-alex",
+                name: guardianState.childName,
+                position: guardianState.childPosition
+              }
+            ]
+          },
+          "*"
+        );
+      }
+    }
+  }, [guardianState, viewMode]);
+
+  // 6. Send emergency / normal mode
+  useEffect(() => {
+    if (viewMode === "3D" && iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        {
+          type: "SET_MODE",
+          mode: isEmergencyRoute ? "emergency" : "normal"
+        },
+        "*"
+      );
+    }
+  }, [isEmergencyRoute, viewMode]);
+
+  // 7. Receive room selection events from 3D renderer
+  useEffect(() => {
+    const handleMessage = (e: MessageEvent) => {
+      if (e.data?.type === "ROOM_SELECTED") {
+        const roomId = e.data.roomId;
+        const room = ARCHITECTURAL_ROOMS.find(
+          (r) => r.id === roomId || r.code === roomId || r.id === `room-${roomId}`
+        );
+        if (room && onSelectRoom) {
+          onSelectRoom(room);
+        }
+        if (onSelectNode) {
+          onSelectNode(room?.nodeId || `node-${roomId}`, e.data.label || room?.name || roomId);
+        }
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [onSelectRoom, onSelectNode]);
 
   if (viewMode === "3D") {
     return (
