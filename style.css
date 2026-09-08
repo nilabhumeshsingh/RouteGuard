@@ -1,0 +1,489 @@
+/* Apple Minimalist Design for iBUS@MUJ Mapper */
+:root {
+  --primary: #0066cc;
+  --primary-hover: #0071e3;
+  --ink: #1d1d1f;
+  --ink-secondary: #6e6e73;
+  --ink-muted: #86868b;
+  --bg: #f5f5f7;
+  --card-bg: #ffffff;
+  --hairline: #e5e5ea;
+  --divider: #f0f0f2;
+  --green: #34c759;
+  --red: #ff3b30;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  font-family: var(--font);
+  background-color: var(--bg);
+  color: var(--ink);
+  padding: 32px 16px;
+  line-height: 1.45;
+}
+
+.container {
+  max-width: 680px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 8px;
+}
+
+.header h1 {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  font-size: 13px;
+  color: var(--ink-secondary);
+}
+
+/* Card */
+.card {
+  background-color: var(--card-bg);
+  border-radius: 18px;
+  border: 1px solid var(--hairline);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+}
+
+.card-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.section-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.label {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.sub-label {
+  font-size: 12px;
+  color: var(--ink-secondary);
+}
+
+/* Status Banner */
+.status-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #f2f2f7;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--green);
+  box-shadow: 0 0 0 3px rgba(52, 199, 89, 0.25);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.8; }
+}
+
+/* Form Inputs */
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  font-size: 15px;
+  font-family: var(--font);
+  background-color: #fafafc;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.input:focus {
+  border-color: var(--primary);
+  background-color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.15);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.select-input {
+  cursor: pointer;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 10px 20px;
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: transform 0.1s ease, background-color 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn:active {
+  transform: scale(0.96);
+}
+
+.btn-primary {
+  background-color: var(--primary);
+  color: #ffffff;
+  font-size: 16px;
+  height: 48px;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-hover);
+}
+
+.btn-secondary {
+  background-color: #f2f2f7;
+  color: var(--ink);
+  border-color: var(--hairline);
+}
+
+.btn-secondary:hover {
+  background-color: #e5e5ea;
+}
+
+.btn-export {
+  background-color: #ffffff;
+  color: var(--primary);
+  border-color: var(--hairline);
+  font-weight: 600;
+}
+
+.btn-export:hover {
+  background-color: #f0f4fa;
+}
+
+.btn-danger {
+  background-color: #fff;
+  color: var(--red);
+  border-color: var(--hairline);
+}
+
+.btn-danger:hover {
+  background-color: #fff2f2;
+}
+
+.btn-sm {
+  font-size: 12px;
+  padding: 6px 12px;
+}
+
+.btn-save {
+  margin-top: 4px;
+}
+
+/* List Card */
+.list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.list-header h2 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.list-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+
+.table th {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--hairline);
+  color: var(--ink-secondary);
+  font-weight: 500;
+}
+
+.table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--divider);
+  vertical-align: middle;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.btn-del {
+  background: none;
+  border: none;
+  color: var(--ink-muted);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.btn-del:hover {
+  color: var(--red);
+  background-color: #fff0f0;
+}
+
+.empty-text {
+  text-align: center;
+  padding: 30px 16px;
+  color: var(--ink-muted);
+  font-size: 13px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(50px);
+  background-color: var(--ink);
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 9999px;
+  font-size: 13px;
+  opacity: 0;
+  transition: all 0.25s ease;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.toast.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+@media (max-width: 500px) {
+  body { padding: 16px 12px; }
+  .card { padding: 18px; }
+  .list-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+}
+
+/* Multi-BSSID Selection Box */
+.bssid-selection-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 2px;
+  font-size: 13px;
+  color: var(--ink-secondary);
+}
+
+.checkbox-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.badge-connected-hint {
+  font-size: 11px;
+  background-color: rgba(52, 199, 89, 0.12);
+  color: #248a3d;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-weight: 500;
+  font-family: var(--font-mono);
+}
+
+.bssid-checkbox-list {
+  max-height: 180px;
+  overflow-y: auto;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  background-color: #fafafc;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bssid-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background-color: #ffffff;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.1s ease;
+}
+
+.bssid-item-row:hover {
+  border-color: var(--hairline);
+  background-color: #f7f7fa;
+}
+
+.bssid-item-row.is-connected {
+  border-color: rgba(52, 199, 89, 0.35);
+  background-color: rgba(52, 199, 89, 0.05);
+}
+
+.bssid-item-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bssid-item-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+.badge-sig {
+  font-weight: 600;
+  color: var(--ink);
+  min-width: 38px;
+  text-align: right;
+}
+
+.badge-conn-pill {
+  background-color: var(--green);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 9999px;
+}
+
+.list-sub {
+  font-size: 12px;
+  color: var(--ink-secondary);
+}
+
+/* BSSID Preview Chips */
+.bssid-preview-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background-color: #fafafc;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.bssid-preview-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-secondary);
+}
+
+.badge-connected {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background-color: rgba(52, 199, 89, 0.12);
+  color: #248a3d;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-weight: 600;
+}
+
+.bssid-chips-scroll {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.bssid-chip {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background-color: #ffffff;
+  border: 1px solid var(--hairline);
+  padding: 4px 8px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink);
+}
+
+.bssid-chip.is-active {
+  border-color: var(--green);
+  background-color: rgba(52, 199, 89, 0.08);
+}
+
+.chip-sig {
+  font-size: 10px;
+  color: var(--ink-muted);
+  font-weight: 600;
+}

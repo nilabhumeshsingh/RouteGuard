@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>iBUS@MUJ BSSID Mapper</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <h1>iBUS@MUJ Mapper</h1>
+        <p class="subtitle">Single-Row Key-Value Location Cartography</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-export" id="btnExportTop">
+          📥 Export CSV (1 Row per Location)
+        </button>
+      </div>
+    </header>
+
+    <!-- Mapping Action Card -->
+    <div class="card main-card">
+      <!-- 1. Live Scan Status -->
+      <div class="card-section">
+        <div class="section-title-row">
+          <label class="label">1. WiFi BSSID Scanner</label>
+          <button type="button" class="btn btn-sm btn-secondary" id="btnScan">
+            🔄 Rescan WiFi
+          </button>
+        </div>
+
+        <div class="status-box" id="statusBox">
+          <span class="status-dot"></span>
+          <span id="statusText">Scanning WiFi chip for nearby iBUS@MUJ BSSIDs...</span>
+        </div>
+
+        <!-- Preview Chips / Count -->
+        <div class="bssid-preview-wrap">
+          <div class="bssid-preview-title">
+            <span>Detected BSSIDs at this spot (<span id="visibleCount">0</span> APs):</span>
+            <span class="badge-connected" id="connectedBadge">Checking...</span>
+          </div>
+          <div class="bssid-chips-scroll" id="bssidChips">
+            <!-- Populated with scanned BSSIDs -->
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Location Name Input -->
+      <div class="card-section">
+        <label class="label" for="locationInput">2. Assign Location Name</label>
+        <div class="field-group">
+          <input 
+            type="text" 
+            id="locationInput" 
+            class="input" 
+            placeholder="e.g. AB1 Room 204, Food Court Subway, Library 2nd Floor" 
+            list="locationSuggestions"
+            autofocus
+          />
+          <datalist id="locationSuggestions">
+            <option value="Academic Block 1 (AB1) - Room 204"></option>
+            <option value="Academic Block 1 (AB1) - Ground Floor"></option>
+            <option value="Academic Block 1 (AB1) - 1st Floor"></option>
+            <option value="Academic Block 1 (AB1) - 2nd Floor"></option>
+            <option value="Academic Block 2 (AB2) - Ground Floor"></option>
+            <option value="Academic Block 2 (AB2) - 1st Floor"></option>
+            <option value="Academic Block 3 (AB3)"></option>
+            <option value="Academic Block 4 (AB4)"></option>
+            <option value="Central Library - Ground Floor"></option>
+            <option value="Central Library - 1st Floor"></option>
+            <option value="Central Library - 2nd Floor"></option>
+            <option value="Dome Building (Admin)"></option>
+            <option value="Food Court 1 (Old FC) - Main Seating"></option>
+            <option value="Food Court 2 (New FC)"></option>
+            <option value="Student Activity Centre (SAC)"></option>
+            <option value="Hostel B1"></option>
+            <option value="Hostel B2"></option>
+            <option value="Hostel B3"></option>
+            <option value="Hostel B4"></option>
+            <option value="Hostel B5"></option>
+            <option value="Hostel B6"></option>
+            <option value="Hostel B7"></option>
+            <option value="Hostel B8"></option>
+            <option value="Hostel B9"></option>
+            <option value="Hostel B10"></option>
+            <option value="Hostel B11"></option>
+            <option value="Hostel B12"></option>
+            <option value="Hostel G1"></option>
+            <option value="Hostel G2"></option>
+            <option value="Hostel G3"></option>
+            <option value="Hostel G4"></option>
+          </datalist>
+        </div>
+      </div>
+
+      <!-- 3. Save Button -->
+      <button type="button" class="btn btn-primary btn-save" id="btnSave">
+        ✓ Save (1 Row with All BSSIDs as Key-Value Pairs)
+      </button>
+    </div>
+
+    <!-- Mapped Locations Directory -->
+    <div class="card list-card">
+      <div class="list-header">
+        <div>
+          <h2>Mapped Locations (<span id="savedCount">0</span> rows)</h2>
+          <p class="list-sub" id="locationCountSubtitle">Each row holds all BSSID key-value pairs</p>
+        </div>
+        <div class="list-actions">
+          <button class="btn btn-sm btn-secondary" id="btnExportBottom">
+            📥 Export CSV
+          </button>
+          <button class="btn btn-sm btn-secondary" id="btnExportJson">
+            📄 JSON
+          </button>
+          <button class="btn btn-sm btn-danger" id="btnClearAll">
+            Clear All
+          </button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="table" id="savedTable">
+          <thead>
+            <tr>
+              <th style="width: 25%;">Location</th>
+              <th>BSSIDs Key-Value Pairs</th>
+              <th style="width: 70px;">Count</th>
+              <th style="width: 140px;">Saved At</th>
+              <th style="width: 36px;"></th>
+            </tr>
+          </thead>
+          <tbody id="savedTableBody">
+            <!-- Dynamic single rows per location -->
+          </tbody>
+        </table>
+        <div class="empty-text hidden" id="emptyState">
+          No locations mapped yet. Enter location and click Save above to record all scanned BSSIDs in a single row.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
