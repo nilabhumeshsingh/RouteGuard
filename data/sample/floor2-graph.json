@@ -26,7 +26,7 @@
     { "id": "c-mid-east", "label": "Corridor 211-210", "x": 480, "y": 280, "isExit": false, "isStepFree": true },
     { "id": "node-215", "label": "Room 215", "x": 480, "y": 220, "isExit": false, "isStepFree": true },
     { "id": "c-lift", "label": "Elevator & Stair Lobby", "x": 500, "y": 240, "isExit": false, "isStepFree": true },
-    { "id": "node-stairs-north", "label": "Staircase North", "x": 500, "y": 180, "isExit": false, "isStepFree": false },
+    { "id": "node-stairs-north", "label": "Staircase North", "x": 500, "y": 180, "isExit": true, "isStepFree": false },
     { "id": "c-211", "label": "Corridor 211", "x": 500, "y": 280, "isExit": false, "isStepFree": true },
     { "id": "node-211", "label": "Room 211", "x": 500, "y": 220, "isExit": false, "isStepFree": true },
     { "id": "node-wash-girls-211", "label": "Girls Washroom (211)", "x": 500, "y": 360, "isExit": false, "isStepFree": true },

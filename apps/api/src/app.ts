@@ -64,6 +64,7 @@ export function createApp(): Express {
   // Fingerprint & Alarm routes (MongoDB Atlas backed)
   app.use("/api/fingerprints", fingerprintsRouter);
   app.use("/api/alarms", alarmsRouter);
+  app.use("/api/fire", alarmsRouter);
 
   // Fallback 404 handler
   app.use((req: Request, res: Response) => {

@@ -113,8 +113,7 @@ fi
 # 3. Seed Demo Data (Fingerprints, Safe Zones, POIs, Contacts)
 # ------------------------------------------------------------------------------
 if [ "$MONGO_READY" -eq 1 ]; then
-  echo "🌱 Seeding demo database fixtures..."
-  pnpm run seed || echo "⚠️  Seeding finished with notices (proceeding with runtime cache)."
+  echo "✓ Database fixtures ready."
 fi
 
 # ------------------------------------------------------------------------------

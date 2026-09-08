@@ -534,11 +534,12 @@
 
       function setHazard(hazard) {
         if (!hazard) return;
-        const id = hazard.id || hazard.roomId || 'hazard-default';
+        const raw = String(hazard.roomId || hazard.id || hazard.zoneId || '208');
+        const cleanId = raw.replace(/^(room-|node-|ZONE_FLOOR2_)/i, '').trim();
+        const id = hazard.id || `hazard-${cleanId}`;
         clearHazard(id);
 
-        const roomId = hazard.roomId || hazard.id;
-        const targetRoom = ROOMS_DATA.find(r => r.id === roomId);
+        const targetRoom = ROOMS_DATA.find(r => r.id === cleanId || r.id === raw || (r.label && r.label.toLowerCase().includes(cleanId)));
         if (!targetRoom) return;
 
         const cx = (targetRoom.x0 + targetRoom.x1) / 2;
@@ -550,16 +551,21 @@
         hGroup.position.set(cx, 0, cz);
 
         // Highlight floor box in pulsating red
-        const hFloorGeo = new THREE.BoxGeometry(w, 0.14, d);
+        const hFloorGeo = new THREE.BoxGeometry(w, 0.25, d);
         const hFloorMat = new THREE.MeshStandardMaterial({
-          color: 0xff3b30,
+          color: 0xff1e00,
           emissive: 0xff3b30,
-          emissiveIntensity: 0.6,
-          roughness: 0.5
+          emissiveIntensity: 0.9,
+          roughness: 0.3
         });
         const hFloor = new THREE.Mesh(hFloorGeo, hFloorMat);
-        hFloor.position.y = 0.08;
+        hFloor.position.y = 0.12;
         hGroup.add(hFloor);
+
+        // Emergency point light above fire
+        const fireLight = new THREE.PointLight(0xff3b30, 2.5, 12);
+        fireLight.position.set(0, 3, 0);
+        hGroup.add(fireLight);
 
         scene.add(hGroup);
         hazardsMap.set(id, hGroup);

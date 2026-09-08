@@ -132,14 +132,17 @@ export const Indoor3DAdapter = forwardRef<Indoor3DAdapterRef, Indoor3DAdapterPro
   useEffect(() => {
     if (ready) {
       if (props.hazards && props.hazards.length > 0) {
-        props.hazards.forEach((h) => {
+        props.hazards.forEach((h: any) => {
+          const raw = h.roomId || h.zoneId || '208';
+          const roomId = raw.replace(/^(room-|ZONE_FLOOR2_)/i, '');
           iframeRef.current?.contentWindow?.postMessage(
             {
               type: 'SET_HAZARD',
               hazard: {
-                roomId: h.zoneId === 'room-208' ? '208' : h.zoneId,
-                severity: h.severity,
-                pulsed: h.pulsed
+                id: h.id || `hazard-${roomId}`,
+                roomId,
+                severity: h.severity || 'critical',
+                pulsed: h.pulsed !== false
               }
             },
             '*'

@@ -192,6 +192,134 @@ export const App: React.FC = () => {
     };
   }, []);
 
+  // Evacuate dynamically from user's current location to nearest safe stairs/exit
+  const handleEvacuate = useCallback((fireRoomId?: string) => {
+    setIsAlarmActive(true);
+    const fireCode = (fireRoomId || "208").replace(/^(room\s*|node-)/i, "").trim();
+    const blockedNodes = new Set<string>([`node-${fireCode}`, `c-${fireCode}`]);
+    if (fireCode === "208") {
+      blockedNodes.add("node-207");
+      blockedNodes.add("c-208");
+      blockedNodes.add("node-wash-girls-208");
+      blockedNodes.add("c-lift");
+    } else if (fireCode === "219") {
+      blockedNodes.add("node-219a");
+      blockedNodes.add("node-219c");
+      blockedNodes.add("c-219");
+    }
+
+    // Determine current user node based on live positioning
+    let currentUserNode = "node-219";
+    if (userPos.nearestPlaceName) {
+      const match = userPos.nearestPlaceName.match(/\b(20[1-9]|21[0-9]|220)\b/);
+      if (match) {
+        currentUserNode = `node-${match[1]}`;
+      }
+    }
+
+    const evacRoute = calculateEvacuationRoute(currentUserNode, blockedNodes);
+
+    if (evacRoute && evacRoute.status === "found") {
+      const exitPoi: POI = {
+        id: "poi-evac-exit",
+        name: "Stairs & Emergency Exit",
+        category: "Emergency Exit",
+        nodeId: evacRoute.segments[evacRoute.segments.length - 1]?.toNodeId || "exit-east",
+        aliases: ["fire exit", "stairs"]
+      };
+
+      setSelectedPOI(exitPoi);
+      setActiveProfile("emergency");
+      setActiveRoute(evacRoute);
+      setIsNavigating(true);
+      setSnapPoint("half");
+
+      speakInstruction(
+        `Emergency evacuation active! Fire detected in Room ${fireCode}. Avoid danger zone. Proceed directly to nearest stairs.`
+      );
+    }
+  }, [userPos.nearestPlaceName]);
+
+  // Dismiss Alarm
+  const handleDismissAlarm = () => {
+    setIsAlarmActive(false);
+    setIsNavigating(false);
+    setSelectedPOI(null);
+    setActiveRoute(null);
+    setHazardOverlays([]);
+    setSmokeMinutes(0);
+    setSnapPoint("peek");
+    speakInstruction("Emergency alarm reset. System returned to normal status.");
+    fetch("/api/fire", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ clear: true }) }).catch(() => {});
+  };
+
+  // Poll live Fire Alarm from backend / Vercel (ESP32 trigger)
+  useEffect(() => {
+    let cancelled = false;
+    const fireInterval = setInterval(async () => {
+      try {
+        const res = await fetch("/api/fire");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled || !data) return;
+
+        let al = null;
+        if (data && data.active && data.alarm) {
+          al = data.alarm;
+        } else if (Array.isArray(data)) {
+          al = data.find((item: any) => item.active);
+        }
+
+        if (al) {
+          const fireRoomCode = (al.roomId || "208").replace(/^(room\s*|node-)/i, "").trim();
+          const fireLabel = al.label || `Room ${fireRoomCode}`;
+
+          setAlarmLocation(fireLabel);
+          setAlarmTime(
+            new Date(al.triggeredAt || Date.now()).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit"
+            })
+          );
+
+          if (!isAlarmActive) {
+            setIsAlarmActive(true);
+            setHazardOverlays([
+              {
+                zoneId: "room-" + fireRoomCode,
+                floorId: "floor-2",
+                severity: "fire",
+                polygon: [
+                  { x: 757.5, y: 205 },
+                  { x: 817.5, y: 205 },
+                  { x: 817.5, y: 280 },
+                  { x: 757.5, y: 280 }
+                ],
+                pulsed: true,
+                smokeIntensity: 0.85
+              }
+            ]);
+            setSmokeMinutes(2);
+            handleEvacuate(fireRoomCode);
+          }
+        } else if ((data.active === false || (Array.isArray(data) && !data.some((i: any) => i.active))) && isAlarmActive && !isScenarioRunning) {
+          setIsAlarmActive(false);
+          setHazardOverlays([]);
+          setSmokeMinutes(0);
+          setActiveRoute(null);
+          setIsNavigating(false);
+        }
+      } catch {
+        // Backend offline fallback
+      }
+    }, 1500);
+
+    return () => {
+      cancelled = true;
+      clearInterval(fireInterval);
+    };
+  }, [isAlarmActive, handleEvacuate, isScenarioRunning]);
+
   // Toggle map detail layer
   const toggleLayer = (layer: keyof MapLayerConfig) => {
     setLayers((prev) => ({ ...prev, [layer]: !prev[layer] }));
@@ -260,45 +388,6 @@ export const App: React.FC = () => {
     setRouteComparison(null);
     setActiveRoute(null);
     setSnapPoint("peek");
-  };
-
-  // One-tap Evacuate
-  const handleEvacuate = () => {
-    setIsAlarmActive(true);
-    const blockedNodes = new Set(["node-207", "node-208", "c-208", "c-lift"]);
-    const currentUserNode = "node-204";
-    const evacRoute = calculateEvacuationRoute(currentUserNode, blockedNodes);
-
-    if (evacRoute.status === "found") {
-      const exitPoi: POI = {
-        id: "poi-evac-exit",
-        name: "Stair NE (Fire Refuge Exit)",
-        category: "Emergency Exit",
-        nodeId: "exit-west",
-        aliases: ["fire exit", "stair ne"]
-      };
-
-      setSelectedPOI(exitPoi);
-      setActiveProfile("emergency");
-      setActiveRoute(evacRoute);
-      setIsNavigating(true);
-      setSnapPoint("half");
-
-      speakInstruction(
-        "Emergency evacuation active. Avoid Room 207 and Corridor B. Proceed directly to Stair NE fire refuge."
-      );
-    }
-  };
-
-  // Dismiss Alarm
-  const handleDismissAlarm = () => {
-    setIsAlarmActive(false);
-    setIsNavigating(false);
-    setSelectedPOI(null);
-    setActiveRoute(null);
-    setSmokeMinutes(0);
-    setSnapPoint("peek");
-    speakInstruction("Emergency alarm reset. System returned to normal status.");
   };
 
   // SOS Trigger

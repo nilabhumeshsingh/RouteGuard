@@ -19,7 +19,8 @@
 // Hardware Configuration & Pin Assignments
 // ==============================================================================
 #define MQ2_ANALOG_PIN       34    // ADC1_CH6 (Safe for use with active WiFi)
-#define BUTTON_PIN           14    // Emergency trigger button (INPUT_PULLUP)
+#define BOOT_BUTTON_PIN      0     // Onboard ESP32 BOOT button (active LOW)
+#define BUTTON_PIN           14    // External emergency trigger button (INPUT_PULLUP)
 #define LED_NORMAL_PIN       2     // Green LED: System healthy & connected
 #define LED_ALARM_PIN        4     // Red LED: Active alarm / smoke detected
 #define LED_STATUS_PIN       5     // Yellow/Blue LED: Network transit / pairing
@@ -281,7 +282,9 @@ void setup() {
 
   // Pin initialization
   pinMode(MQ2_ANALOG_PIN, INPUT);
+  pinMode(BOOT_BUTTON_PIN, INPUT_PULLUP);
   pinMode(BUTTON_PIN, INPUT_PULLUP);
+  digitalWrite(BOOT_BUTTON_PIN, HIGH);
   pinMode(LED_NORMAL_PIN, OUTPUT);
   pinMode(LED_ALARM_PIN, OUTPUT);
   pinMode(LED_STATUS_PIN, OUTPUT);
@@ -321,8 +324,8 @@ void loop() {
     }
   }
 
-  // 2. Handle Push Button with Debounce
-  int reading = digitalRead(BUTTON_PIN);
+  // 2. Handle Push Button (BOOT button GPIO 0 or external button GPIO 14) with Debounce
+  int reading = (digitalRead(BOOT_BUTTON_PIN) == LOW || digitalRead(BUTTON_PIN) == LOW) ? LOW : HIGH;
   if (reading != lastButtonState) {
     lastDebounceTime = now;
   }
@@ -332,7 +335,7 @@ void loop() {
       buttonState = reading;
       // Button pressed (Active LOW)
       if (buttonState == LOW && (now - lastAlarmDispatchTime > ALARM_COOLDOWN_MS)) {
-        Serial.println("[INPUT] Manual emergency push button triggered!");
+        Serial.println("[FIRE_TRIGGER_BOOT_BUTTON] Manual emergency push button triggered!");
         triggerAlarmEvent("alarm", 1023, true);
         lastAlarmDispatchTime = now;
       }
