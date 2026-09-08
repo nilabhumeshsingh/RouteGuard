@@ -13,7 +13,7 @@ import { EmergencyBanner } from "./components/emergency/EmergencyBanner";
 import { EmergencySheetContent } from "./components/emergency/EmergencySheetContent";
 import { JudgeParameterMenu, ScenarioParams } from "./components/demo/JudgeParameterMenu";
 import { CampusMapContainer, CampusMapContainerHandle } from "./components/map/CampusMapContainer";
-import { FloorId, MapLayerConfig, UserPositionState, GuardianState } from "./types";
+import { FloorId, MapLayerConfig, UserPositionState, GuardianState, MapViewMode } from "./types";
 import { HazardOverlay, MobilityProfile, PositionEstimate, RouteResult } from "@routeguard/shared";
 import { ARCHITECTURAL_ROOMS, ArchitecturalRoom, POI } from "./data/floor2Data";
 import {
@@ -29,7 +29,7 @@ export const App: React.FC = () => {
 
   // App & Theme State
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [viewMode, setViewMode] = useState<"3D" | "2D">("3D");
+  const [viewMode, setViewMode] = useState<MapViewMode>("3D");
   const [currentFloor, setCurrentFloor] = useState<FloorId>("floor-2");
   const [snapPoint, setSnapPoint] = useState<SheetSnapPoint>("peek");
   const [isLayersModalOpen, setIsLayersModalOpen] = useState(false);

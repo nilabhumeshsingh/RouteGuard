@@ -4,6 +4,8 @@ export type SnapPoint = "collapsed" | "half" | "expanded";
 
 export type FloorId = "floor-1" | "floor-2" | "floor-3";
 
+export type MapViewMode = "3D" | "2D" | "Google";
+
 export interface MapLayerConfig {
   rooms: boolean;
   labels: boolean;

@@ -1,11 +1,11 @@
 import React from "react";
-import { MapLayerConfig } from "../../types";
+import { MapLayerConfig, MapViewMode } from "../../types";
 
 interface LayersModalProps {
   isOpen: boolean;
   onClose: () => void;
-  viewMode: "3D" | "2D";
-  onSetViewMode: (mode: "3D" | "2D") => void;
+  viewMode: MapViewMode;
+  onSetViewMode: (mode: MapViewMode) => void;
   isDarkMode: boolean;
   onToggleDarkMode: () => void;
   layers: MapLayerConfig;
@@ -44,31 +44,43 @@ export const LayersModal: React.FC<LayersModalProps> = ({
         {/* Map Rendering Engine Switcher */}
         <div className="mb-4">
           <div className="text-[11px] font-semibold text-[#5F6368] uppercase tracking-wider mb-2">
-            Map Rendering Type
+            Map Rendering Engine
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-1.5">
             <button
               onClick={() => onSetViewMode("3D")}
-              className={`p-3 rounded-xl border flex flex-col items-center gap-1.5 transition-all ${
+              className={`p-2.5 rounded-xl border flex flex-col items-center gap-1 transition-all ${
                 viewMode === "3D"
                   ? "bg-[#E8F0FE] border-[#1A73E8] text-[#1967D2] font-semibold shadow-sm"
                   : "bg-[#F8F9FA] border-[#DADCE0] text-[#5F6368] hover:bg-[#F1F3F4]"
               }`}
             >
-              <span className="material-symbols-outlined text-[24px]">view_in_ar</span>
-              <span className="text-xs">3D Dollhouse</span>
+              <span className="material-symbols-outlined text-[22px]">view_in_ar</span>
+              <span className="text-[11px]">3D Dollhouse</span>
             </button>
 
             <button
               onClick={() => onSetViewMode("2D")}
-              className={`p-3 rounded-xl border flex flex-col items-center gap-1.5 transition-all ${
+              className={`p-2.5 rounded-xl border flex flex-col items-center gap-1 transition-all ${
                 viewMode === "2D"
                   ? "bg-[#E8F0FE] border-[#1A73E8] text-[#1967D2] font-semibold shadow-sm"
                   : "bg-[#F8F9FA] border-[#DADCE0] text-[#5F6368] hover:bg-[#F1F3F4]"
               }`}
             >
-              <span className="material-symbols-outlined text-[24px]">map</span>
-              <span className="text-xs">2D Blueprint</span>
+              <span className="material-symbols-outlined text-[22px]">map</span>
+              <span className="text-[11px]">2D Blueprint</span>
+            </button>
+
+            <button
+              onClick={() => onSetViewMode("Google")}
+              className={`p-2.5 rounded-xl border flex flex-col items-center gap-1 transition-all ${
+                viewMode === "Google"
+                  ? "bg-[#E8F0FE] border-[#1A73E8] text-[#1967D2] font-semibold shadow-sm"
+                  : "bg-[#F8F9FA] border-[#DADCE0] text-[#5F6368] hover:bg-[#F1F3F4]"
+              }`}
+            >
+              <span className="material-symbols-outlined text-[22px] text-[#34A853]">satellite_alt</span>
+              <span className="text-[11px]">Google Maps</span>
             </button>
           </div>
         </div>

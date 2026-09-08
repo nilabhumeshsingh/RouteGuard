@@ -1,7 +1,8 @@
 import React, { useState, forwardRef, useImperativeHandle, useRef } from "react";
 import { Indoor3DAdapter, Indoor3DAdapterRef, UserMarker } from "../../maps/Indoor3DAdapter";
 import { Indoor2DMap } from "./Indoor2DAdapter";
-import { FloorId, MapLayerConfig, UserPositionState, GuardianState } from "../../types";
+import { GoogleMapAdapter, GoogleMapAdapterRef } from "./GoogleMapAdapter";
+import { FloorId, MapLayerConfig, UserPositionState, GuardianState, MapViewMode } from "../../types";
 import { HazardOverlay, PositionEstimate, RoutePoint, RouteResult } from "@routeguard/shared";
 import { ARCHITECTURAL_ROOMS, ArchitecturalRoom } from "../../data/floor2Data";
 
@@ -19,7 +20,7 @@ export interface CampusMapContainerProps {
   onSelectNode?: (nodeId: string, label: string) => void;
   onSelectRoom?: (room: ArchitecturalRoom) => void;
   onMapClick?: (pos: { x: number; y: number }) => void;
-  viewMode?: "2D" | "3D";
+  viewMode?: MapViewMode;
   categoryFilter?: string;
   theme?: "light" | "dark" | "emergency";
 }
@@ -54,20 +55,37 @@ export const CampusMapContainer = forwardRef<CampusMapContainerHandle, CampusMap
     ref
   ) => {
     const adapter3dRef = useRef<Indoor3DAdapterRef>(null);
+    const adapterGoogleRef = useRef<GoogleMapAdapterRef>(null);
     const [use2DFallback, setUse2DFallback] = useState(false);
 
     useImperativeHandle(ref, () => ({
       zoomIn: () => {
-        adapter3dRef.current?.zoomIn();
+        if (viewMode === "Google") {
+          adapterGoogleRef.current?.zoomIn();
+        } else {
+          adapter3dRef.current?.zoomIn();
+        }
       },
       zoomOut: () => {
-        adapter3dRef.current?.zoomOut();
+        if (viewMode === "Google") {
+          adapterGoogleRef.current?.zoomOut();
+        } else {
+          adapter3dRef.current?.zoomOut();
+        }
       },
       resetView: () => {
-        adapter3dRef.current?.resetView();
+        if (viewMode === "Google") {
+          adapterGoogleRef.current?.resetView();
+        } else {
+          adapter3dRef.current?.resetView();
+        }
       },
       focusRoom: (roomId: string) => {
-        adapter3dRef.current?.focusRoom(roomId);
+        if (viewMode === "Google") {
+          adapterGoogleRef.current?.focusRoom(roomId);
+        } else {
+          adapter3dRef.current?.focusRoom(roomId);
+        }
       }
     }));
 
@@ -133,6 +151,26 @@ export const CampusMapContainer = forwardRef<CampusMapContainerHandle, CampusMap
               Academic Block 1 survey data is currently focused on the Second Floor (2F) Core Wing for evaluation.
             </p>
           </div>
+        </div>
+      );
+    }
+
+    // Render Google Maps Satellite / Aerial Platform
+    if (viewMode === "Google") {
+      return (
+        <div className="relative w-full h-full overflow-hidden bg-[#1F2421]">
+          <GoogleMapAdapter
+            ref={adapterGoogleRef}
+            currentFloor={currentFloor}
+            userPosition={userPosition}
+            routePoints={routePoints}
+            activeRoute={activeRoute}
+            isEmergencyRoute={isEmergencyRoute}
+            hazardOverlays={hazardOverlays}
+            guardianState={guardianState}
+            onSelectRoom={onSelectRoom}
+            onSelectNode={onSelectNode}
+          />
         </div>
       );
     }
