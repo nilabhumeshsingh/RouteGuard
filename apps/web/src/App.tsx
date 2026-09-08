@@ -776,9 +776,52 @@ export const App: React.FC = () => {
           onSelectNode={handleSelectNode}
           onSelectRoom={handleSelectRoom}
           viewMode={viewMode}
+          onSwitchViewMode={setViewMode}
           categoryFilter={selectedCategory.toLowerCase()}
           theme={isAlarmActive ? "emergency" : isDarkMode ? "dark" : "light"}
         />
+
+        {/* Top-Right Mode Switcher Pill (3D / 2D / Maps) */}
+        <div className="absolute top-3 right-4 z-30 flex items-center gap-1 bg-white/95 backdrop-blur-md rounded-full p-1 shadow-md border border-[#DADCE0] text-xs font-semibold select-none">
+          <button
+            onClick={() => setViewMode("3D")}
+            className={`px-3 py-1.5 rounded-full flex items-center gap-1.5 transition-all ${
+              viewMode === "3D"
+                ? "bg-[#1A73E8] text-white shadow-sm font-bold"
+                : "text-[#5F6368] hover:text-[#202124] hover:bg-[#F1F3F4]"
+            }`}
+            title="3D Dollhouse View"
+          >
+            <span className="material-symbols-outlined text-[16px]">view_in_ar</span>
+            <span className="hidden sm:inline">3D Dollhouse</span>
+            <span className="sm:hidden">3D</span>
+          </button>
+          <button
+            onClick={() => setViewMode("2D")}
+            className={`px-3 py-1.5 rounded-full flex items-center gap-1.5 transition-all ${
+              viewMode === "2D"
+                ? "bg-[#1A73E8] text-white shadow-sm font-bold"
+                : "text-[#5F6368] hover:text-[#202124] hover:bg-[#F1F3F4]"
+            }`}
+            title="2D Blueprint View"
+          >
+            <span className="material-symbols-outlined text-[16px]">map</span>
+            <span className="hidden sm:inline">2D Blueprint</span>
+            <span className="sm:hidden">2D</span>
+          </button>
+          <button
+            onClick={() => setViewMode("Google")}
+            className={`px-3.5 py-1.5 rounded-full flex items-center gap-1.5 transition-all ${
+              viewMode === "Google"
+                ? "bg-[#34A853] text-white shadow-sm font-bold"
+                : "text-[#1A73E8] bg-[#E8F0FE] hover:bg-[#D2E3FC] border border-[#1A73E8]/30 font-bold"
+            }`}
+            title="Switch to Google Maps Satellite & Aerial View"
+          >
+            <span className="material-symbols-outlined text-[16px] text-[#34A853]">satellite_alt</span>
+            <span>Google Maps</span>
+          </button>
+        </div>
 
         {/* Floating Top Controls (Search Bar, Category Chips, Status Bar) */}
         {!isAlarmActive && (

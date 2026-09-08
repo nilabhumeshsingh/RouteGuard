@@ -21,6 +21,7 @@ export interface CampusMapContainerProps {
   onSelectRoom?: (room: ArchitecturalRoom) => void;
   onMapClick?: (pos: { x: number; y: number }) => void;
   viewMode?: MapViewMode;
+  onSwitchViewMode?: (mode: MapViewMode) => void;
   categoryFilter?: string;
   theme?: "light" | "dark" | "emergency";
 }
@@ -49,6 +50,7 @@ export const CampusMapContainer = forwardRef<CampusMapContainerHandle, CampusMap
       onSelectRoom,
       onMapClick,
       viewMode = "3D",
+      onSwitchViewMode,
       categoryFilter = "all",
       theme = "light"
     },
@@ -170,6 +172,7 @@ export const CampusMapContainer = forwardRef<CampusMapContainerHandle, CampusMap
             guardianState={guardianState}
             onSelectRoom={onSelectRoom}
             onSelectNode={onSelectNode}
+            onSwitchViewMode={onSwitchViewMode}
           />
         </div>
       );

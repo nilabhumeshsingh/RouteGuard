@@ -38,6 +38,7 @@ export interface GoogleMapAdapterProps {
   guardianState?: GuardianState | null;
   onSelectRoom?: (room: ArchitecturalRoom) => void;
   onSelectNode?: (nodeId: string, label: string) => void;
+  onSwitchViewMode?: (mode: "3D" | "2D" | "Google") => void;
 }
 
 export interface GoogleMapAdapterRef {
@@ -58,7 +59,8 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
       hazardOverlays = [],
       guardianState,
       onSelectRoom,
-      onSelectNode
+      onSelectNode,
+      onSwitchViewMode
     },
     ref
   ) => {
@@ -480,38 +482,66 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
 
     return (
       <div className="relative w-full h-full overflow-hidden select-none bg-[#1F2421]">
-        {/* Top Floating Map Type Switcher */}
-        <div className="absolute top-4 left-4 z-20 flex items-center gap-1.5 bg-white/95 backdrop-blur-md rounded-xl p-1 shadow-md border border-[#DADCE0] text-xs font-semibold text-[#5F6368]">
-          <button
-            onClick={() => setMapType("satellite")}
-            className={`px-2.5 py-1 rounded-lg transition-all ${
-              mapType === "satellite"
-                ? "bg-[#1A73E8] text-white shadow-sm"
-                : "hover:bg-[#F1F3F4] text-[#202124]"
-            }`}
-          >
-            Satellite
-          </button>
-          <button
-            onClick={() => setMapType("hybrid")}
-            className={`px-2.5 py-1 rounded-lg transition-all ${
-              mapType === "hybrid"
-                ? "bg-[#1A73E8] text-white shadow-sm"
-                : "hover:bg-[#F1F3F4] text-[#202124]"
-            }`}
-          >
-            Hybrid
-          </button>
-          <button
-            onClick={() => setMapType("roadmap")}
-            className={`px-2.5 py-1 rounded-lg transition-all ${
-              mapType === "roadmap"
-                ? "bg-[#1A73E8] text-white shadow-sm"
-                : "hover:bg-[#F1F3F4] text-[#202124]"
-            }`}
-          >
-            Roadmap
-          </button>
+        {/* Top Floating Controls: Mode Switcher (3D / 2D / Maps) & Map Type */}
+        <div className="absolute top-4 left-4 z-20 flex flex-wrap items-center gap-2 max-w-[calc(100vw-140px)]">
+          {/* Quick Switch to 3D / 2D Blueprint */}
+          <div className="flex items-center gap-1 bg-white/95 backdrop-blur-md rounded-xl p-1 shadow-md border border-[#DADCE0] text-xs font-semibold">
+            <button
+              onClick={() => onSwitchViewMode?.("3D")}
+              className="px-2.5 py-1 rounded-lg text-[#5F6368] hover:text-[#202124] hover:bg-[#F1F3F4] transition-all flex items-center gap-1"
+              title="Switch to 3D Dollhouse"
+            >
+              <span className="material-symbols-outlined text-[15px]">view_in_ar</span>
+              <span>3D</span>
+            </button>
+            <button
+              onClick={() => onSwitchViewMode?.("2D")}
+              className="px-2.5 py-1 rounded-lg text-[#5F6368] hover:text-[#202124] hover:bg-[#F1F3F4] transition-all flex items-center gap-1"
+              title="Switch to 2D Blueprint"
+            >
+              <span className="material-symbols-outlined text-[15px]">map</span>
+              <span>2D</span>
+            </button>
+            <div className="w-[1px] h-4 bg-[#DADCE0] mx-0.5" />
+            <span className="px-2.5 py-1 bg-[#34A853] text-white rounded-lg flex items-center gap-1 font-bold shadow-sm">
+              <span className="material-symbols-outlined text-[15px]">satellite_alt</span>
+              <span>Google Maps</span>
+            </span>
+          </div>
+
+          {/* Map Layer Switcher: Satellite / Hybrid / Roadmap */}
+          <div className="flex items-center gap-1 bg-white/95 backdrop-blur-md rounded-xl p-1 shadow-md border border-[#DADCE0] text-xs font-semibold text-[#5F6368]">
+            <button
+              onClick={() => setMapType("satellite")}
+              className={`px-2.5 py-1 rounded-lg transition-all ${
+                mapType === "satellite"
+                  ? "bg-[#1A73E8] text-white shadow-sm font-bold"
+                  : "hover:bg-[#F1F3F4] text-[#202124]"
+              }`}
+            >
+              Satellite
+            </button>
+            <button
+              onClick={() => setMapType("hybrid")}
+              className={`px-2.5 py-1 rounded-lg transition-all ${
+                mapType === "hybrid"
+                  ? "bg-[#1A73E8] text-white shadow-sm font-bold"
+                  : "hover:bg-[#F1F3F4] text-[#202124]"
+              }`}
+            >
+              Hybrid
+            </button>
+            <button
+              onClick={() => setMapType("roadmap")}
+              className={`px-2.5 py-1 rounded-lg transition-all ${
+                mapType === "roadmap"
+                  ? "bg-[#1A73E8] text-white shadow-sm font-bold"
+                  : "hover:bg-[#F1F3F4] text-[#202124]"
+              }`}
+            >
+              Roadmap
+            </button>
+          </div>
         </div>
 
         {/* Top-Right Google API Key Connected Badge */}
