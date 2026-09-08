@@ -497,27 +497,57 @@
       const routeGroup = new THREE.Group();
       scene.add(routeGroup);
 
-      function updateRouteOverlay(route) {
+      function updateRouteOverlay(route, profile) {
         clearRouteOverlay();
         if (!route) return;
         const points = Array.isArray(route) ? route : (route.pathPoints || route.points || []);
         if (points.length < 2) return;
 
-        const vectors = points.map(pt => {
+        const rawVectors = points.map(pt => {
           const x = parseCoord(pt.x3d !== undefined ? pt.x3d : pt.x, false);
           const z = parseCoord(pt.z3d !== undefined ? pt.z3d : (pt.z !== undefined ? pt.z : pt.y), true);
           return new THREE.Vector3(x, 0.25, z);
         });
 
+        // Deduplicate adjacent points closer than 0.08 units to prevent Three.js TubeGeometry singularity
+        const vectors = [];
+        for (let i = 0; i < rawVectors.length; i++) {
+          if (i === 0 || rawVectors[i].distanceTo(vectors[vectors.length - 1]) > 0.08) {
+            vectors.push(rawVectors[i]);
+          }
+        }
+        if (vectors.length < 2) return;
+
+        const isEmergency = profile === 'emergency' || activeCurrentMode === 'emergency';
         const curve = new THREE.CatmullRomCurve3(vectors);
-        const tubeGeo = new THREE.TubeGeometry(curve, 64, 0.15, 8, false);
+        const tubeGeo = new THREE.TubeGeometry(curve, Math.max(32, vectors.length * 16), isEmergency ? 0.22 : 0.15, 8, false);
         const tubeMat = new THREE.MeshStandardMaterial({
-          color: 0x4fd1c2,
-          emissive: 0x1f9d92,
-          roughness: 0.3
+          color: isEmergency ? 0x34c759 : 0x4fd1c2,
+          emissive: isEmergency ? 0x1faa3d : 0x1f9d92,
+          emissiveIntensity: isEmergency ? 0.9 : 0.45,
+          roughness: 0.2
         });
         const routeMesh = new THREE.Mesh(tubeGeo, tubeMat);
         routeGroup.add(routeMesh);
+
+        // Emergency destination stairs beacon & point light
+        if (isEmergency) {
+          const dest = vectors[vectors.length - 1];
+          const beaconGeo = new THREE.CylinderGeometry(0.7, 0.7, 3.2, 32);
+          const beaconMat = new THREE.MeshBasicMaterial({
+            color: 0x34c759,
+            transparent: true,
+            opacity: 0.45,
+            side: THREE.DoubleSide
+          });
+          const beaconMesh = new THREE.Mesh(beaconGeo, beaconMat);
+          beaconMesh.position.set(dest.x, 1.6, dest.z);
+          routeGroup.add(beaconMesh);
+
+          const light = new THREE.PointLight(0x34c759, 3, 12);
+          light.position.set(dest.x, 2.2, dest.z);
+          routeGroup.add(light);
+        }
       }
 
       function clearRouteOverlay() {
@@ -691,7 +721,9 @@
         }
       }
 
+      let activeCurrentMode = 'normal';
       function setMode(mode) {
+        activeCurrentMode = mode;
         if (mode === 'emergency') {
           ambientLight.intensity = 0.55;
           mainLight.color.setHex(0xff7777);
@@ -776,7 +808,7 @@
             updatePositionMarker(msg.position || msg.payload);
             break;
           case 'SET_ROUTE':
-            updateRouteOverlay(msg.route || msg.payload);
+            updateRouteOverlay(msg.route || msg.payload, msg.profile);
             break;
           case 'CLEAR_ROUTE':
             clearRouteOverlay();

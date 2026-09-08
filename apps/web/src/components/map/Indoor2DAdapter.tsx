@@ -225,13 +225,26 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
     }
   };
 
+  // Coordinate normalization for 3D vs SVG coordinates
+  const normalizePt = useCallback((pt: RoutePoint): { x: number; y: number } => {
+    if (!pt) return { x: 0, y: 0 };
+    if (Math.abs(pt.x) < 50 && Math.abs(pt.y) < 50) {
+      return {
+        x: pt.x * 15 + 480,
+        y: 242.5 - pt.y * 15
+      };
+    }
+    return { x: pt.x, y: pt.y };
+  }, []);
+
   // Turn coordinate route list into SVG path data
-  const getPathData = (points: RoutePoint[]): string => {
+  const getPathData = useCallback((points: RoutePoint[]): string => {
     if (!points || points.length === 0) return "";
-    return points.reduce((acc, pt, idx) => {
+    return points.reduce((acc, rawPt, idx) => {
+      const pt = normalizePt(rawPt);
       return idx === 0 ? `M ${pt.x} ${pt.y}` : `${acc} L ${pt.x} ${pt.y}`;
     }, "");
-  };
+  }, [normalizePt]);
 
   // Smoke plume expansion parameters for Room 208 (x: 757.5, y: 205)
   const getSmokeProps = (minutes: number) => {
@@ -775,8 +788,8 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
               d={getPathData(routePoints)}
               fill="none"
               stroke={isEmergencyRoute ? "#34c759" : "#4fd1c2"}
-              strokeWidth="10"
-              strokeOpacity="0.25"
+              strokeWidth={isEmergencyRoute ? "14" : "10"}
+              strokeOpacity={isEmergencyRoute ? "0.35" : "0.25"}
               strokeLinecap="round"
               strokeLinejoin="round"
             />
@@ -786,7 +799,7 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
               d={getPathData(routePoints)}
               fill="none"
               stroke={isEmergencyRoute ? "#34c759" : "#4fd1c2"}
-              strokeWidth="4"
+              strokeWidth={isEmergencyRoute ? "5" : "4"}
               strokeLinecap="round"
               strokeLinejoin="round"
             />
@@ -796,7 +809,7 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
               d={getPathData(routePoints)}
               fill="none"
               stroke="#ffffff"
-              strokeWidth="2"
+              strokeWidth="2.5"
               strokeDasharray="6 14"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -805,24 +818,42 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
 
             {/* Origin Dot */}
             <circle
-              cx={routePoints[0].x}
-              cy={routePoints[0].y}
-              r="6"
+              cx={normalizePt(routePoints[0]).x}
+              cy={normalizePt(routePoints[0]).y}
+              r="7"
               fill={isEmergencyRoute ? "#34c759" : "#4fd1c2"}
               stroke="#ffffff"
-              strokeWidth="2"
+              strokeWidth="2.5"
             />
 
-            {/* Destination Target Pin */}
-            <g transform={`translate(${routePoints[routePoints.length - 1].x}, ${routePoints[routePoints.length - 1].y})`}>
-              <circle r="9" fill={isEmergencyRoute ? "#34c759" : "#f0a24a"} stroke="#ffffff" strokeWidth="2" filter="url(#pinShadow)" />
-              <circle r="3.5" fill="#ffffff" />
+            {/* Destination Target Pin (Stairs Beacon in Emergency) */}
+            <g transform={`translate(${normalizePt(routePoints[routePoints.length - 1]).x}, ${normalizePt(routePoints[routePoints.length - 1]).y})`}>
+              {isEmergencyRoute ? (
+                <g>
+                  <circle r="18" fill="none" stroke="#34c759" strokeWidth="2" strokeDasharray="4 2" className="animate-ping opacity-75" />
+                  <circle r="12" fill="#2e7d32" stroke="#34c759" strokeWidth="2.5" filter="url(#pinShadow)" />
+                  <text textAnchor="middle" y="1" dominantBaseline="central" className="text-[13px]">
+                    🏃
+                  </text>
+                  <g transform="translate(16, -10)">
+                    <rect x="0" y="0" width="86" height="20" rx="6" fill="#1b5e20" stroke="#34c759" strokeWidth="1.5" filter="url(#pinShadow)" />
+                    <text x="8" y="13" className="text-[9px] font-bold fill-white tracking-wide">
+                      SAFE STAIRS
+                    </text>
+                  </g>
+                </g>
+              ) : (
+                <g>
+                  <circle r="9" fill="#f0a24a" stroke="#ffffff" strokeWidth="2" filter="url(#pinShadow)" />
+                  <circle r="3.5" fill="#ffffff" />
+                </g>
+              )}
             </g>
 
             {/* Step-Free Accessibility Badge on Route */}
             {routeIsStepFree && routePoints.length > 2 && (
               <g
-                transform={`translate(${routePoints[Math.floor(routePoints.length / 2)].x + 10}, ${routePoints[Math.floor(routePoints.length / 2)].y - 12})`}
+                transform={`translate(${normalizePt(routePoints[Math.floor(routePoints.length / 2)]).x + 10}, ${normalizePt(routePoints[Math.floor(routePoints.length / 2)]).y - 12})`}
               >
                 <rect x="0" y="0" width="72" height="18" rx="9" fill="#162638" stroke="#4fd1c2" strokeWidth="1" filter="url(#pinShadow)" />
                 <text x="7" y="12" className="text-[8px] font-bold fill-[#4fd1c2]">
