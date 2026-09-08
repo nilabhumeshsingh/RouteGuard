@@ -1,11 +1,10 @@
-import React, { useRef, useState, useEffect, useCallback } from "react";
+import React, { useRef, useState, useCallback } from "react";
 import { CampusMapAdapter, CameraState, HazardOverlay, MapScene, RoutePoint } from "@routeguard/shared";
 import {
   ARCHITECTURAL_ROOMS,
   EMERGENCY_EQUIPMENT,
   FLOOR2_DIMENSIONS,
-  ArchitecturalRoom,
-  EmergencyEquipment
+  ArchitecturalRoom
 } from "../../data/floor2Data";
 import { MapLayerConfig, UserPositionState, FloorId, GuardianState } from "../../types";
 
@@ -31,10 +30,10 @@ export class Indoor2DAdapter implements CampusMapAdapter {
   public id = "indoor-2d-svg";
   public name = "Vectorized 2D Architectural SVG Adapter";
   private container: HTMLElement | null = null;
-  private camera: CameraState = { zoom: 1, targetX: 425, targetY: 325, rotation: 0 };
+  private camera: CameraState = { zoom: 1, targetX: 480, targetY: 260, rotation: 0 };
   private route: Array<{ x: number; y: number }> = [];
   private hazards: HazardOverlay[] = [];
-  private userPos = { x: 120, y: 220, uncertaintyRadius: 2.5 };
+  private userPos = { x: 472, y: 190, uncertaintyRadius: 2.5 };
 
   public render(container: HTMLElement, scene: MapScene): void {
     this.container = container;
@@ -70,6 +69,7 @@ export class Indoor2DAdapter implements CampusMapAdapter {
 /**
  * Interactive React 2D SVG Architectural Map Component with smooth Pan/Zoom,
  * Dynamic Layers, Location Halo, Route Pathing, and Hazard Overlays.
+ * Exactly matched to 3D Dollhouse Model geometry (North Wing, South Wing, Central Island, Balcony).
  */
 export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
   currentFloor,
@@ -87,18 +87,18 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Pan and Zoom Transformation State
-  const [zoom, setZoom] = useState(1.15);
-  const [pan, setPan] = useState({ x: -40, y: -40 });
+  const [zoom, setZoom] = useState(1.05);
+  const [pan, setPan] = useState({ x: -20, y: -10 });
   const [isDragging, setIsDragging] = useState(false);
   const dragOrigin = useRef({ x: 0, y: 0 });
   const panOrigin = useRef({ x: 0, y: 0 });
 
   // Reset / Recenter smoothly
   const recenter = useCallback(() => {
-    setZoom(1.2);
+    setZoom(1.1);
     setPan({
-      x: -(userPosition.x - 380) * 1.2,
-      y: -(userPosition.y - 280) * 1.2
+      x: -(userPosition.x - 480) * 1.1,
+      y: -(userPosition.y - 260) * 1.1
     });
   }, [userPosition.x, userPosition.y]);
 
@@ -122,99 +122,172 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
-    if (isDragging) {
-      setIsDragging(false);
-      try {
-        (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-      } catch {
-        // Safe fallback
-      }
+    if (!isDragging) return;
+    setIsDragging(false);
+    try {
+      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch {
+      // ignore
     }
   };
 
-  // Mouse wheel zoom
+  // Wheel Zoom with focal point stabilization
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
-    const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
-    setZoom((prev) => Math.min(Math.max(prev * zoomFactor, 0.6), 3.2));
+    const factor = e.deltaY < 0 ? 1.12 : 0.89;
+    setZoom((prev) => Math.min(Math.max(prev * factor, 0.6), 3.5));
   };
 
-  // SVG route path generator
+  // SVG Room Styles based on category
+  const getRoomStyle = (category: string) => {
+    switch (category) {
+      case "lab":
+        return {
+          fill: "#f0f6ff",
+          stroke: "#54a0ff",
+          strokeOpacity: 0.8,
+          badgeBg: "#54a0ff",
+          badgeText: "#ffffff"
+        };
+      case "classroom":
+        return {
+          fill: "#ffffff",
+          stroke: "#d2d2d7",
+          strokeOpacity: 0.9,
+          badgeBg: "#f0a24a",
+          badgeText: "#ffffff"
+        };
+      case "office":
+        return {
+          fill: "#fffbf5",
+          stroke: "#f0a24a",
+          strokeOpacity: 0.8,
+          badgeBg: "#f0a24a",
+          badgeText: "#ffffff"
+        };
+      case "restroom":
+        return {
+          fill: "#f2fcfb",
+          stroke: "#4fd1c2",
+          strokeOpacity: 0.8,
+          badgeBg: "#4fd1c2",
+          badgeText: "#ffffff"
+        };
+      case "service":
+        return {
+          fill: "#f8f8fa",
+          stroke: "#ef6f6f",
+          strokeOpacity: 0.7,
+          badgeBg: "#ef6f6f",
+          badgeText: "#ffffff"
+        };
+      case "terrace":
+        return {
+          fill: "#edf7ee",
+          stroke: "#79d189",
+          strokeOpacity: 0.8,
+          badgeBg: "#79d189",
+          badgeText: "#ffffff"
+        };
+      default:
+        return {
+          fill: "#ffffff",
+          stroke: "#d2d2d7",
+          strokeOpacity: 0.6,
+          badgeBg: "#8e8e93",
+          badgeText: "#ffffff"
+        };
+    }
+  };
+
+  // Turn coordinate route list into SVG path data
   const getPathData = (points: RoutePoint[]): string => {
     if (!points || points.length === 0) return "";
-    return points.reduce((acc, pt, index) => {
-      return index === 0 ? `M ${pt.x} ${pt.y}` : `${acc} L ${pt.x} ${pt.y}`;
+    return points.reduce((acc, pt, idx) => {
+      return idx === 0 ? `M ${pt.x} ${pt.y}` : `${acc} L ${pt.x} ${pt.y}`;
     }, "");
   };
 
-  // Category styles for rooms
-  const getRoomStyle = (category: ArchitecturalRoom["category"]) => {
-    switch (category) {
-      case "lab":
-        return { fill: "#f0f6ff", stroke: "#0066cc", strokeOpacity: 0.25 };
-      case "restroom":
-        return { fill: "#f2f9f4", stroke: "#34c759", strokeOpacity: 0.3 };
-      case "office":
-        return { fill: "#fdf8ee", stroke: "#ff9500", strokeOpacity: 0.3 };
-      case "service":
-        return { fill: "#f2f2f7", stroke: "#8e8e93", strokeOpacity: 0.4 };
-      default:
-        return { fill: "#ffffff", stroke: "#e0e0e0", strokeOpacity: 1 };
-    }
-  };
-
-  // Compute smoke plume radius and opacity based on forecast
-  const getSmokeProps = () => {
-    switch (smokeMinutes) {
+  // Smoke plume expansion parameters for Room 208 (x: 757.5, y: 205)
+  const getSmokeProps = (minutes: number) => {
+    switch (minutes) {
       case 2:
-        return { r: 75, opacity: 0.45 };
+        return { r: 50, opacity: 0.45 };
       case 5:
-        return { r: 125, opacity: 0.6 };
+        return { r: 90, opacity: 0.65 };
       case 10:
-        return { r: 180, opacity: 0.72 };
+        return { r: 150, opacity: 0.82 };
       default:
-        return { r: 45, opacity: 0.3 };
+        return { r: 0, opacity: 0 };
     }
   };
 
-  const smokeProps = getSmokeProps();
+  const smokeProps = getSmokeProps(smokeMinutes);
 
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full overflow-hidden bg-[#f5f5f7] cursor-grab active:cursor-grabbing touch-none select-none"
+      className="relative w-full h-full overflow-hidden bg-[#081018] touch-none select-none cursor-grab active:cursor-grabbing"
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
       onWheel={handleWheel}
     >
+      {/* Zoom / Reset Recenter HUD */}
+      <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
+        <button
+          onClick={() => setZoom((z) => Math.min(z * 1.2, 3.5))}
+          className="w-9 h-9 rounded-full bg-[#162638]/90 text-[#eaf2f8] border border-[#40627e]/40 shadow-lg flex items-center justify-center font-bold text-base hover:bg-[#20344d] transition-all"
+          title="Zoom In"
+        >
+          +
+        </button>
+        <button
+          onClick={() => setZoom((z) => Math.max(z * 0.8, 0.5))}
+          className="w-9 h-9 rounded-full bg-[#162638]/90 text-[#eaf2f8] border border-[#40627e]/40 shadow-lg flex items-center justify-center font-bold text-base hover:bg-[#20344d] transition-all"
+          title="Zoom Out"
+        >
+          −
+        </button>
+        <button
+          onClick={recenter}
+          className="w-9 h-9 rounded-full bg-[#162638]/90 text-[#4fd1c2] border border-[#40627e]/40 shadow-lg flex items-center justify-center text-xs font-semibold hover:bg-[#20344d] transition-all"
+          title="Recenter Map"
+        >
+          ◎
+        </button>
+      </div>
+
       <svg
         viewBox={`0 0 ${FLOOR2_DIMENSIONS.width} ${FLOOR2_DIMENSIONS.height}`}
-        className="w-full h-full transition-transform duration-75 ease-out"
+        className="w-full h-full origin-center transition-transform duration-75"
         style={{
-          transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-          transformOrigin: "center center"
+          transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`
         }}
       >
         <defs>
-          {/* Subtle grid pattern */}
+          {/* Floor grid pattern */}
           <pattern id="floorGrid" width="20" height="20" patternUnits="userSpaceOnUse">
-            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e8e8ed" strokeWidth="0.5" />
+            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#1c2f42" strokeWidth="0.5" />
+          </pattern>
+
+          {/* Void hatch pattern for triple-height lightwells */}
+          <pattern id="voidHatch" width="12" height="12" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+            <line x1="0" y1="0" x2="0" y2="12" stroke="#8f8ff0" strokeWidth="1.2" strokeOpacity="0.4" />
           </pattern>
 
           {/* Fire compartment gradient */}
           <radialGradient id="fireCompartmentGrad" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#ff3b30" stopOpacity="0.85" />
-            <stop offset="70%" stopColor="#ff453a" stopOpacity="0.45" />
+            <stop offset="0%" stopColor="#ff3b30" stopOpacity="0.9" />
+            <stop offset="70%" stopColor="#ff453a" stopOpacity="0.5" />
             <stop offset="100%" stopColor="#d70015" stopOpacity="0.1" />
           </radialGradient>
 
           {/* Smoke diffusion gradient */}
           <radialGradient id="smokePlumeGrad" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#2c2c2e" stopOpacity="0.8" />
-            <stop offset="50%" stopColor="#48484a" stopOpacity="0.4" />
-            <stop offset="100%" stopColor="#636366" stopOpacity="0" />
+            <stop offset="0%" stopColor="#151b22" stopOpacity="0.85" />
+            <stop offset="50%" stopColor="#30363d" stopOpacity="0.5" />
+            <stop offset="100%" stopColor="#484f58" stopOpacity="0" />
           </radialGradient>
 
           {/* Turn chevron marker */}
@@ -231,53 +304,179 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
           </marker>
 
           {/* Location Halo Drop Shadow */}
-          <filter id="appleHaloShadow" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#0066cc" floodOpacity="0.3" />
+          <filter id="appleHaloShadow" x="-30%" y="-30%" width="160%" height="160%">
+            <feDropShadow dx="0" dy="2" stdDeviation="4" floodColor="#0066cc" floodOpacity="0.5" />
           </filter>
 
           <filter id="pinShadow" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="#000000" floodOpacity="0.25" />
+            <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#000000" floodOpacity="0.5" />
           </filter>
         </defs>
 
-        {/* Floor Slab Background Canvas */}
-        <rect
-          x="50"
-          y="100"
-          width="760"
-          height="500"
-          rx="24"
-          fill="#fafafc"
-          stroke="#e0e0e0"
-          strokeWidth="1.5"
-        />
-        <rect x="50" y="100" width="760" height="500" rx="24" fill="url(#floorGrid)" opacity="0.6" />
+        {/* Outer Dark Void Canvas Background */}
+        <rect width={FLOOR2_DIMENSIONS.width} height={FLOOR2_DIMENSIONS.height} fill="#081018" />
 
-        {/* Corridors Architecture */}
+        {/* Floor Slab Architectural Footprint */}
+        <g id="floor-slab">
+          {/* Main rectangular floor slab */}
+          <rect
+            x="160"
+            y="80"
+            width="730"
+            height="325"
+            rx="12"
+            fill="#0f1b29"
+            stroke="#1f374e"
+            strokeWidth="2"
+          />
+          <rect x="160" y="80" width="730" height="325" rx="12" fill="url(#floorGrid)" opacity="0.4" />
+
+          {/* Semicircular Balcony Projection (West Facade) */}
+          <path
+            d="M 165 152.5 A 90 90 0 0 0 165 332.5 Z"
+            fill="#122435"
+            stroke="#79d189"
+            strokeWidth="2"
+          />
+          <path
+            d="M 165 162.5 A 80 80 0 0 0 165 322.5 Z"
+            fill="none"
+            stroke="#79d189"
+            strokeWidth="1.2"
+            strokeDasharray="4 4"
+            opacity="0.6"
+          />
+        </g>
+
+        {/* Corridors Network Matching 3D Dollhouse Model */}
         <g id="corridors" className="opacity-95">
-          {/* Main Corridor East-West */}
-          <rect x="65" y="260" width="730" height="40" fill="#f0f0f4" />
-          <line x1="75" y1="280" x2="785" y2="280" stroke="#d2d2d7" strokeWidth="1" strokeDasharray="4 4" />
+          {/* North Corridor: x 165 to 885, y 182.5 to 205 */}
+          <rect x="165" y="182.5" width="720" height="22.5" fill="#162638" />
+          <line x1="165" y1="193.75" x2="885" y2="193.75" stroke="#40627e" strokeWidth="1" strokeDasharray="5 5" opacity="0.5" />
 
-          {/* West South Corridor */}
-          <rect x="105" y="295" width="30" height="155" fill="#f0f0f4" />
+          {/* South Corridor: x 165 to 885, y 280 to 302.5 */}
+          <rect x="165" y="280" width="720" height="22.5" fill="#162638" />
+          <line x1="165" y1="291.25" x2="885" y2="291.25" stroke="#40627e" strokeWidth="1" strokeDasharray="5 5" opacity="0.5" />
 
-          {/* Balcony Corridor South */}
-          <rect x="285" y="295" width="30" height="200" fill="#f0f0f4" />
+          {/* West Atrium Connector: connects North & South Corridors in front of Balcony */}
+          <rect x="165" y="182.5" width="52.5" height="120" fill="#162638" />
 
-          {/* Circular Balcony Terrace */}
-          <circle cx="300" cy="545" r="45" fill="#edf4f0" stroke="#a3c4b0" strokeWidth="1.5" />
-          <circle cx="300" cy="545" r="38" fill="none" stroke="#a3c4b0" strokeWidth="1" strokeDasharray="3 3" />
+          {/* Mid Vertical Connector: central stairs and elevator pass-through */}
+          <rect x="540" y="182.5" width="52.5" height="120" fill="#162638" />
 
-          {/* Central South Corridor */}
-          <rect x="485" y="295" width="30" height="95" fill="#f0f0f4" />
+          {/* East Vertical Connector: Northeast fire exit passage */}
+          <rect x="840" y="182.5" width="45" height="120" fill="#162638" />
         </g>
 
         {/* Architectural Rooms Layer */}
         {layers.rooms && (
           <g id="architectural-rooms">
             {ARCHITECTURAL_ROOMS.map((room) => {
+              // Structural Voids (Lightwells X1, X2, X3)
+              if (room.id.startsWith("void-")) {
+                return (
+                  <g key={room.id} className="pointer-events-none">
+                    <rect
+                      x={room.bounds.x}
+                      y={room.bounds.y}
+                      width={room.bounds.width}
+                      height={room.bounds.height}
+                      rx="6"
+                      fill="#0d1520"
+                      stroke="#8f8ff0"
+                      strokeWidth="1.5"
+                      strokeDasharray="4 2"
+                    />
+                    <rect
+                      x={room.bounds.x}
+                      y={room.bounds.y}
+                      width={room.bounds.width}
+                      height={room.bounds.height}
+                      fill="url(#voidHatch)"
+                    />
+                    <line
+                      x1={room.bounds.x}
+                      y1={room.bounds.y}
+                      x2={room.bounds.x + room.bounds.width}
+                      y2={room.bounds.y + room.bounds.height}
+                      stroke="#8f8ff0"
+                      strokeWidth="1"
+                      strokeOpacity="0.4"
+                    />
+                    <line
+                      x1={room.bounds.x + room.bounds.width}
+                      y1={room.bounds.y}
+                      x2={room.bounds.x}
+                      y2={room.bounds.y + room.bounds.height}
+                      stroke="#8f8ff0"
+                      strokeWidth="1"
+                      strokeOpacity="0.4"
+                    />
+                    {layers.labels && (
+                      <text
+                        x={room.bounds.x + room.bounds.width / 2}
+                        y={room.bounds.y + room.bounds.height / 2}
+                        textAnchor="middle"
+                        dominantBaseline="central"
+                        className="text-[9px] font-bold fill-[#8f8ff0]"
+                        style={{ fontFamily: "'IBM Plex Mono', monospace" }}
+                      >
+                        {room.code}
+                      </text>
+                    )}
+                  </g>
+                );
+              }
+
+              // Circular Balcony Room
+              if (room.id === "balcony") {
+                return (
+                  <g
+                    key={room.id}
+                    className="cursor-pointer transition-transform duration-100 hover:opacity-90"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelectRoom?.(room);
+                      onSelectNode?.(room.nodeId, room.name);
+                    }}
+                  >
+                    <path
+                      d="M 165 152.5 A 90 90 0 0 0 165 332.5 Z"
+                      fill="#122822"
+                      stroke="#79d189"
+                      strokeWidth="2"
+                    />
+                    {layers.labels && (
+                      <g className="pointer-events-none select-none">
+                        <text
+                          x={120}
+                          y={238}
+                          textAnchor="middle"
+                          dominantBaseline="central"
+                          className="text-[11px] font-bold fill-[#79d189]"
+                          style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
+                        >
+                          Balcony
+                        </text>
+                        <text
+                          x={120}
+                          y={252}
+                          textAnchor="middle"
+                          dominantBaseline="central"
+                          className="text-[8px] fill-[#a3c4b0] font-medium"
+                        >
+                          Outdoor Terrace
+                        </text>
+                      </g>
+                    )}
+                  </g>
+                );
+              }
+
               const style = getRoomStyle(room.category);
+              const isNorth = room.wing === "North Wing";
+              const isSouth = room.wing === "South Wing";
+
               return (
                 <g
                   key={room.id}
@@ -293,8 +492,8 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
                     y={room.bounds.y}
                     width={room.bounds.width}
                     height={room.bounds.height}
-                    rx="8"
-                    fill={style.fill}
+                    rx="6"
+                    fill={room.category === "lab" ? "#0f2338" : room.category === "restroom" ? "#0e2a2c" : room.category === "service" ? "#281b1f" : "#122030"}
                     stroke={style.stroke}
                     strokeWidth="1.2"
                     strokeOpacity={style.strokeOpacity}
@@ -303,38 +502,36 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
                   {/* Room Doorway Indicator */}
                   <line
                     x1={room.bounds.x + room.bounds.width / 2 - 8}
-                    y1={room.bounds.y > 270 ? room.bounds.y : room.bounds.y + room.bounds.height}
+                    y1={isNorth ? room.bounds.y + room.bounds.height : isSouth ? room.bounds.y : room.bounds.y}
                     x2={room.bounds.x + room.bounds.width / 2 + 8}
-                    y2={room.bounds.y > 270 ? room.bounds.y : room.bounds.y + room.bounds.height}
-                    stroke="#ffffff"
+                    y2={isNorth ? room.bounds.y + room.bounds.height : isSouth ? room.bounds.y : room.bounds.y}
+                    stroke="#4fd1c2"
                     strokeWidth="2.5"
                   />
 
-                  {/* Room Code & Name (if labels active) */}
+                  {/* Room Code & Name */}
                   {layers.labels && (
                     <g className="pointer-events-none select-none">
                       <text
                         x={room.bounds.x + room.bounds.width / 2}
-                        y={room.bounds.y + room.bounds.height / 2 - (room.bounds.height > 60 ? 4 : 0)}
+                        y={room.bounds.y + room.bounds.height / 2 - 5}
                         textAnchor="middle"
                         dominantBaseline="central"
-                        className="text-[11px] font-semibold fill-[#1d1d1f]"
-                        style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
+                        className="text-[11px] font-bold fill-[#eaf2f8]"
+                        style={{ fontFamily: "'IBM Plex Mono', monospace" }}
                       >
                         {room.code}
                       </text>
-                      {room.bounds.height > 60 && (
-                        <text
-                          x={room.bounds.x + room.bounds.width / 2}
-                          y={room.bounds.y + room.bounds.height / 2 + 10}
-                          textAnchor="middle"
-                          dominantBaseline="central"
-                          className="text-[8px] fill-[#86868b] font-medium"
-                          style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
-                        >
-                          {room.category === "lab" ? "Lab" : room.category === "office" ? "Office" : ""}
-                        </text>
-                      )}
+                      <text
+                        x={room.bounds.x + room.bounds.width / 2}
+                        y={room.bounds.y + room.bounds.height / 2 + 9}
+                        textAnchor="middle"
+                        dominantBaseline="central"
+                        className="text-[8px] fill-[#8ea7b8] font-medium"
+                        style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
+                      >
+                        {room.category === "lab" ? "Lab" : room.category === "office" ? "Office" : room.category === "restroom" ? "WC" : room.category === "service" ? "Core" : "Class"}
+                      </text>
                     </g>
                   )}
                 </g>
@@ -346,28 +543,28 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
         {/* POI Markers Layer */}
         {layers.pois && (
           <g id="poi-markers" className="pointer-events-none select-none">
-            {/* Restroom Glyphs */}
-            <g transform="translate(110, 415)">
-              <circle r="10" fill="#34c759" fillOpacity="0.15" stroke="#34c759" strokeWidth="1" />
-              <text textAnchor="middle" dominantBaseline="central" className="text-[9px] font-bold fill-[#248a3d]">WC</text>
+            {/* Restrooms */}
+            <g transform="translate(243, 133)">
+              <circle r="10" fill="#4fd1c2" fillOpacity="0.2" stroke="#4fd1c2" strokeWidth="1" />
+              <text textAnchor="middle" dominantBaseline="central" className="text-[8px] font-bold fill-[#4fd1c2]">M-WC</text>
             </g>
-            <g transform="translate(200, 145)">
-              <circle r="9" fill="#34c759" fillOpacity="0.15" stroke="#34c759" strokeWidth="1" />
-              <text textAnchor="middle" dominantBaseline="central" className="text-[8px] font-bold fill-[#248a3d]">W</text>
+            <g transform="translate(817, 133)">
+              <circle r="10" fill="#4fd1c2" fillOpacity="0.2" stroke="#4fd1c2" strokeWidth="1" />
+              <text textAnchor="middle" dominantBaseline="central" className="text-[8px] font-bold fill-[#4fd1c2]">F-WC</text>
             </g>
-            <g transform="translate(495, 355)">
-              <circle r="9" fill="#34c759" fillOpacity="0.15" stroke="#34c759" strokeWidth="1" />
-              <text textAnchor="middle" dominantBaseline="central" className="text-[8px] font-bold fill-[#248a3d]">W</text>
+            <g transform="translate(243, 351)">
+              <circle r="10" fill="#4fd1c2" fillOpacity="0.2" stroke="#4fd1c2" strokeWidth="1" />
+              <text textAnchor="middle" dominantBaseline="central" className="text-[8px] font-bold fill-[#4fd1c2]">F-WC</text>
+            </g>
+            <g transform="translate(817, 351)">
+              <circle r="10" fill="#4fd1c2" fillOpacity="0.2" stroke="#4fd1c2" strokeWidth="1" />
+              <text textAnchor="middle" dominantBaseline="central" className="text-[8px] font-bold fill-[#4fd1c2]">M-WC</text>
             </g>
 
-            {/* Elevator & Stairs Glyphs */}
-            <g transform="translate(500, 230)">
-              <rect x="-12" y="-10" width="24" height="20" rx="5" fill="#0066cc" fillOpacity="0.15" stroke="#0066cc" strokeWidth="1" />
-              <text textAnchor="middle" dominantBaseline="central" className="text-[9px] font-bold fill-[#0066cc]">LIFT</text>
-            </g>
-            <g transform="translate(500, 175)">
-              <rect x="-14" y="-8" width="28" height="16" rx="4" fill="#8e8e93" fillOpacity="0.2" />
-              <text textAnchor="middle" dominantBaseline="central" className="text-[8px] font-medium fill-[#333333]">STAIRS</text>
+            {/* Elevators & Stairs */}
+            <g transform="translate(566, 133)">
+              <rect x="-14" y="-9" width="28" height="18" rx="4" fill="#0066cc" fillOpacity="0.3" stroke="#0066cc" strokeWidth="1" />
+              <text textAnchor="middle" dominantBaseline="central" className="text-[8px] font-bold fill-[#54a0ff]">LIFT</text>
             </g>
           </g>
         )}
@@ -387,12 +584,12 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
                       if (eq.nodeId) onSelectNode?.(eq.nodeId, eq.label);
                     }}
                   >
-                    <rect x="-24" y="-14" width="48" height="28" rx="7" fill="#34c759" filter="url(#pinShadow)" />
+                    <rect x="-26" y="-12" width="52" height="24" rx="6" fill="#34c759" filter="url(#pinShadow)" />
                     <text
                       textAnchor="middle"
-                      y="-1"
+                      y="-0.5"
                       dominantBaseline="central"
-                      className="text-[9px] font-bold fill-white"
+                      className="text-[8px] font-bold fill-white"
                       style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
                     >
                       EXIT (RAMP)
@@ -411,11 +608,11 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
                       if (eq.nodeId) onSelectNode?.(eq.nodeId, eq.label);
                     }}
                   >
-                    <rect x="-18" y="-12" width="36" height="24" rx="6" fill="#34c759" filter="url(#pinShadow)" />
+                    <rect x="-18" y="-11" width="36" height="22" rx="5" fill="#34c759" filter="url(#pinShadow)" />
                     <text
                       textAnchor="middle"
                       dominantBaseline="central"
-                      className="text-[9px] font-bold fill-white"
+                      className="text-[8px] font-bold fill-white"
                       style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
                     >
                       EXIT
@@ -448,36 +645,36 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
           </g>
         )}
 
-        {/* Hazard Overlays (Fire Compartment & Smoke Plumes) */}
+        {/* Hazard Overlays (Fire Compartment & Smoke Plumes in Room 208) */}
         {layers.hazards && (
           <g id="hazards-layer">
-            {/* Active Fire Compartment (Room 208) */}
+            {/* Active Fire Compartment (Room 208: x 757.5, y 205, w 60, h 75) */}
             {hazardOverlays.some((h) => h.severity === "fire") && (
               <g className="animate-fire pointer-events-none">
                 <rect
-                  x="185"
-                  y="170"
-                  width="70"
-                  height="85"
-                  rx="8"
+                  x="757.5"
+                  y="205"
+                  width="60"
+                  height="75"
+                  rx="6"
                   fill="url(#fireCompartmentGrad)"
                   stroke="#ff3b30"
                   strokeWidth="2.5"
                   strokeDasharray="6 3"
                 />
-                <g transform="translate(220, 205)">
-                  <circle r="14" fill="#ff3b30" stroke="#ffffff" strokeWidth="2" filter="url(#pinShadow)" />
+                <g transform="translate(787.5, 235)">
+                  <circle r="13" fill="#ff3b30" stroke="#ffffff" strokeWidth="2" filter="url(#pinShadow)" />
                   <text textAnchor="middle" y="1" dominantBaseline="central" className="text-[12px]">
                     🔥
                   </text>
                 </g>
                 <text
-                  x="220"
-                  y="235"
+                  x="787.5"
+                  y="262"
                   textAnchor="middle"
-                  className="text-[9px] font-bold fill-[#d70015] tracking-wide"
+                  className="text-[8px] font-bold fill-[#ff453a] tracking-wide"
                 >
-                  ACTIVE FIRE
+                  FIRE LAB 208
                 </text>
               </g>
             )}
@@ -486,8 +683,8 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
             {smokeMinutes > 0 && (
               <g id="smoke-simulation" className="pointer-events-none">
                 <circle
-                  cx="220"
-                  cy="240"
+                  cx="787.5"
+                  cy="242.5"
                   r={smokeProps.r}
                   fill="url(#smokePlumeGrad)"
                   opacity={smokeProps.opacity}
@@ -495,9 +692,9 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
                 />
                 {smokeMinutes >= 5 && (
                   <circle
-                    cx="140"
-                    cy="280"
-                    r={smokeProps.r * 0.7}
+                    cx="727.5"
+                    cy="242.5"
+                    r={smokeProps.r * 0.75}
                     fill="url(#smokePlumeGrad)"
                     opacity={smokeProps.opacity * 0.8}
                     className="transition-all duration-700 ease-out"
@@ -505,9 +702,9 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
                 )}
                 {smokeMinutes >= 10 && (
                   <circle
-                    cx="300"
-                    cy="280"
-                    r={smokeProps.r * 0.8}
+                    cx="660"
+                    cy="242.5"
+                    r={smokeProps.r * 0.85}
                     fill="url(#smokePlumeGrad)"
                     opacity={smokeProps.opacity * 0.8}
                     className="transition-all duration-700 ease-out"
@@ -525,7 +722,7 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
             <path
               d={getPathData(routePoints)}
               fill="none"
-              stroke={isEmergencyRoute ? "#34c759" : "#0066cc"}
+              stroke={isEmergencyRoute ? "#34c759" : "#4fd1c2"}
               strokeWidth="10"
               strokeOpacity="0.25"
               strokeLinecap="round"
@@ -536,18 +733,18 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
             <path
               d={getPathData(routePoints)}
               fill="none"
-              stroke={isEmergencyRoute ? "#34c759" : "#0066cc"}
-              strokeWidth="5"
+              stroke={isEmergencyRoute ? "#34c759" : "#4fd1c2"}
+              strokeWidth="4"
               strokeLinecap="round"
               strokeLinejoin="round"
             />
 
-            {/* Animated Marching Chevrons / Flow Overlay */}
+            {/* Animated Marching Flow Overlay */}
             <path
               d={getPathData(routePoints)}
               fill="none"
               stroke="#ffffff"
-              strokeWidth="2.5"
+              strokeWidth="2"
               strokeDasharray="6 14"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -559,24 +756,24 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
               cx={routePoints[0].x}
               cy={routePoints[0].y}
               r="6"
-              fill={isEmergencyRoute ? "#34c759" : "#0066cc"}
+              fill={isEmergencyRoute ? "#34c759" : "#4fd1c2"}
               stroke="#ffffff"
               strokeWidth="2"
             />
 
             {/* Destination Target Pin */}
             <g transform={`translate(${routePoints[routePoints.length - 1].x}, ${routePoints[routePoints.length - 1].y})`}>
-              <circle r="9" fill={isEmergencyRoute ? "#34c759" : "#1d1d1f"} stroke="#ffffff" strokeWidth="2.5" filter="url(#pinShadow)" />
-              <circle r="4" fill="#ffffff" />
+              <circle r="9" fill={isEmergencyRoute ? "#34c759" : "#f0a24a"} stroke="#ffffff" strokeWidth="2" filter="url(#pinShadow)" />
+              <circle r="3.5" fill="#ffffff" />
             </g>
 
             {/* Step-Free Accessibility Badge on Route */}
             {routeIsStepFree && routePoints.length > 2 && (
               <g
-                transform={`translate(${routePoints[Math.floor(routePoints.length / 2)].x + 12}, ${routePoints[Math.floor(routePoints.length / 2)].y - 14})`}
+                transform={`translate(${routePoints[Math.floor(routePoints.length / 2)].x + 10}, ${routePoints[Math.floor(routePoints.length / 2)].y - 12})`}
               >
-                <rect x="0" y="0" width="76" height="20" rx="10" fill="#ffffff" stroke="#0066cc" strokeWidth="1" filter="url(#pinShadow)" />
-                <text x="8" y="13" className="text-[9px] font-bold fill-[#0066cc]">
+                <rect x="0" y="0" width="72" height="18" rx="9" fill="#162638" stroke="#4fd1c2" strokeWidth="1" filter="url(#pinShadow)" />
+                <text x="7" y="12" className="text-[8px] font-bold fill-[#4fd1c2]">
                   ♿ Step-Free
                 </text>
               </g>
@@ -584,17 +781,17 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
           </g>
         )}
 
-        {/* Guardian Child / Ward Position Marker (Milestone 16) */}
+        {/* Guardian Ward Position Marker */}
         {guardianState?.isPaired && guardianState.childPosition && (
           <g
             id="guardian-ward-marker"
             transform={`translate(${guardianState.childPosition.x}, ${guardianState.childPosition.y})`}
             className="pointer-events-none"
           >
-            <circle r="18" fill="#ff9500" fillOpacity="0.2" className="animate-pulse" />
-            <circle r="8" fill="#ff9500" stroke="#ffffff" strokeWidth="2" filter="url(#pinShadow)" />
-            <rect x="-24" y="-22" width="48" height="15" rx="7.5" fill="#1d1d1f" />
-            <text textAnchor="middle" y="-12" className="text-[8px] font-bold fill-white">
+            <circle r="18" fill="#f0a24a" fillOpacity="0.2" className="animate-pulse" />
+            <circle r="8" fill="#f0a24a" stroke="#ffffff" strokeWidth="2" filter="url(#pinShadow)" />
+            <rect x="-24" y="-22" width="48" height="15" rx="7.5" fill="#081018" stroke="#f0a24a" strokeWidth="1" />
+            <text textAnchor="middle" y="-12" className="text-[8px] font-bold fill-[#f0a24a]">
               {guardianState.childName}
             </text>
           </g>
@@ -608,10 +805,10 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
             cy={userPosition.y}
             r={userPosition.uncertaintyRadius * 12}
             fill="#0066cc"
-            fillOpacity="0.18"
+            fillOpacity="0.2"
             stroke="#0066cc"
             strokeWidth="1.5"
-            strokeOpacity="0.4"
+            strokeOpacity="0.5"
             className="animate-halo"
           />
 

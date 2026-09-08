@@ -718,6 +718,11 @@
       </div>
       <div id="search-results" class="search-results hidden"></div>
     </div>
+    <!-- Live Positioning HUD Pill -->
+    <div id="live-pos-pill" style="display:none; align-items:center; gap:8px; background:var(--bg-panel); backdrop-filter:blur(12px); border:1px solid var(--accent-cyan); padding:8px 14px; border-radius:8px; box-shadow:var(--glass-shadow); cursor:pointer;" title="Click to center camera on live location">
+      <span style="width:8px; height:8px; border-radius:50%; background:var(--accent-cyan); box-shadow:0 0 8px var(--accent-cyan); display:inline-block;"></span>
+      <span style="font-size:12px; font-weight:600; color:var(--accent-cyan);" id="live-pos-label">Live: Room 204</span>
+    </div>
   </header>
 
   <!-- Left Sidebar Controls -->
@@ -1291,6 +1296,94 @@
           renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
+        // 5B. LIVE USER POSITION BEACON
+        const userBeaconGroup = new THREE.Group();
+        userBeaconGroup.visible = false;
+        scene.add(userBeaconGroup);
+
+        const pinGeo = new THREE.ConeGeometry(0.45, 1.4, 16);
+        pinGeo.rotateX(Math.PI);
+        const pinMat = new THREE.MeshStandardMaterial({
+          color: 0x00a8ff,
+          emissive: 0x0055ff,
+          emissiveIntensity: 0.9,
+          roughness: 0.2
+        });
+        const pinMesh = new THREE.Mesh(pinGeo, pinMat);
+        pinMesh.position.y = 1.8;
+        userBeaconGroup.add(pinMesh);
+
+        const pinHeadGeo = new THREE.SphereGeometry(0.35, 16, 16);
+        const pinHeadMat = new THREE.MeshStandardMaterial({
+          color: 0x4fd1c2,
+          emissive: 0x4fd1c2,
+          emissiveIntensity: 1.0
+        });
+        const pinHeadMesh = new THREE.Mesh(pinHeadGeo, pinHeadMat);
+        pinHeadMesh.position.y = 2.4;
+        userBeaconGroup.add(pinHeadMesh);
+
+        const ringGeo = new THREE.RingGeometry(0.4, 0.8, 32);
+        ringGeo.rotateX(-Math.PI / 2);
+        const ringMat = new THREE.MeshBasicMaterial({
+          color: 0x4fd1c2,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.85
+        });
+        const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+        ringMesh.position.y = 0.12;
+        userBeaconGroup.add(ringMesh);
+
+        function updateUserPosition(pos) {
+          if (!pos) return;
+          let x3d = 0;
+          let z3d = 0;
+          if (typeof pos.x3d === 'number' && typeof pos.z3d === 'number') {
+            x3d = pos.x3d;
+            z3d = pos.z3d;
+          } else if (typeof pos.x === 'number' && typeof pos.y === 'number') {
+            if (pos.x > 50) {
+              x3d = (pos.x - 480) / 15;
+              z3d = (242.5 - pos.y) / 15;
+            } else {
+              x3d = pos.x;
+              z3d = pos.y;
+            }
+          }
+          userBeaconGroup.position.set(x3d, 0, z3d);
+          userBeaconGroup.visible = true;
+
+          const pill = document.getElementById('live-pos-pill');
+          const label = document.getElementById('live-pos-label');
+          if (pill && label) {
+            pill.style.display = 'flex';
+            label.textContent = `Live: ${pos.nearestPlaceName || 'Floor 2'}`;
+          }
+        }
+
+        const livePillEl = document.getElementById('live-pos-pill');
+        if (livePillEl) {
+          livePillEl.addEventListener('click', () => {
+            if (userBeaconGroup.visible) {
+              flyTo(
+                new THREE.Vector3(userBeaconGroup.position.x, 26, userBeaconGroup.position.z + 24),
+                new THREE.Vector3(userBeaconGroup.position.x, 0, userBeaconGroup.position.z)
+              );
+            }
+          });
+        }
+
+        window.onNativePositionUpdate = updateUserPosition;
+        window.addEventListener('nativePositionUpdate', (e) => {
+          if (e.detail) updateUserPosition(e.detail);
+        });
+        window.addEventListener('message', (e) => {
+          if (e.data && (e.data.type === 'nativePositionUpdate' || e.data.type === 'positionUpdate')) {
+            updateUserPosition(e.data.payload || e.data);
+          }
+        });
+
         // 6. RENDER LOOP
         function animate() {
           requestAnimationFrame(animate);
@@ -1301,6 +1394,14 @@
             camera.position.lerpVectors(startCamPos, endCamPos, progress);
             controls.target.lerpVectors(startTarget, endTarget, progress);
             if (progress >= 1.0) isAnimating = false;
+          }
+          if (userBeaconGroup.visible) {
+            const t = performance.now() * 0.003;
+            pinMesh.position.y = 1.8 + Math.sin(t * 3) * 0.22;
+            pinHeadMesh.position.y = 2.4 + Math.sin(t * 3) * 0.22;
+            const s = 1.0 + (Math.sin(t * 4) * 0.5 + 0.5) * 1.8;
+            ringMesh.scale.set(s, s, s);
+            ringMat.opacity = Math.max(0.1, 1.0 - (s - 1.0) / 1.8);
           }
           controls.update();
           renderer.render(scene, camera);

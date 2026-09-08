@@ -25,7 +25,8 @@ export const App: React.FC = () => {
   const [currentFloor, setCurrentFloor] = useState<FloorId>("floor-2");
   const [snapPoint, setSnapPoint] = useState<SnapPoint>("half");
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<"2D" | "3D">("2D");
+  // Default to 3D Model as requested
+  const [viewMode, setViewMode] = useState<"2D" | "3D">("3D");
 
   const [layers, setLayers] = useState<MapLayerConfig>({
     rooms: true,
@@ -36,11 +37,11 @@ export const App: React.FC = () => {
   });
 
   const [userPos, setUserPos] = useState<UserPositionState>({
-    x: 120,
-    y: 220,
+    x: 472.5,
+    y: 193.75,
     floorId: "floor-2",
     uncertaintyRadius: 2.5,
-    nearestPlaceName: "AB1 Room 204"
+    nearestPlaceName: "Room 204"
   });
 
   // Emergency & Hazard State
@@ -62,8 +63,8 @@ export const App: React.FC = () => {
     pairingCode: "839-421",
     childName: "Alex",
     childPosition: {
-      x: 695,
-      y: 220,
+      x: 337.5,
+      y: 351,
       floorId: "floor-2",
       placeName: "Room 219 (AI Lab)"
     },
@@ -79,10 +80,10 @@ export const App: React.FC = () => {
       floorId: "floor-2",
       severity: "fire",
       polygon: [
-        { x: 185, y: 170 },
-        { x: 255, y: 170 },
-        { x: 255, y: 255 },
-        { x: 185, y: 255 }
+        { x: 757.5, y: 205 },
+        { x: 817.5, y: 205 },
+        { x: 817.5, y: 280 },
+        { x: 757.5, y: 280 }
       ],
       pulsed: true,
       smokeIntensity: 0.8
@@ -121,7 +122,7 @@ export const App: React.FC = () => {
       setSnapPoint("half");
 
       speakInstruction(
-        "Emergency evacuation started. Follow the green route to Fire Exit West Ramp. Avoid Corridor 208 and do not use elevators."
+        "Emergency evacuation started. Follow the route to Fire Exit West Ramp. Avoid Corridor 208 and do not use elevators."
       );
     }
   };
@@ -214,18 +215,16 @@ export const App: React.FC = () => {
       y: pos.y,
       floorId: "floor-2",
       uncertaintyRadius: pos.uncertaintyRadius,
-      nearestPlaceName: pos.nearestPlaceName || "Corridor"
+      nearestPlaceName: pos.nearestPlaceName || "Floor 2"
     });
   }, []);
 
   // Listen for native Android scanner updates via JavaScript Bridge
   useEffect(() => {
-    // 1. Global callback handler
     (window as any).onNativePositionUpdate = (pos: PositionEstimate) => {
       handlePositionUpdate(pos);
     };
 
-    // 2. CustomEvent listener
     const handleCustomEvent = (e: any) => {
       if (e.detail) {
         handlePositionUpdate(e.detail);
@@ -258,48 +257,73 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-[#f5f5f7] text-[#1d1d1f] flex flex-col font-sans select-none">
-      {/* Apple Header Nav */}
-      <HeaderNav
-        currentFloor={currentFloor}
-        isAlarmActive={isAlarmActive}
-        onOpenGuardian={() => setIsGuardianModalOpen(true)}
-        onOpenEmergency={() => handleToggleFire()}
-      />
+    <div className="relative w-full h-screen overflow-hidden bg-[#081018] text-[#eaf2f8] flex flex-col font-sans select-none">
+      {/* Sleek Floating Mode Switcher Pill (3D Dollhouse vs 2D Blueprint) */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 flex items-center bg-[#0f1b29]/92 backdrop-blur-md border border-[#40627e]/45 rounded-full p-1 shadow-2xl">
+        <button
+          onClick={() => setViewMode("3D")}
+          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
+            viewMode === "3D"
+              ? "bg-[#4fd1c2] text-[#081018] shadow-md shadow-[#4fd1c2]/30"
+              : "text-[#8ea7b8] hover:text-[#eaf2f8]"
+          }`}
+        >
+          <span>🏠</span> 3D Dollhouse
+        </button>
+        <button
+          onClick={() => setViewMode("2D")}
+          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
+            viewMode === "2D"
+              ? "bg-[#4fd1c2] text-[#081018] shadow-md shadow-[#4fd1c2]/30"
+              : "text-[#8ea7b8] hover:text-[#eaf2f8]"
+          }`}
+        >
+          <span>📐</span> 2D Blueprint
+        </button>
+      </div>
 
-      {/* Persistent Emergency Fire Banner */}
-      <EmergencyBanner
-        isAlarmActive={isAlarmActive}
-        alarmLocation="Room 208 (Computer & IoT Lab)"
-        onEvacuate={handleEvacuate}
-        onOpenSmokeScrubber={() => setShowSmokeScrubber(!showSmokeScrubber)}
-      />
+      {/* When in 2D Mode: Render full navigation chrome, search, and drawer */}
+      {viewMode === "2D" && (
+        <>
+          {/* Apple Header Nav */}
+          <HeaderNav
+            currentFloor={currentFloor}
+            isAlarmActive={isAlarmActive}
+            onOpenGuardian={() => setIsGuardianModalOpen(true)}
+            onOpenEmergency={() => handleToggleFire()}
+          />
 
-      {/* Floating Top Search Bar (Apple Maps Style) */}
-      <TopSearchBar
-        onSelectDestination={handleSelectDestination}
-        selectedPOI={selectedPOI}
-        onClearDestination={handleEndNavigation}
-        isAlarmActive={isAlarmActive}
-      />
+          {/* Persistent Emergency Fire Banner */}
+          <EmergencyBanner
+            isAlarmActive={isAlarmActive}
+            alarmLocation="Room 208 (Computer & IoT Lab)"
+            onEvacuate={handleEvacuate}
+            onOpenSmokeScrubber={() => setShowSmokeScrubber(!showSmokeScrubber)}
+          />
 
-      {/* Admin Demo Simulation Toolbar */}
-      <AdminDemoToolbar
-        isAlarmActive={isAlarmActive}
-        onToggleFire={handleToggleFire}
-        smokeMinutes={smokeMinutes}
-        onAdvanceSmoke={handleAdvanceSmoke}
-        onPositionUpdate={handlePositionUpdate}
-        activeProfile={activeProfile}
-        onToggleStepFree={handleToggleStepFreeProfile}
-      />
+          {/* Floating Top Search Bar */}
+          <TopSearchBar
+            onSelectDestination={handleSelectDestination}
+            selectedPOI={selectedPOI}
+            onClearDestination={handleEndNavigation}
+            isAlarmActive={isAlarmActive}
+          />
+
+          {/* Admin Demo Simulation Toolbar */}
+          <AdminDemoToolbar
+            isAlarmActive={isAlarmActive}
+            onToggleFire={handleToggleFire}
+            smokeMinutes={smokeMinutes}
+            onAdvanceSmoke={handleAdvanceSmoke}
+            onPositionUpdate={handlePositionUpdate}
+            activeProfile={activeProfile}
+            onToggleStepFree={handleToggleStepFreeProfile}
+          />
+        </>
+      )}
 
       {/* Main Map Viewport */}
-      <main
-        className={`relative flex-1 w-full h-full pb-20 overflow-hidden transition-all duration-200 ${
-          isAlarmActive ? "pt-28" : "pt-11"
-        }`}
-      >
+      <main className={`relative flex-1 w-full h-full overflow-hidden ${viewMode === "2D" ? (isAlarmActive ? "pt-28 pb-20" : "pt-11 pb-20") : ""}`}>
         <CampusMapContainer
           currentFloor={currentFloor}
           layers={layers}
@@ -315,8 +339,8 @@ export const App: React.FC = () => {
           viewMode={viewMode}
         />
 
-        {/* Floating Smoke Scrubber Card */}
-        {showSmokeScrubber && (
+        {/* Floating Smoke Scrubber Card (in 2D mode) */}
+        {viewMode === "2D" && showSmokeScrubber && (
           <div className="absolute left-4 top-16 z-20 w-80 max-w-[calc(100vw-32px)]">
             <SmokeScrubber
               smokeMinutes={smokeMinutes}
@@ -326,43 +350,47 @@ export const App: React.FC = () => {
           </div>
         )}
 
-        {/* Floating Action Controls */}
-        <FloatingControls
-          currentFloor={currentFloor}
-          onSelectFloor={(floor) => setCurrentFloor(floor)}
-          layers={layers}
-          onToggleLayer={toggleLayer}
-          onRecenter={handleRecenter}
-          viewMode={viewMode}
-          onToggleViewMode={() => setViewMode((v) => (v === "2D" ? "3D" : "2D"))}
-        />
-      </main>
-
-      {/* Bottom Sheet Drawer */}
-      <BottomSheet snapPoint={snapPoint} onSnapChange={setSnapPoint}>
-        {isNavigating && activeRoute && selectedPOI ? (
-          <TurnByTurnNav
-            route={activeRoute}
-            destinationName={selectedPOI.name}
-            onEndNavigation={handleEndNavigation}
-          />
-        ) : routeComparison && selectedPOI ? (
-          <RoutePreviewCard
-            destinationName={selectedPOI.name}
-            comparison={routeComparison}
-            activeProfile={activeProfile}
-            onSelectProfile={handleSelectProfile}
-            onStartNavigation={handleStartNavigation}
-            onCancel={handleEndNavigation}
-          />
-        ) : (
-          <SearchSheet
-            onSelectDestination={handleSelectDestination}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
+        {/* Floating Action Controls (in 2D mode) */}
+        {viewMode === "2D" && (
+          <FloatingControls
+            currentFloor={currentFloor}
+            onSelectFloor={(floor) => setCurrentFloor(floor)}
+            layers={layers}
+            onToggleLayer={toggleLayer}
+            onRecenter={handleRecenter}
+            viewMode={viewMode}
+            onToggleViewMode={() => setViewMode((v) => (v === "2D" ? "3D" : "2D"))}
           />
         )}
-      </BottomSheet>
+      </main>
+
+      {/* Bottom Sheet Drawer (in 2D mode) */}
+      {viewMode === "2D" && (
+        <BottomSheet snapPoint={snapPoint} onSnapChange={setSnapPoint}>
+          {isNavigating && activeRoute && selectedPOI ? (
+            <TurnByTurnNav
+              route={activeRoute}
+              destinationName={selectedPOI.name}
+              onEndNavigation={handleEndNavigation}
+            />
+          ) : routeComparison && selectedPOI ? (
+            <RoutePreviewCard
+              destinationName={selectedPOI.name}
+              comparison={routeComparison}
+              activeProfile={activeProfile}
+              onSelectProfile={handleSelectProfile}
+              onStartNavigation={handleStartNavigation}
+              onCancel={handleEndNavigation}
+            />
+          ) : (
+            <SearchSheet
+              onSelectDestination={handleSelectDestination}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+            />
+          )}
+        </BottomSheet>
+      )}
 
       {/* Guardian Dashboard Modal */}
       <GuardianModal
