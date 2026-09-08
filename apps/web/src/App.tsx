@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { HeaderNav } from "./components/common/HeaderNav";
 import { FloatingControls } from "./components/controls/FloatingControls";
 import { BottomSheet } from "./components/sheet/BottomSheet";
@@ -8,10 +8,17 @@ import { RoutePreviewCard } from "./components/navigation/RoutePreviewCard";
 import { TurnByTurnNav } from "./components/navigation/TurnByTurnNav";
 import { EmergencyBanner } from "./components/emergency/EmergencyBanner";
 import { SmokeScrubber } from "./components/emergency/SmokeScrubber";
-import { FloorId, MapLayerConfig, SnapPoint, UserPositionState } from "./types";
-import { HazardOverlay, MobilityProfile, RoutePoint, RouteResult } from "@routeguard/shared";
+import { GuardianModal } from "./components/guardian/GuardianModal";
+import { AdminDemoToolbar } from "./components/demo/AdminDemoToolbar";
+import { FloorId, MapLayerConfig, SnapPoint, UserPositionState, GuardianState } from "./types";
+import { HazardOverlay, MobilityProfile, PositionEstimate, RouteResult } from "@routeguard/shared";
 import { ArchitecturalRoom, POI } from "./data/floor2Data";
-import { calculateRouteTradeOffs, calculateEvacuationRoute, RouteComparison, speakInstruction } from "./services/routingService";
+import {
+  calculateRouteTradeOffs,
+  calculateEvacuationRoute,
+  RouteComparison,
+  speakInstruction
+} from "./services/routingService";
 
 export const App: React.FC = () => {
   const [currentFloor, setCurrentFloor] = useState<FloorId>("floor-2");
@@ -46,6 +53,24 @@ export const App: React.FC = () => {
   const [activeRoute, setActiveRoute] = useState<RouteResult | null>(null);
   const [isNavigating, setIsNavigating] = useState(false);
 
+  // Guardian State
+  const [isGuardianModalOpen, setIsGuardianModalOpen] = useState(false);
+  const [guardianState, setGuardianState] = useState<GuardianState>({
+    isPaired: true,
+    pairingCode: "839-421",
+    childName: "Alex",
+    childPosition: {
+      x: 695,
+      y: 220,
+      floorId: "floor-2",
+      placeName: "Room 219 (AI Lab)"
+    },
+    batteryLevel: 88,
+    lastUpdatedSecondsAgo: 2,
+    inSafeZone: true,
+    geofenceWarning: null
+  });
+
   const [hazardOverlays, setHazardOverlays] = useState<HazardOverlay[]>([
     {
       zoneId: "room-208",
@@ -72,7 +97,7 @@ export const App: React.FC = () => {
 
   // One-Tap Evacuation Handler
   const handleEvacuate = () => {
-    // Block the fire room, adjacent smoke corridor, and lifts
+    // Block the fire room, adjacent smoke corridor, and ordinary lifts
     const blockedNodes = new Set(["node-208", "c-208", "c-lift"]);
     const currentUserNode = "node-204";
 
@@ -102,7 +127,7 @@ export const App: React.FC = () => {
   // Start route preview when selecting a destination
   const handleSelectDestination = (poi: POI) => {
     setSelectedPOI(poi);
-    const startNode = "node-204"; // Current user location node
+    const startNode = "node-204";
     const endNode = poi.nodeId;
 
     const blocked = isAlarmActive ? new Set(["node-208", "c-208", "c-lift"]) : undefined;
@@ -155,21 +180,68 @@ export const App: React.FC = () => {
     });
   };
 
+  // Demo Controls
+  const handleToggleFire = () => {
+    const nextAlarm = !isAlarmActive;
+    setIsAlarmActive(nextAlarm);
+
+    // Update guardian geofence status based on alarm
+    setGuardianState((prev) => ({
+      ...prev,
+      geofenceWarning: nextAlarm ? "Active fire alarm in sector (Room 208)" : null
+    }));
+
+    if (nextAlarm) {
+      setShowSmokeScrubber(true);
+      speakInstruction("Attention: Emergency alarm activated for Floor 2.");
+    } else {
+      setShowSmokeScrubber(false);
+    }
+  };
+
+  const handleAdvanceSmoke = () => {
+    const sequence: (0 | 2 | 5 | 10)[] = [0, 2, 5, 10];
+    const currentIndex = sequence.indexOf(smokeMinutes);
+    const nextMinutes = sequence[(currentIndex + 1) % sequence.length];
+    setSmokeMinutes(nextMinutes);
+  };
+
+  const handlePositionUpdate = useCallback((pos: PositionEstimate) => {
+    setUserPos({
+      x: pos.x,
+      y: pos.y,
+      floorId: "floor-2",
+      uncertaintyRadius: pos.uncertaintyRadius,
+      nearestPlaceName: pos.nearestPlaceName || "Corridor"
+    });
+  }, []);
+
+  const handleToggleStepFreeProfile = () => {
+    const nextProfile = activeProfile === "step-free" ? "recommended" : "step-free";
+    setActiveProfile(nextProfile);
+    if (routeComparison) {
+      setActiveRoute(nextProfile === "step-free" ? routeComparison.stepFree : routeComparison.recommended);
+    }
+  };
+
+  const handleLocateChild = () => {
+    setIsGuardianModalOpen(false);
+    setUserPos((prev) => ({
+      ...prev,
+      x: guardianState.childPosition.x,
+      y: guardianState.childPosition.y,
+      nearestPlaceName: guardianState.childPosition.placeName
+    }));
+  };
+
   return (
     <div className="relative w-full h-screen overflow-hidden bg-[#f5f5f7] text-[#1d1d1f] flex flex-col font-sans select-none">
       {/* Apple Header Nav */}
       <HeaderNav
         currentFloor={currentFloor}
         isAlarmActive={isAlarmActive}
-        onOpenGuardian={() => {}}
-        onOpenEmergency={() => {
-          const next = !isAlarmActive;
-          setIsAlarmActive(next);
-          if (next) {
-            setShowSmokeScrubber(true);
-            speakInstruction("Attention: Emergency alarm activated for Floor 2.");
-          }
-        }}
+        onOpenGuardian={() => setIsGuardianModalOpen(true)}
+        onOpenEmergency={() => handleToggleFire()}
       />
 
       {/* Persistent Emergency Fire Banner */}
@@ -178,6 +250,17 @@ export const App: React.FC = () => {
         alarmLocation="Room 208 (Computer & IoT Lab)"
         onEvacuate={handleEvacuate}
         onOpenSmokeScrubber={() => setShowSmokeScrubber(!showSmokeScrubber)}
+      />
+
+      {/* Admin Demo Simulation Toolbar */}
+      <AdminDemoToolbar
+        isAlarmActive={isAlarmActive}
+        onToggleFire={handleToggleFire}
+        smokeMinutes={smokeMinutes}
+        onAdvanceSmoke={handleAdvanceSmoke}
+        onPositionUpdate={handlePositionUpdate}
+        activeProfile={activeProfile}
+        onToggleStepFree={handleToggleStepFreeProfile}
       />
 
       {/* Main Map Viewport */}
@@ -195,13 +278,14 @@ export const App: React.FC = () => {
           isEmergencyRoute={isAlarmActive}
           hazardOverlays={hazardOverlays}
           smokeMinutes={smokeMinutes}
+          guardianState={guardianState}
           onSelectRoom={handleSelectRoom}
           onSelectNode={handleSelectNode}
         />
 
         {/* Floating Smoke Scrubber Card */}
         {showSmokeScrubber && (
-          <div className="absolute left-4 top-4 z-20 w-80 max-w-[calc(100vw-32px)]">
+          <div className="absolute left-4 top-16 z-20 w-80 max-w-[calc(100vw-32px)]">
             <SmokeScrubber
               smokeMinutes={smokeMinutes}
               onSelectMinutes={(m) => setSmokeMinutes(m)}
@@ -245,6 +329,17 @@ export const App: React.FC = () => {
           />
         )}
       </BottomSheet>
+
+      {/* Guardian Dashboard Modal */}
+      <GuardianModal
+        isOpen={isGuardianModalOpen}
+        onClose={() => setIsGuardianModalOpen(false)}
+        guardianState={guardianState}
+        onTogglePairing={() =>
+          setGuardianState((prev) => ({ ...prev, isPaired: !prev.isPaired }))
+        }
+        onLocateChild={handleLocateChild}
+      />
     </div>
   );
 };
