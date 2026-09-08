@@ -34,6 +34,11 @@ export interface GoogleMapAdapterProps {
   routePoints?: RoutePoint[] | null;
   activeRoute?: RouteResult | null;
   isEmergencyRoute?: boolean;
+  isNightSafety?: boolean;
+  isTrafficActive?: boolean;
+  mapType?: "satellite" | "hybrid" | "roadmap";
+  onToggleMapType?: (type: "satellite" | "hybrid" | "roadmap") => void;
+  onToggleTraffic?: (active: boolean) => void;
   hazardOverlays?: HazardOverlay[];
   guardianState?: GuardianState | null;
   onSelectRoom?: (room: ArchitecturalRoom) => void;
@@ -56,6 +61,11 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
       routePoints,
       activeRoute,
       isEmergencyRoute,
+      isNightSafety = false,
+      isTrafficActive = true,
+      mapType: externalMapType,
+      onToggleMapType,
+      onToggleTraffic,
       hazardOverlays = [],
       guardianState,
       onSelectRoom,
@@ -68,10 +78,19 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
     const mapInstanceRef = useRef<any>(null);
     const [isLoaded, setIsLoaded] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
-    const [mapType, setMapType] = useState<"satellite" | "hybrid" | "roadmap">("satellite");
+    const [internalMapType, setInternalMapType] = useState<"satellite" | "hybrid" | "roadmap">("satellite");
+
+    // Effective mapType
+    const currentMapType = externalMapType || internalMapType;
+
+    const setMapType = (type: "satellite" | "hybrid" | "roadmap") => {
+      setInternalMapType(type);
+      onToggleMapType?.(type);
+    };
 
     const toggleSatelliteDefault = () => {
-      setMapType((prev) => (prev === "satellite" || prev === "hybrid" ? "roadmap" : "satellite"));
+      const nextType = currentMapType === "satellite" || currentMapType === "hybrid" ? "roadmap" : "satellite";
+      setMapType(nextType);
     };
 
     // Dynamic objects on map
@@ -83,6 +102,8 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
     const roomMarkersRef = useRef<any[]>([]);
     const hazardMarkersRef = useRef<any[]>([]);
     const exitMarkersRef = useRef<any[]>([]);
+    const safetyMarkersRef = useRef<any[]>([]);
+    const trafficLayerRef = useRef<any>(null);
     const infoWindowRef = useRef<any>(null);
 
     // Expose methods to parent container
@@ -159,7 +180,7 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
         const map = new google.maps.Map(mapContainerRef.current, {
           center: initialCenter,
           zoom: 19,
-          mapTypeId: mapType,
+          mapTypeId: currentMapType,
           tilt: 45,
           heading: 0,
           fullscreenControl: false,
@@ -192,7 +213,7 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
           strokeOpacity: 0.8,
           strokeWeight: 2,
           fillColor: "#1A73E8",
-          fillOpacity: 0.12,
+          fillOpacity: 0.10,
           map: map
         });
 
@@ -308,11 +329,33 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
     // 3. Switch Map Type
     useEffect(() => {
       if (mapInstanceRef.current) {
-        mapInstanceRef.current.setMapTypeId(mapType);
+        mapInstanceRef.current.setMapTypeId(currentMapType);
       }
-    }, [mapType]);
+    }, [currentMapType]);
 
-    // 4. Update Live User Marker & Accuracy Circle
+    // 4. Live Traffic API Layer Integration
+    useEffect(() => {
+      if (!isLoaded || !mapInstanceRef.current) return;
+      const google = (window as any).google;
+      if (!google?.maps) return;
+
+      try {
+        if (isTrafficActive) {
+          if (!trafficLayerRef.current) {
+            trafficLayerRef.current = new google.maps.TrafficLayer();
+          }
+          trafficLayerRef.current.setMap(mapInstanceRef.current);
+        } else {
+          if (trafficLayerRef.current) {
+            trafficLayerRef.current.setMap(null);
+          }
+        }
+      } catch (e) {
+        console.warn("Could not toggle traffic layer", e);
+      }
+    }, [isLoaded, isTrafficActive]);
+
+    // 5. Update Live User Marker & Accuracy Circle
     useEffect(() => {
       if (!isLoaded || !mapInstanceRef.current) return;
       const google = (window as any).google;
@@ -381,7 +424,7 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
       }
     }, [isLoaded, userPosition, guardianState]);
 
-    // 5. Update Navigation / Emergency Evacuation Polyline
+    // 6. Update Navigation / Emergency / Night Safety Polyline
     useEffect(() => {
       if (!isLoaded || !mapInstanceRef.current) return;
       const google = (window as any).google;
@@ -424,6 +467,27 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
             map: mapInstanceRef.current,
             zIndex: 101
           });
+        } else if (isNightSafety) {
+          // Night Safety / High Footfall Route line (Sapphire / Cyan Glow)
+          routeGlowLineRef.current = new google.maps.Polyline({
+            path: pathCoords,
+            geodesic: true,
+            strokeColor: "#00B4D8",
+            strokeOpacity: 0.45,
+            strokeWeight: 10,
+            map: mapInstanceRef.current,
+            zIndex: 100
+          });
+
+          routePolylineRef.current = new google.maps.Polyline({
+            path: pathCoords,
+            geodesic: true,
+            strokeColor: "#0077B6",
+            strokeOpacity: 1.0,
+            strokeWeight: 5,
+            map: mapInstanceRef.current,
+            zIndex: 101
+          });
         } else {
           // Standard Google Navigation line
           routePolylineRef.current = new google.maps.Polyline({
@@ -437,9 +501,82 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
           });
         }
       }
-    }, [isLoaded, routePoints, activeRoute, isEmergencyRoute]);
+    }, [isLoaded, routePoints, activeRoute, isEmergencyRoute, isNightSafety]);
 
-    // 6. Hazard Overlays (Fire & Smoke)
+    // 7. Night Safety Markers & High-Footfall Corridors
+    useEffect(() => {
+      if (!isLoaded || !mapInstanceRef.current) return;
+      const google = (window as any).google;
+
+      // Clean up previous safety markers
+      safetyMarkersRef.current.forEach((m) => m.setMap(null));
+      safetyMarkersRef.current = [];
+
+      if (isNightSafety) {
+        // High-Footfall Central Concourse polygon highlight
+        const concourseCoords = [
+          indoorToLatLng(350, 180),
+          indoorToLatLng(650, 180),
+          indoorToLatLng(650, 310),
+          indoorToLatLng(350, 310)
+        ];
+
+        const concoursePolygon = new google.maps.Polygon({
+          paths: concourseCoords,
+          strokeColor: "#00B4D8",
+          strokeOpacity: 0.8,
+          strokeWeight: 2,
+          fillColor: "#00B4D8",
+          fillOpacity: 0.18,
+          map: mapInstanceRef.current,
+          zIndex: 50
+        });
+
+        // Security Help Desk Point (Central AB1 Security Station)
+        const securityPos = indoorToLatLng(566, 320);
+        const securityMarker = new google.maps.Marker({
+          position: securityPos,
+          map: mapInstanceRef.current,
+          title: "Central Security Station (24/7 Monitored)",
+          label: {
+            text: "👮",
+            fontSize: "16px"
+          },
+          zIndex: 150
+        });
+
+        securityMarker.addListener("click", () => {
+          infoWindowRef.current.setContent(`
+            <div style="padding: 6px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+              <div style="font-weight: 700; color: #0077b6; font-size: 13px;">🛡️ Central Security Station</div>
+              <div style="font-size: 11px; color: #444; margin-top: 2px;">24/7 Security Guard & CCTV Desk</div>
+              <div style="font-size: 11px; color: #0077b6; font-weight: 600; margin-top: 4px;">Ext: 100 · +91 141 3999100</div>
+              <div style="margin-top: 4px; font-size: 10px; background: #e0f2fe; color: #0284c7; padding: 2px 6px; border-radius: 4px; display: inline-block;">
+                VERIFIED HIGH FOOTFALL
+              </div>
+            </div>
+          `);
+          infoWindowRef.current.open(mapInstanceRef.current, securityMarker);
+        });
+
+        // Low-footfall cautionary pin at West service alley
+        const isolatedPos = indoorToLatLng(191, 291);
+        const cautionMarker = new google.maps.Marker({
+          position: isolatedPos,
+          map: mapInstanceRef.current,
+          title: "Isolated Low-Footfall Area (Bypassed at Night)",
+          label: {
+            text: "⚠️",
+            fontSize: "14px"
+          },
+          zIndex: 150
+        });
+
+        safetyMarkersRef.current.push(concoursePolygon, securityMarker, cautionMarker);
+      }
+    }, [isLoaded, isNightSafety]);
+
+    // 8. Hazard Overlays (Fire & Smoke)
     useEffect(() => {
       if (!isLoaded || !mapInstanceRef.current) return;
       const google = (window as any).google;
@@ -486,84 +623,56 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
 
     return (
       <div className="relative w-full h-full overflow-hidden select-none bg-[#1F2421]">
-        {/* Top Floating Controls: Mode Switcher (3D / 2D / Maps) & Map Type */}
-        <div className="absolute top-4 left-4 z-20 flex flex-wrap items-center gap-2 max-w-[calc(100vw-140px)]">
-          {/* Quick Switch to 3D / 2D Blueprint */}
-          <div className="flex items-center gap-1 bg-white/95 backdrop-blur-md rounded-xl p-1 shadow-md border border-[#DADCE0] text-xs font-semibold">
-            <button
-              onClick={() => onSwitchViewMode?.("3D")}
-              className="px-2.5 py-1 rounded-lg text-[#5F6368] hover:text-[#202124] hover:bg-[#F1F3F4] transition-all flex items-center gap-1"
-              title="Switch to 3D Dollhouse"
-            >
-              <span className="material-symbols-outlined text-[15px]">view_in_ar</span>
-              <span>3D</span>
-            </button>
-            <button
-              onClick={() => onSwitchViewMode?.("2D")}
-              className="px-2.5 py-1 rounded-lg text-[#5F6368] hover:text-[#202124] hover:bg-[#F1F3F4] transition-all flex items-center gap-1"
-              title="Switch to 2D Blueprint"
-            >
-              <span className="material-symbols-outlined text-[15px]">map</span>
-              <span>2D</span>
-            </button>
-            <div className="w-[1px] h-4 bg-[#DADCE0] mx-0.5" />
-            <span className="px-2.5 py-1 bg-[#34A853] text-white rounded-lg flex items-center gap-1 font-bold shadow-sm">
-              <span className="material-symbols-outlined text-[15px]">satellite_alt</span>
-              <span>Google Maps</span>
-            </span>
-          </div>
-
-          {/* Google Maps Style Switcher: Default View vs Satellite vs Hybrid */}
-          <div className="flex items-center gap-1 bg-white/95 backdrop-blur-md rounded-xl p-1 shadow-md border border-[#DADCE0] text-xs font-semibold text-[#5F6368]">
-            <button
-              onClick={() => setMapType("roadmap")}
-              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all ${
-                mapType === "roadmap"
-                  ? "bg-[#1A73E8] text-white shadow-sm font-bold"
-                  : "hover:bg-[#F1F3F4] text-[#202124]"
+        {/* Iconic 1-Tap Quick Toggle: Satellite Mode <-> Default View (Bottom-Left next to Layers button) */}
+        <div className="absolute left-[68px] bottom-24 md:bottom-6 z-20 select-none">
+          <button
+            onClick={toggleSatelliteDefault}
+            className="h-11 px-3.5 bg-white/95 backdrop-blur-md rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.25)] border border-[#DADCE0] flex items-center gap-2.5 text-xs font-bold text-[#202124] hover:bg-[#F8F9FA] active:scale-95 transition-all cursor-pointer"
+            title={
+              currentMapType === "satellite" || currentMapType === "hybrid"
+                ? "Switch to Default View (Clean Vector Map)"
+                : "Switch to Satellite Mode (Aerial Photographic View)"
+            }
+          >
+            <div
+              className={`w-7 h-7 rounded-lg flex items-center justify-center text-white shadow-sm transition-colors ${
+                currentMapType === "satellite" || currentMapType === "hybrid" ? "bg-[#1A73E8]" : "bg-[#34A853]"
               }`}
-              title="Standard Google vector map (streets, campus outline & indoor points)"
             >
-              <span className="material-symbols-outlined text-[16px]">map</span>
-              <span>Default View</span>
-            </button>
-            <button
-              onClick={() => setMapType("satellite")}
-              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all ${
-                mapType === "satellite"
-                  ? "bg-[#1A73E8] text-white shadow-sm font-bold"
-                  : "hover:bg-[#F1F3F4] text-[#202124]"
-              }`}
-              title="Photographic satellite aerial view"
-            >
-              <span className="material-symbols-outlined text-[16px]">satellite_alt</span>
-              <span>Satellite Mode</span>
-            </button>
-            <button
-              onClick={() => setMapType("hybrid")}
-              className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition-all ${
-                mapType === "hybrid"
-                  ? "bg-[#1A73E8] text-white shadow-sm font-bold"
-                  : "hover:bg-[#F1F3F4] text-[#202124]"
-              }`}
-              title="Satellite view with road and landmark labels"
-            >
-              <span className="material-symbols-outlined text-[16px]">layers</span>
-              <span>Hybrid</span>
-            </button>
-          </div>
+              <span className="material-symbols-outlined text-[18px]">
+                {currentMapType === "satellite" || currentMapType === "hybrid" ? "map" : "satellite_alt"}
+              </span>
+            </div>
+            <div className="flex flex-col text-left">
+              <span className="text-[9px] text-[#5F6368] uppercase tracking-wider font-semibold">Toggle Mode</span>
+              <span className="text-[12px] font-bold text-[#1A73E8]">
+                {currentMapType === "satellite" || currentMapType === "hybrid" ? "Default View" : "Satellite Mode"}
+              </span>
+            </div>
+          </button>
         </div>
 
-        {/* Top-Right Google API Key Connected Badge */}
-        <div className="absolute top-4 right-4 z-20 bg-white/95 backdrop-blur-md rounded-xl px-3 py-1.5 shadow-md border border-[#DADCE0] flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-[#34A853] animate-pulse" />
-          <span className="text-[11px] font-bold text-[#202124]">Google Maps Live</span>
-          <span className="text-[10px] text-[#5F6368] font-mono">AB1 · MUJ</span>
+        {/* Top-Right Google API & Live Traffic Connected Badge */}
+        <div className="absolute top-16 md:top-4 right-4 z-20 flex flex-col items-end gap-1.5 pointer-events-auto select-none">
+          <div className="bg-white/95 backdrop-blur-md rounded-xl px-3 py-1.5 shadow-md border border-[#DADCE0] flex items-center gap-2">
+            <span className={`w-2 h-2 rounded-full ${isTrafficActive ? "bg-[#34A853] animate-pulse" : "bg-[#5F6368]"}`} />
+            <span className="text-[11px] font-bold text-[#202124]">
+              {isTrafficActive ? "Live Traffic Active" : "Google Maps Live"}
+            </span>
+            <span className="text-[10px] text-[#5F6368] font-mono">MUJ · AB1</span>
+          </div>
+
+          {isNightSafety && (
+            <div className="bg-[#1C1C1E]/95 backdrop-blur-md text-[#FFD60A] rounded-xl px-3 py-1 shadow-md border border-[#FFD60A]/30 flex items-center gap-1.5 text-[10px] font-bold animate-pulse">
+              <span className="material-symbols-outlined text-[14px]">shield</span>
+              <span>Women's Safe Path Active</span>
+            </div>
+          )}
         </div>
 
         {/* Error Fallback Banner if script fails */}
         {loadError && (
-          <div className="absolute top-16 left-4 right-4 z-30 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-800 flex items-center justify-between shadow-lg">
+          <div className="absolute top-20 left-4 right-4 z-30 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-800 flex items-center justify-between shadow-lg">
             <span>{loadError}</span>
             <button
               onClick={() => window.location.reload()}
@@ -581,35 +690,6 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
             <p className="text-xs font-semibold">Connecting to Google Maps Platform…</p>
           </div>
         )}
-
-        {/* Iconic 1-Tap Quick Toggle: Satellite Mode <-> Default View */}
-        <div className="absolute left-4 bottom-24 md:bottom-6 z-20 select-none">
-          <button
-            onClick={toggleSatelliteDefault}
-            className="h-11 px-3.5 bg-white/95 backdrop-blur-md rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.25)] border border-[#DADCE0] flex items-center gap-2.5 text-xs font-bold text-[#202124] hover:bg-[#F8F9FA] active:scale-95 transition-all cursor-pointer"
-            title={
-              mapType === "satellite" || mapType === "hybrid"
-                ? "Switch to Default View (Vector Map)"
-                : "Switch to Satellite Mode (Aerial Photos)"
-            }
-          >
-            <div
-              className={`w-7 h-7 rounded-lg flex items-center justify-center text-white shadow-sm transition-colors ${
-                mapType === "satellite" || mapType === "hybrid" ? "bg-[#1A73E8]" : "bg-[#34A853]"
-              }`}
-            >
-              <span className="material-symbols-outlined text-[18px]">
-                {mapType === "satellite" || mapType === "hybrid" ? "map" : "satellite_alt"}
-              </span>
-            </div>
-            <div className="flex flex-col text-left">
-              <span className="text-[9px] text-[#5F6368] uppercase tracking-wider font-semibold">Toggle Mode</span>
-              <span className="text-[12px] font-bold text-[#1A73E8]">
-                {mapType === "satellite" || mapType === "hybrid" ? "Default View" : "Satellite Mode"}
-              </span>
-            </div>
-          </button>
-        </div>
 
         {/* Google Maps Container DOM */}
         <div ref={mapContainerRef} className="w-full h-full" />

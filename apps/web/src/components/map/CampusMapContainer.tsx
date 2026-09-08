@@ -22,6 +22,11 @@ export interface CampusMapContainerProps {
   onMapClick?: (pos: { x: number; y: number }) => void;
   viewMode?: MapViewMode;
   onSwitchViewMode?: (mode: MapViewMode) => void;
+  isNightSafety?: boolean;
+  isTrafficActive?: boolean;
+  googleMapType?: "satellite" | "hybrid" | "roadmap";
+  onToggleGoogleMapType?: (type: "satellite" | "hybrid" | "roadmap") => void;
+  onToggleTraffic?: (active: boolean) => void;
   categoryFilter?: string;
   theme?: "light" | "dark" | "emergency";
 }
@@ -51,6 +56,11 @@ export const CampusMapContainer = forwardRef<CampusMapContainerHandle, CampusMap
       onMapClick,
       viewMode = "3D",
       onSwitchViewMode,
+      isNightSafety,
+      isTrafficActive,
+      googleMapType,
+      onToggleGoogleMapType,
+      onToggleTraffic,
       categoryFilter = "all",
       theme = "light"
     },
@@ -168,6 +178,11 @@ export const CampusMapContainer = forwardRef<CampusMapContainerHandle, CampusMap
             routePoints={routePoints}
             activeRoute={activeRoute}
             isEmergencyRoute={isEmergencyRoute}
+            isNightSafety={isNightSafety}
+            isTrafficActive={isTrafficActive}
+            mapType={googleMapType}
+            onToggleMapType={onToggleGoogleMapType}
+            onToggleTraffic={onToggleTraffic}
             hazardOverlays={hazardOverlays}
             guardianState={guardianState}
             onSelectRoom={onSelectRoom}

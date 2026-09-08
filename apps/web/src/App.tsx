@@ -61,6 +61,11 @@ export const App: React.FC = () => {
   const [smokeMinutes, setSmokeMinutes] = useState<0 | 2 | 5 | 10>(0);
   const [isSOSActive, setIsSOSActive] = useState(false);
 
+  // Google Maps & Women's Night Safety Mode State
+  const [isNightSafetyActive, setIsNightSafetyActive] = useState(false);
+  const [googleMapType, setGoogleMapType] = useState<"satellite" | "hybrid" | "roadmap">("satellite");
+  const [isTrafficActive, setIsTrafficActive] = useState(true);
+
   // Routing State
   const [selectedPOI, setSelectedPOI] = useState<POI | null>(null);
   const [routeComparison, setRouteComparison] = useState<RouteComparison | null>(null);
@@ -217,7 +222,7 @@ export const App: React.FC = () => {
     // Ensure currentUserNode is never blocked
     blockedNodes.delete(currentUserNode);
 
-    let evacRoute = calculateEvacuationRoute(currentUserNode, blockedNodes);
+    let evacRoute = calculateEvacuationRoute(currentUserNode, blockedNodes, isNightSafetyActive);
 
     // If strict blockage prevented finding an egress route, unblock corridors to find life-safety path to stairs
     if (!evacRoute || evacRoute.status !== "found" || !evacRoute.pathPoints || evacRoute.pathPoints.length < 2) {
@@ -225,7 +230,7 @@ export const App: React.FC = () => {
       if (currentUserNode !== `node-${fireCode}`) {
         fallbackBlocked.add(`node-${fireCode}`);
       }
-      evacRoute = calculateEvacuationRoute(currentUserNode, fallbackBlocked);
+      evacRoute = calculateEvacuationRoute(currentUserNode, fallbackBlocked, isNightSafetyActive);
     }
 
     // Fail-safe: if still unavailable, compute guaranteed life-safety path to nearest stairs
@@ -310,7 +315,7 @@ export const App: React.FC = () => {
     speakInstruction(
       `Emergency evacuation active! Fire detected in Room ${fireCode}. Proceed directly to nearest stairs.`
     );
-  }, [userPos.nearestPlaceName]);
+  }, [userPos.nearestPlaceName, isNightSafetyActive]);
 
   // Dismiss Alarm
   const handleDismissAlarm = () => {
@@ -435,7 +440,7 @@ export const App: React.FC = () => {
           : new Set(["node-207", "node-208", "c-208", "c-lift"])
         : undefined;
 
-      const comparison = calculateRouteTradeOffs(startNode, endNode, blocked);
+      const comparison = calculateRouteTradeOffs(startNode, endNode, blocked, isNightSafetyActive);
       setRouteComparison(comparison);
       setActiveProfile("recommended");
       setActiveRoute(comparison.recommended);
@@ -446,8 +451,35 @@ export const App: React.FC = () => {
       const roomId = poi.id.replace("poi-", "");
       mapHandleRef.current?.focusRoom(roomId);
     },
-    [isAlarmActive]
+    [isAlarmActive, isNightSafetyActive]
   );
+
+  // Women's Night Safety Mode Toggle Handler
+  const handleToggleNightSafety = () => {
+    const next = !isNightSafetyActive;
+    setIsNightSafetyActive(next);
+
+    // Recalculate route if destination is currently selected
+    if (selectedPOI) {
+      const startNode = "node-204";
+      const endNode = selectedPOI.nodeId;
+      const blocked = isAlarmActive
+        ? activeFireRoom === "219"
+          ? new Set(["node-219", "node-219a", "node-219c", "c-219"])
+          : new Set(["node-207", "node-208", "c-208", "c-lift"])
+        : undefined;
+
+      const comparison = calculateRouteTradeOffs(startNode, endNode, blocked, next);
+      setRouteComparison(comparison);
+      setActiveRoute(comparison.recommended);
+    }
+
+    if (next) {
+      speakInstruction("Women's Night Safety Active. Avoiding low footfall corridors and dark service stairwells.");
+    } else {
+      speakInstruction("Standard routing profile restored.");
+    }
+  };
 
   // Category chip filter click
   const handleCategorySelect = (cat: CampusCategory) => {
@@ -683,6 +715,7 @@ export const App: React.FC = () => {
           categoryLabel={selectedPOI.category}
           comparison={routeComparison}
           activeProfile={activeProfile}
+          isNightSafety={isNightSafetyActive}
           onSelectProfile={handleSelectProfile}
           onStartNavigation={handleStartNavigation}
           onCancel={handleEndNavigation}
@@ -777,15 +810,20 @@ export const App: React.FC = () => {
           onSelectRoom={handleSelectRoom}
           viewMode={viewMode}
           onSwitchViewMode={setViewMode}
+          isNightSafety={isNightSafetyActive}
+          isTrafficActive={isTrafficActive}
+          googleMapType={googleMapType}
+          onToggleGoogleMapType={setGoogleMapType}
+          onToggleTraffic={setIsTrafficActive}
           categoryFilter={selectedCategory.toLowerCase()}
           theme={isAlarmActive ? "emergency" : isDarkMode ? "dark" : "light"}
         />
 
-        {/* Top-Right Mode Switcher Pill (3D / 2D / Maps) */}
-        <div className="absolute top-3 right-4 z-30 flex items-center gap-1 bg-white/95 backdrop-blur-md rounded-full p-1 shadow-md border border-[#DADCE0] text-xs font-semibold select-none">
+        {/* Top-Right Mode Switcher Pill (3D / 2D / Maps) - Desktop */}
+        <div className="hidden md:flex absolute top-3 right-4 z-30 items-center gap-1 bg-white/95 backdrop-blur-md rounded-full p-1 shadow-md border border-[#DADCE0] text-xs font-semibold select-none">
           <button
             onClick={() => setViewMode("3D")}
-            className={`px-3 py-1.5 rounded-full flex items-center gap-1.5 transition-all ${
+            className={`px-3 py-1.5 rounded-full flex items-center gap-1.5 transition-all cursor-pointer ${
               viewMode === "3D"
                 ? "bg-[#1A73E8] text-white shadow-sm font-bold"
                 : "text-[#5F6368] hover:text-[#202124] hover:bg-[#F1F3F4]"
@@ -793,12 +831,11 @@ export const App: React.FC = () => {
             title="3D Dollhouse View"
           >
             <span className="material-symbols-outlined text-[16px]">view_in_ar</span>
-            <span className="hidden sm:inline">3D Dollhouse</span>
-            <span className="sm:hidden">3D</span>
+            <span>3D Dollhouse</span>
           </button>
           <button
             onClick={() => setViewMode("2D")}
-            className={`px-3 py-1.5 rounded-full flex items-center gap-1.5 transition-all ${
+            className={`px-3 py-1.5 rounded-full flex items-center gap-1.5 transition-all cursor-pointer ${
               viewMode === "2D"
                 ? "bg-[#1A73E8] text-white shadow-sm font-bold"
                 : "text-[#5F6368] hover:text-[#202124] hover:bg-[#F1F3F4]"
@@ -806,12 +843,11 @@ export const App: React.FC = () => {
             title="2D Blueprint View"
           >
             <span className="material-symbols-outlined text-[16px]">map</span>
-            <span className="hidden sm:inline">2D Blueprint</span>
-            <span className="sm:hidden">2D</span>
+            <span>2D Blueprint</span>
           </button>
           <button
             onClick={() => setViewMode("Google")}
-            className={`px-3.5 py-1.5 rounded-full flex items-center gap-1.5 transition-all ${
+            className={`px-3.5 py-1.5 rounded-full flex items-center gap-1.5 transition-all cursor-pointer ${
               viewMode === "Google"
                 ? "bg-[#34A853] text-white shadow-sm font-bold"
                 : "text-[#1A73E8] bg-[#E8F0FE] hover:bg-[#D2E3FC] border border-[#1A73E8]/30 font-bold"
@@ -823,9 +859,9 @@ export const App: React.FC = () => {
           </button>
         </div>
 
-        {/* Floating Top Controls (Search Bar, Category Chips, Status Bar) */}
+        {/* Floating Top Controls (Search Bar, Category Chips, Status Bar, Quick Toggles) */}
         {!isAlarmActive && (
-          <div className="absolute top-3 left-4 right-4 md:left-20 md:right-auto md:w-[480px] z-30 flex flex-col gap-2 pointer-events-auto">
+          <div className="absolute top-3 left-4 right-4 md:left-20 md:right-auto md:w-[500px] z-30 flex flex-col gap-2 pointer-events-auto">
             {/* Floating Google Pill Search Bar */}
             <GoogleSearchBar
               value={searchQuery}
@@ -842,17 +878,113 @@ export const App: React.FC = () => {
               onSelectCategory={handleCategorySelect}
             />
 
-            {/* Positioning Status Bar */}
-            <div className="w-fit">
-              <PositioningStatusBar
-                source={positionSource}
-                confidence="94% (±2.2m)"
-                ageSeconds={signalAge}
-                batteryPercent={92}
-                apCount={apCount}
-                onSelectSource={(s) => setPositionSource(s)}
-                onRecenter={handleRecenter}
-              />
+            {/* Action Toolbar (Mobile Mode Switcher, Positioning, Women's Night Safe, Google Maps Toggles) */}
+            <div className="flex items-center gap-2 flex-wrap select-none">
+              {/* Mobile View Mode Pill */}
+              <div className="flex md:hidden items-center gap-0.5 bg-white/95 backdrop-blur-md rounded-full p-1 shadow-sm border border-[#DADCE0] text-xs font-semibold">
+                <button
+                  onClick={() => setViewMode("3D")}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
+                    viewMode === "3D" ? "bg-[#1A73E8] text-white shadow-xs" : "text-[#5F6368]"
+                  }`}
+                >
+                  3D
+                </button>
+                <button
+                  onClick={() => setViewMode("2D")}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
+                    viewMode === "2D" ? "bg-[#1A73E8] text-white shadow-xs" : "text-[#5F6368]"
+                  }`}
+                >
+                  2D
+                </button>
+                <button
+                  onClick={() => setViewMode("Google")}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
+                    viewMode === "Google" ? "bg-[#34A853] text-white shadow-xs" : "text-[#1A73E8] bg-[#E8F0FE]"
+                  }`}
+                >
+                  Maps
+                </button>
+              </div>
+
+              {/* Positioning Status Bar */}
+              <div className="w-fit">
+                <PositioningStatusBar
+                  source={positionSource}
+                  confidence="94% (±2.2m)"
+                  ageSeconds={signalAge}
+                  batteryPercent={92}
+                  apCount={apCount}
+                  onSelectSource={(s) => setPositionSource(s)}
+                  onRecenter={handleRecenter}
+                />
+              </div>
+
+              {/* Women's Safe Night Path Mode Button */}
+              <button
+                onClick={handleToggleNightSafety}
+                className={`h-8 px-3 rounded-full flex items-center gap-1.5 text-xs font-semibold shadow-sm border transition-all cursor-pointer ${
+                  isNightSafetyActive
+                    ? "bg-[#FEF3C7] text-[#92400E] border-[#F59E0B] ring-2 ring-[#F59E0B]/30 font-bold"
+                    : "bg-white/95 text-[#5F6368] border-[#DADCE0] hover:bg-[#F8F9FA] hover:text-[#202124]"
+                }`}
+                title="Women's Night Safety: Avoids deserted corridors, low-footfall areas, and isolated stairs"
+              >
+                <span className={`material-symbols-outlined text-[16px] ${isNightSafetyActive ? "text-[#D97706]" : "text-[#5F6368]"}`}>
+                  shield
+                </span>
+                <span>{isNightSafetyActive ? "Safe Night (Active)" : "Safe Night Path"}</span>
+              </button>
+
+              {/* Contextual Google Maps Controls (Clean & Unobstructed) */}
+              {viewMode === "Google" && (
+                <>
+                  {/* Toggle Default View vs Satellite */}
+                  <button
+                    onClick={() =>
+                      setGoogleMapType((prev) =>
+                        prev === "satellite" || prev === "hybrid" ? "roadmap" : "satellite"
+                      )
+                    }
+                    className="h-8 px-3 rounded-full flex items-center gap-1.5 text-xs font-semibold bg-white/95 backdrop-blur-md shadow-sm border border-[#DADCE0] text-[#1A73E8] hover:bg-[#F8F9FA] active:scale-95 transition-all cursor-pointer"
+                    title={
+                      googleMapType === "satellite" || googleMapType === "hybrid"
+                        ? "Switch to Default View (Vector Map)"
+                        : "Switch to Satellite Mode (Aerial Photos)"
+                    }
+                  >
+                    <span className="material-symbols-outlined text-[16px]">
+                      {googleMapType === "satellite" || googleMapType === "hybrid" ? "map" : "satellite_alt"}
+                    </span>
+                    <span>
+                      {googleMapType === "satellite" || googleMapType === "hybrid"
+                        ? "Default View"
+                        : "Satellite Mode"}
+                    </span>
+                  </button>
+
+                  {/* Toggle Live Traffic Layer */}
+                  <button
+                    onClick={() => setIsTrafficActive((prev) => !prev)}
+                    className={`h-8 px-3 rounded-full flex items-center gap-1.5 text-xs font-semibold shadow-sm border transition-all cursor-pointer ${
+                      isTrafficActive
+                        ? "bg-[#E6F4EA] text-[#137333] border-[#34A853]/40 font-bold"
+                        : "bg-white/95 text-[#5F6368] border-[#DADCE0] hover:bg-[#F8F9FA]"
+                    }`}
+                    title="Toggle Google Maps Live Traffic layer"
+                  >
+                    <span
+                      className={`material-symbols-outlined text-[16px] ${
+                        isTrafficActive ? "text-[#137333]" : "text-[#5F6368]"
+                      }`}
+                    >
+                      traffic
+                    </span>
+                    <span>Traffic: {isTrafficActive ? "ON" : "OFF"}</span>
+                  </button>
+                </>
+              )}
             </div>
 
             {/* Expandable Search Drawer Overlay */}
