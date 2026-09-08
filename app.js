@@ -13,10 +13,47 @@ class SingleRowBssidMapper {
     this.init();
   }
 
-  init() {
+  async init() {
     this.bindEvents();
     this.renderTable();
+    this.checkDbStatus();
+    this.syncMappingsFromServer();
     this.scanWifi();
+  }
+
+  async checkDbStatus() {
+    const badge = document.getElementById("dbStatusBadge");
+    const text = document.getElementById("dbStatusText");
+    if (!badge || !text) return;
+    try {
+      const res = await fetch("/api/db-status");
+      if (!res.ok) throw new Error("Offline");
+      const data = await res.json();
+      if (data.is_mongodb) {
+        badge.classList.remove("is-fallback");
+        text.textContent = `MongoDB (${data.database})`;
+        badge.title = `Connected to MongoDB: ${data.uri}`;
+      } else {
+        badge.classList.add("is-fallback");
+        text.textContent = `SQLite (Local)`;
+        badge.title = `Running with SQLite fallback`;
+      }
+    } catch (e) {
+      badge.classList.add("is-fallback");
+      text.textContent = `Offline / Client-Only`;
+    }
+  }
+
+  async syncMappingsFromServer() {
+    try {
+      const res = await fetch("/api/mappings");
+      if (!res.ok) return;
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        this.mappings = data;
+        this.saveMappings();
+      }
+    } catch (e) {}
   }
 
   loadMappings() {
@@ -185,6 +222,7 @@ class SingleRowBssidMapper {
   deleteItem(location) {
     this.mappings = this.mappings.filter(m => m.location !== location);
     this.saveMappings();
+    fetch(`/api/mappings/location/${encodeURIComponent(location)}`, { method: "DELETE" }).catch(() => {});
     this.showToast(`Deleted row for "${location}"`);
   }
 

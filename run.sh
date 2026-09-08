@@ -1,10 +1,22 @@
 #!/bin/bash
-# iBUS@MUJ WiFi BSSID Mapper - Local Hardware Launcher
+# iBUS@MUJ WiFi BSSID Mapper - Local Hardware Launcher with Automatic MongoDB Setup
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$DIR"
 
-PORT=5000
+# 1. Automatic MongoDB & Environment Setup
+if [ -f "./setup_mongo.sh" ]; then
+    ./setup_mongo.sh
+fi
+
+# Load PORT from .env if present
+if [ -f ".env" ]; then
+    set -a
+    source .env 2>/dev/null || true
+    set +a
+fi
+
+PORT="${PORT:-5000}"
 
 echo "======================================================"
 echo "📡 iBUS@MUJ WiFi BSSID Mapper · Local Hardware Server"

@@ -208,6 +208,37 @@ body {
   background-color: #f0f4fa;
 }
 
+.badge-db-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  background-color: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+  transition: all 0.2s ease;
+}
+
+.badge-db-status.is-fallback {
+  background-color: #fffbeb;
+  color: #92400e;
+  border-color: #fde68a;
+}
+
+.badge-db-status .status-dot-sm {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #22c55e;
+}
+
+.badge-db-status.is-fallback .status-dot-sm {
+  background-color: #f59e0b;
+}
+
 .btn-danger {
   background-color: #fff;
   color: var(--red);
