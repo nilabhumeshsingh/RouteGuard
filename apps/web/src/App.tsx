@@ -3,10 +3,13 @@ import { HeaderNav } from "./components/common/HeaderNav";
 import { FloatingControls } from "./components/controls/FloatingControls";
 import { BottomSheet } from "./components/sheet/BottomSheet";
 import { CampusMapContainer } from "./components/map/CampusMapContainer";
+import { SearchSheet } from "./components/search/SearchSheet";
+import { RoutePreviewCard } from "./components/navigation/RoutePreviewCard";
+import { TurnByTurnNav } from "./components/navigation/TurnByTurnNav";
 import { FloorId, MapLayerConfig, SnapPoint, UserPositionState } from "./types";
-import { Search, MapPin, Sparkles } from "lucide-react";
-import { HazardOverlay, RoutePoint } from "@routeguard/shared";
-import { ArchitecturalRoom } from "./data/floor2Data";
+import { HazardOverlay, MobilityProfile, RoutePoint, RouteResult } from "@routeguard/shared";
+import { ArchitecturalRoom, POI } from "./data/floor2Data";
+import { calculateRouteTradeOffs, RouteComparison } from "./services/routingService";
 
 export const App: React.FC = () => {
   const [currentFloor, setCurrentFloor] = useState<FloorId>("floor-2");
@@ -32,12 +35,12 @@ export const App: React.FC = () => {
   const [isAlarmActive, setIsAlarmActive] = useState(false);
   const [smokeMinutes, setSmokeMinutes] = useState<0 | 2 | 5 | 10>(0);
 
-  // Sample route preview points
-  const [activeRoutePoints, setActiveRoutePoints] = useState<RoutePoint[] | null>([
-    { x: 120, y: 220, floorId: "floor-2" },
-    { x: 120, y: 280, floorId: "floor-2" },
-    { x: 80, y: 280, floorId: "floor-2" }
-  ]);
+  // Routing State
+  const [selectedPOI, setSelectedPOI] = useState<POI | null>(null);
+  const [routeComparison, setRouteComparison] = useState<RouteComparison | null>(null);
+  const [activeProfile, setActiveProfile] = useState<MobilityProfile>("recommended");
+  const [activeRoute, setActiveRoute] = useState<RouteResult | null>(null);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   const [hazardOverlays, setHazardOverlays] = useState<HazardOverlay[]>([
     {
@@ -63,9 +66,60 @@ export const App: React.FC = () => {
     setUserPos((prev) => ({ ...prev }));
   };
 
+  // Start route preview when selecting a destination
+  const handleSelectDestination = (poi: POI) => {
+    setSelectedPOI(poi);
+    const startNode = "node-204"; // Default user location node
+    const endNode = poi.nodeId;
+
+    const blocked = isAlarmActive ? new Set(["node-208", "c-208"]) : undefined;
+    const comparison = calculateRouteTradeOffs(startNode, endNode, blocked);
+    setRouteComparison(comparison);
+    setActiveProfile("recommended");
+    setActiveRoute(comparison.recommended);
+    setIsNavigating(false);
+    setSnapPoint("half");
+  };
+
+  const handleSelectProfile = (profile: MobilityProfile) => {
+    if (!routeComparison) return;
+    setActiveProfile(profile);
+    if (profile === "step-free") setActiveRoute(routeComparison.stepFree);
+    else if (profile === "shortest") setActiveRoute(routeComparison.shortest);
+    else setActiveRoute(routeComparison.recommended);
+  };
+
+  const handleStartNavigation = () => {
+    setIsNavigating(true);
+    setSnapPoint("half");
+  };
+
+  const handleEndNavigation = () => {
+    setIsNavigating(false);
+    setSelectedPOI(null);
+    setRouteComparison(null);
+    setActiveRoute(null);
+    setSnapPoint("half");
+  };
+
   const handleSelectRoom = (room: ArchitecturalRoom) => {
-    setSearchQuery(room.name);
-    if (snapPoint === "collapsed") setSnapPoint("half");
+    handleSelectDestination({
+      id: `poi-${room.code}`,
+      name: room.name,
+      category: room.category,
+      nodeId: room.nodeId,
+      aliases: [room.code, room.name]
+    });
+  };
+
+  const handleSelectNode = (nodeId: string, label: string) => {
+    handleSelectDestination({
+      id: `poi-${nodeId}`,
+      name: label,
+      category: "Selected Node",
+      nodeId: nodeId,
+      aliases: [label]
+    });
   };
 
   return (
@@ -84,12 +138,13 @@ export const App: React.FC = () => {
           currentFloor={currentFloor}
           layers={layers}
           userPosition={userPos}
-          routePoints={activeRoutePoints}
-          routeIsStepFree={true}
-          isEmergencyRoute={false}
+          routePoints={activeRoute?.pathPoints || null}
+          routeIsStepFree={activeProfile === "step-free"}
+          isEmergencyRoute={isAlarmActive}
           hazardOverlays={hazardOverlays}
           smokeMinutes={smokeMinutes}
           onSelectRoom={handleSelectRoom}
+          onSelectNode={handleSelectNode}
         />
 
         {/* Floating Action Controls */}
@@ -104,62 +159,28 @@ export const App: React.FC = () => {
 
       {/* Bottom Sheet Drawer */}
       <BottomSheet snapPoint={snapPoint} onSnapChange={setSnapPoint}>
-        <div className="space-y-4">
-          {/* Search Bar Input (Apple Pill) */}
-          <div className="relative flex items-center">
-            <Search className="absolute left-3.5 w-4 h-4 text-[#86868b] pointer-events-none" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => {
-                if (snapPoint === "collapsed") setSnapPoint("half");
-              }}
-              placeholder="Search rooms, labs, exits, restrooms..."
-              className="w-full h-11 pl-10 pr-4 rounded-full bg-[#e3e3e8]/50 focus:bg-white text-[15px] text-[#1d1d1f] placeholder:text-[#86868b] border border-transparent focus:border-[#0071e3] focus:outline-none transition-all"
-            />
-          </div>
-
-          {/* Category Quick Chips */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-            {["All", "Restrooms", "Exits", "Labs", "Faculty", "Classrooms"].map((cat, idx) => (
-              <button
-                key={cat}
-                className={`px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-all active:scale-95 whitespace-nowrap ${
-                  idx === 0
-                    ? "bg-[#1d1d1f] text-white"
-                    : "bg-white border border-black/8 text-[#1d1d1f] hover:bg-black/5"
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-
-          {/* Quick Utility Card */}
-          <div className="apple-card p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#0066cc]/10 flex items-center justify-center text-[#0066cc]">
-                <MapPin className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="text-[15px] font-semibold text-[#1d1d1f]">
-                  {userPos.nearestPlaceName}
-                </h4>
-                <p className="text-[12px] text-[#86868b]">
-                  Academic Block 1 • Floor 2 • ±{userPos.uncertaintyRadius}m precision
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => setSnapPoint("expanded")}
-              className="apple-pill-btn text-[13px] px-4 py-2"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Explore</span>
-            </button>
-          </div>
-        </div>
+        {isNavigating && activeRoute && selectedPOI ? (
+          <TurnByTurnNav
+            route={activeRoute}
+            destinationName={selectedPOI.name}
+            onEndNavigation={handleEndNavigation}
+          />
+        ) : routeComparison && selectedPOI ? (
+          <RoutePreviewCard
+            destinationName={selectedPOI.name}
+            comparison={routeComparison}
+            activeProfile={activeProfile}
+            onSelectProfile={handleSelectProfile}
+            onStartNavigation={handleStartNavigation}
+            onCancel={handleEndNavigation}
+          />
+        ) : (
+          <SearchSheet
+            onSelectDestination={handleSelectDestination}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+          />
+        )}
       </BottomSheet>
     </div>
   );
