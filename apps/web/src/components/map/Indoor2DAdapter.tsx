@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback } from "react";
+import React, { useRef, useState, useCallback, useMemo } from "react";
 import { CampusMapAdapter, CameraState, HazardOverlay, MapScene, RoutePoint } from "@routeguard/shared";
 import {
   ARCHITECTURAL_ROOMS,
@@ -93,14 +93,39 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
   const dragOrigin = useRef({ x: 0, y: 0 });
   const panOrigin = useRef({ x: 0, y: 0 });
 
+  // Resolve effective SVG coordinates for user position
+  const resolvedCoords = useMemo(() => {
+    // 1. Room label match
+    if (userPosition.nearestPlaceName) {
+      const cand = userPosition.nearestPlaceName.toLowerCase().replace(/^(ab1\s*|room\s*)/i, '').trim();
+      const numMatch = cand.match(/\b(20[1-9]|21[0-9]|220)\b/);
+      const code = numMatch ? numMatch[1] : cand;
+      const room = ARCHITECTURAL_ROOMS.find(r => r.code === code || r.id === `room-${code}` || r.name.toLowerCase().includes(cand));
+      if (room) {
+        return {
+          x: room.bounds.x + room.bounds.width / 2,
+          y: room.bounds.y + room.bounds.height / 2
+        };
+      }
+    }
+    // 2. If 3D coordinates were passed (< 50)
+    if (Math.abs(userPosition.x) < 50 && Math.abs(userPosition.y) < 50) {
+      return {
+        x: userPosition.x * 15 + 480,
+        y: 242.5 - userPosition.y * 15
+      };
+    }
+    return { x: userPosition.x, y: userPosition.y };
+  }, [userPosition.x, userPosition.y, userPosition.nearestPlaceName]);
+
   // Reset / Recenter smoothly
   const recenter = useCallback(() => {
     setZoom(1.1);
     setPan({
-      x: -(userPosition.x - 480) * 1.1,
-      y: -(userPosition.y - 260) * 1.1
+      x: -(resolvedCoords.x - 480) * 1.1,
+      y: -(resolvedCoords.y - 260) * 1.1
     });
-  }, [userPosition.x, userPosition.y]);
+  }, [resolvedCoords.x, resolvedCoords.y]);
 
   // Handle Pan interactions
   const handlePointerDown = (e: React.PointerEvent) => {
@@ -801,8 +826,8 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
         <g id="user-location-marker" className="pointer-events-none">
           {/* Animated Pulsing Halo */}
           <circle
-            cx={userPosition.x}
-            cy={userPosition.y}
+            cx={resolvedCoords.x}
+            cy={resolvedCoords.y}
             r={userPosition.uncertaintyRadius * 12}
             fill="#0066cc"
             fillOpacity="0.2"
@@ -814,8 +839,8 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
 
           {/* Solid Core Dot with Apple Halo Shadow */}
           <circle
-            cx={userPosition.x}
-            cy={userPosition.y}
+            cx={resolvedCoords.x}
+            cy={resolvedCoords.y}
             r="8"
             fill="#0066cc"
             stroke="#ffffff"
@@ -824,7 +849,7 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
           />
 
           {/* Inner Light Core */}
-          <circle cx={userPosition.x} cy={userPosition.y} r="3" fill="#ffffff" />
+          <circle cx={resolvedCoords.x} cy={resolvedCoords.y} r="3" fill="#ffffff" />
         </g>
       </svg>
     </div>

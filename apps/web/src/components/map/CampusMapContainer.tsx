@@ -72,12 +72,14 @@ export const CampusMapContainer = forwardRef<CampusMapContainerHandle, CampusMap
     }));
 
     // Convert UserPositionState to PositionEstimate
-    const positionEstimate: PositionEstimate = {
+    const positionEstimate: PositionEstimate & { label?: string; roomId?: string } = {
       x: userPosition.x,
       y: userPosition.y,
       floorId: userPosition.floorId,
       uncertaintyRadius: userPosition.uncertaintyRadius,
       nearestPlaceName: userPosition.nearestPlaceName,
+      label: userPosition.nearestPlaceName,
+      roomId: userPosition.nearestPlaceName,
       source: "wifi",
       confidence: 0.94,
       quality: "high",

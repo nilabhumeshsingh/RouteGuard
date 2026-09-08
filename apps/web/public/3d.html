@@ -425,8 +425,68 @@
         return val;
       }
 
+      function findRoomForPosition(pos) {
+        if (!pos) return null;
+        const candidate = (pos.label || pos.location || pos.roomId || pos.nearestPlaceName || pos.id || '').toString().toLowerCase().trim();
+        if (!candidate) return null;
+
+        // Exact match on id or label
+        let room = ROOMS_DATA.find(r => 
+          r.id.toLowerCase() === candidate || 
+          r.label.toLowerCase() === candidate
+        );
+        if (room) return room;
+
+        // Number extraction, e.g. "room 219", "219a", "219c", "ab1-219" -> "219"
+        const numMatch = candidate.match(/\b(20[1-9]|21[0-9]|220)\b/);
+        if (numMatch) {
+          const num = numMatch[1];
+          room = ROOMS_DATA.find(r => r.id === num || r.label.toLowerCase().includes(num));
+          if (room) return room;
+        }
+
+        // Special zone keywords
+        if (candidate.includes('balcony')) {
+          return ROOMS_DATA.find(r => r.id === 'balcony');
+        }
+        if (candidate.includes('washroom') || candidate.includes('toilet')) {
+          if (candidate.includes('214') || candidate.includes('se') || candidate.includes('south')) {
+            return ROOMS_DATA.find(r => r.id === 'wash-se');
+          }
+          if (candidate.includes('208') || candidate.includes('ne') || candidate.includes('girl')) {
+            return ROOMS_DATA.find(r => r.id === 'wash-ne');
+          }
+          if (candidate.includes('201') || candidate.includes('nw') || candidate.includes('boy') || candidate.includes('male')) {
+            return ROOMS_DATA.find(r => r.id === 'wash-nw');
+          }
+          if (candidate.includes('211') || candidate.includes('sw')) {
+            return ROOMS_DATA.find(r => r.id === 'wash-sw');
+          }
+        }
+        if (candidate.includes('stair') || candidate.includes('lift') || candidate.includes('elevator')) {
+          if (candidate.includes('nw') || candidate.includes('west')) return ROOMS_DATA.find(r => r.id === 'stair-nw');
+          if (candidate.includes('ne') || candidate.includes('east')) return ROOMS_DATA.find(r => r.id === 'stair-ne');
+          if (candidate.includes('sm') || candidate.includes('south') || candidate.includes('mid-south')) return ROOMS_DATA.find(r => r.id === 'stair-sm');
+          if (candidate.includes('nm') || candidate.includes('north') || candidate.includes('mid')) return ROOMS_DATA.find(r => r.id === 'stair-nm');
+        }
+
+        return null;
+      }
+
       function updatePositionMarker(pos) {
         if (!pos) return;
+
+        // 1. Room-level snapping: If position has room label or id, snap directly to room center
+        const matched = findRoomForPosition(pos);
+        if (matched) {
+          const cx = (matched.x0 + matched.x1) / 2;
+          const cz = (matched.z0 + matched.z1) / 2;
+          userBeaconGroup.position.set(cx, 0, cz);
+          userBeaconGroup.visible = true;
+          return;
+        }
+
+        // 2. Coordinate-level positioning
         const x3d = parseCoord(pos.x3d !== undefined ? pos.x3d : pos.x, false);
         const z3d = parseCoord(pos.z3d !== undefined ? pos.z3d : (pos.z !== undefined ? pos.z : pos.y), true);
         userBeaconGroup.position.set(x3d, 0, z3d);

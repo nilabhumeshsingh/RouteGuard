@@ -1,20 +1,26 @@
 export const fingerprints = [
   {
     "location": "AB1 Room 204",
-    "x": 120,
-    "y": 220,
+    "x": 1.75,
+    "y": 7.25,
     "floorId": "floor-2",
     "bssids": {
       "90:14:AF:5F:B1:10": 77,
       "FC:11:65:DF:CB:F0": 100,
       "FC:11:65:DF:CC:00": 92
     },
-    "apCount": 3
+    "apCount": 3,
+    "label": "Room 204",
+    "roomId": "204",
+    "x3d": 1.75,
+    "z3d": 7.25,
+    "xSvg": 506.25,
+    "ySvg": 135
   },
   {
     "location": "room 219",
-    "x": 680,
-    "y": 220,
+    "x": -7.25,
+    "y": -7.25,
     "floorId": "floor-2",
     "bssids": {
       "FC:11:65:DF:CB:F0": 100,
@@ -46,22 +52,34 @@ export const fingerprints = [
       "90:14:AF:5F:69:D0": 19,
       "90:14:AF:5F:81:70": 17
     },
-    "apCount": 28
+    "apCount": 28,
+    "label": "Room 219",
+    "roomId": "219",
+    "x3d": -7.25,
+    "z3d": -7.25,
+    "xSvg": 371.25,
+    "ySvg": 351.25
   },
   {
     "location": "219a",
-    "x": 660,
-    "y": 240,
+    "x": -8,
+    "y": -7.25,
     "floorId": "floor-2",
     "bssids": {
       "FC:11:65:DF:CC:00": 84
     },
-    "apCount": 1
+    "apCount": 1,
+    "label": "Room 219",
+    "roomId": "219",
+    "x3d": -8,
+    "z3d": -7.25,
+    "xSvg": 360,
+    "ySvg": 351.25
   },
   {
     "location": "219c",
-    "x": 700,
-    "y": 240,
+    "x": -6.5,
+    "y": -7.25,
     "floorId": "floor-2",
     "bssids": {
       "90:14:AF:5F:B1:10": 95,
@@ -80,12 +98,18 @@ export const fingerprints = [
       "90:14:AF:5F:94:F0": 12,
       "90:14:AF:5F:6C:10": 12
     },
-    "apCount": 15
+    "apCount": 15,
+    "label": "Room 219",
+    "roomId": "219",
+    "x3d": -6.5,
+    "z3d": -7.25,
+    "xSvg": 380,
+    "ySvg": 351.25
   },
   {
     "location": "BETWEEN 211-210",
-    "x": 480,
-    "y": 280,
+    "x": -7.5,
+    "y": 0,
     "floorId": "floor-2",
     "bssids": {
       "90:14:AF:5F:A0:C0": 89,
@@ -131,12 +155,18 @@ export const fingerprints = [
       "90:14:AF:5E:E3:F0": 21,
       "90:14:AF:5E:E4:D0": 18
     },
-    "apCount": 42
+    "apCount": 42,
+    "label": "Corridor (211-210)",
+    "roomId": "c-211-210",
+    "x3d": -7.5,
+    "z3d": 0,
+    "xSvg": 400,
+    "ySvg": 242.5
   },
   {
     "location": "BETWEEN 210-212",
-    "x": 440,
-    "y": 280,
+    "x": 0,
+    "y": 0,
     "floorId": "floor-2",
     "bssids": {
       "90:14:AF:5E:EB:E0": 91,
@@ -216,12 +246,18 @@ export const fingerprints = [
       "90:14:AF:5E:F5:D0": 12,
       "FC:11:65:DF:CC:C0": 6
     },
-    "apCount": 76
+    "apCount": 76,
+    "label": "Corridor (210-212)",
+    "roomId": "c-210-212",
+    "x3d": 0,
+    "z3d": 0,
+    "xSvg": 480,
+    "ySvg": 242.5
   },
   {
     "location": "BETWEEN 212-209",
-    "x": 380,
-    "y": 280,
+    "x": 6.5,
+    "y": 0,
     "floorId": "floor-2",
     "bssids": {
       "90:14:AF:5F:B2:00": 87,
@@ -276,12 +312,18 @@ export const fingerprints = [
       "90:14:AF:5F:69:D0": 12,
       "FC:11:65:DF:CC:C0": 6
     },
-    "apCount": 51
+    "apCount": 51,
+    "label": "Corridor (212-209)",
+    "roomId": "c-212-209",
+    "x3d": 6.5,
+    "z3d": 0,
+    "xSvg": 580,
+    "ySvg": 242.5
   },
   {
     "location": "218",
-    "x": 620,
-    "y": 220,
+    "x": -2.75,
+    "y": -7.25,
     "floorId": "floor-2",
     "bssids": {
       "90:14:AF:5F:B1:10": 82,
@@ -293,12 +335,18 @@ export const fingerprints = [
       "90:14:AF:5E:EB:B0": 48,
       "90:14:AF:5F:6A:10": 39
     },
-    "apCount": 8
+    "apCount": 8,
+    "label": "Room 218",
+    "roomId": "218",
+    "x3d": -2.75,
+    "z3d": -7.25,
+    "xSvg": 438.75,
+    "ySvg": 351.25
   },
   {
     "location": "217",
-    "x": 560,
-    "y": 220,
+    "x": 1.75,
+    "y": -7.25,
     "floorId": "floor-2",
     "bssids": {
       "90:14:AF:5F:B6:20": 97,
@@ -322,12 +370,18 @@ export const fingerprints = [
       "90:14:AF:5E:E3:F0": 12,
       "90:14:AF:5F:6D:10": 9
     },
-    "apCount": 20
+    "apCount": 20,
+    "label": "Room 217",
+    "roomId": "217",
+    "x3d": 1.75,
+    "z3d": -7.25,
+    "xSvg": 506.25,
+    "ySvg": 351.25
   },
   {
     "location": "ELEVATOR - STAIRCASE AREA",
-    "x": 500,
-    "y": 200,
+    "x": 5.75,
+    "y": -7.25,
     "floorId": "floor-2",
     "bssids": {
       "90:14:AF:5F:B6:20": 97,
@@ -351,12 +405,18 @@ export const fingerprints = [
       "90:14:AF:5E:E3:F0": 12,
       "90:14:AF:5F:6D:10": 9
     },
-    "apCount": 20
+    "apCount": 20,
+    "label": "Elevator & Stairs",
+    "roomId": "stair-sm",
+    "x3d": 5.75,
+    "z3d": -7.25,
+    "xSvg": 550,
+    "ySvg": 351.25
   },
   {
     "location": "215",
-    "x": 480,
-    "y": 220,
+    "x": 14.25,
+    "y": -7.25,
     "floorId": "floor-2",
     "bssids": {
       "FC:11:65:DF:A6:C0": 95,
@@ -374,12 +434,18 @@ export const fingerprints = [
       "90:14:AF:5F:7A:40": 39,
       "FC:11:65:DF:B1:90": 9
     },
-    "apCount": 14
+    "apCount": 14,
+    "label": "Room 215",
+    "roomId": "215",
+    "x3d": 14.25,
+    "z3d": -7.25,
+    "xSvg": 696.25,
+    "ySvg": 351.25
   },
   {
     "location": "214",
-    "x": 420,
-    "y": 220,
+    "x": 18.75,
+    "y": -7.25,
     "floorId": "floor-2",
     "bssids": {
       "FC:11:65:DF:A6:C0": 95,
@@ -397,12 +463,18 @@ export const fingerprints = [
       "90:14:AF:5F:7A:40": 39,
       "FC:11:65:DF:B1:90": 9
     },
-    "apCount": 14
+    "apCount": 14,
+    "label": "Room 214",
+    "roomId": "214",
+    "x3d": 18.75,
+    "z3d": -7.25,
+    "xSvg": 763.75,
+    "ySvg": 351.25
   },
   {
     "location": "WASHROOM NEAR 214",
-    "x": 400,
-    "y": 180,
+    "x": 22.5,
+    "y": -7.25,
     "floorId": "floor-2",
     "bssids": {
       "FC:11:65:DE:FA:C0": 83,
@@ -415,12 +487,18 @@ export const fingerprints = [
       "90:14:AF:5F:B2:10": 39,
       "90:14:AF:5F:AF:B0": 6
     },
-    "apCount": 9
+    "apCount": 9,
+    "label": "Male Washroom (SE)",
+    "roomId": "wash-se",
+    "x3d": 22.5,
+    "z3d": -7.25,
+    "xSvg": 815,
+    "ySvg": 351.25
   },
   {
     "location": "HALL NEAR 208 CORNER",
-    "x": 220,
-    "y": 280,
+    "x": 22.5,
+    "y": 0,
     "floorId": "floor-2",
     "bssids": {
       "90:14:AF:5F:9A:C0": 88,
@@ -454,12 +532,18 @@ export const fingerprints = [
       "90:14:AF:5F:7A:50": 12,
       "90:14:AF:5F:AF:B0": 6
     },
-    "apCount": 30
+    "apCount": 30,
+    "label": "Corridor (East Wing)",
+    "roomId": "c-east",
+    "x3d": 22.5,
+    "z3d": 0,
+    "xSvg": 815,
+    "ySvg": 242.5
   },
   {
     "location": "GIRL WASHROOM IN FRONT OF 208",
-    "x": 220,
-    "y": 200,
+    "x": 22.5,
+    "y": 7.25,
     "floorId": "floor-2",
     "bssids": {
       "90:14:AF:5F:9A:C0": 88,
@@ -491,12 +575,18 @@ export const fingerprints = [
       "90:14:AF:5F:15:70": 15,
       "90:14:AF:5F:7A:50": 12
     },
-    "apCount": 28
+    "apCount": 28,
+    "label": "Female Washroom (NE)",
+    "roomId": "wash-ne",
+    "x3d": 22.5,
+    "z3d": 7.25,
+    "xSvg": 815,
+    "ySvg": 135
   },
   {
     "location": "207",
-    "x": 260,
-    "y": 220,
+    "x": 18.75,
+    "y": 7.25,
     "floorId": "floor-2",
     "bssids": {
       "90:14:AF:5F:9A:C0": 88,
@@ -528,12 +618,18 @@ export const fingerprints = [
       "90:14:AF:5F:15:70": 15,
       "90:14:AF:5F:7A:50": 12
     },
-    "apCount": 28
+    "apCount": 28,
+    "label": "Room 207",
+    "roomId": "207",
+    "x3d": 18.75,
+    "z3d": 7.25,
+    "xSvg": 763.75,
+    "ySvg": 135
   },
   {
     "location": "208",
-    "x": 220,
-    "y": 220,
+    "x": 20.5,
+    "y": 0,
     "floorId": "floor-2",
     "bssids": {
       "FC:11:65:DE:FA:B0": 89,
@@ -575,12 +671,18 @@ export const fingerprints = [
       "90:14:AF:5F:9B:D0": 18,
       "90:14:AF:5F:6A:10": 12
     },
-    "apCount": 38
+    "apCount": 38,
+    "label": "Room 208",
+    "roomId": "208",
+    "x3d": 20.5,
+    "z3d": 0,
+    "xSvg": 780,
+    "ySvg": 242.5
   },
   {
     "location": "206",
-    "x": 300,
-    "y": 220,
+    "x": 14.25,
+    "y": 7.25,
     "floorId": "floor-2",
     "bssids": {
       "90:14:AF:5F:9D:90": 87,
@@ -650,12 +752,18 @@ export const fingerprints = [
       "90:14:AF:5E:E5:F0": 3,
       "90:14:AF:5F:1F:30": 3
     },
-    "apCount": 66
+    "apCount": 66,
+    "label": "Room 206",
+    "roomId": "206",
+    "x3d": 14.25,
+    "z3d": 7.25,
+    "xSvg": 696.25,
+    "ySvg": 135
   },
   {
     "location": "209",
-    "x": 360,
-    "y": 220,
+    "x": 8.5,
+    "y": 0,
     "floorId": "floor-2",
     "bssids": {
       "90:14:AF:5F:80:10": 88,
@@ -729,12 +837,18 @@ export const fingerprints = [
       "90:14:AF:5F:94:F0": 12,
       "90:14:AF:5E:E5:F0": 3
     },
-    "apCount": 70
+    "apCount": 70,
+    "label": "Room 209",
+    "roomId": "209",
+    "x3d": 8.5,
+    "z3d": 0,
+    "xSvg": 610,
+    "ySvg": 242.5
   },
   {
     "location": "210",
-    "x": 440,
-    "y": 220,
+    "x": -3.5,
+    "y": 0,
     "floorId": "floor-2",
     "bssids": {
       "90:14:AF:5F:81:60": 89,
@@ -818,12 +932,18 @@ export const fingerprints = [
       "90:14:AF:5F:9D:90": 3,
       "90:14:AF:5E:CF:B0": 3
     },
-    "apCount": 80
+    "apCount": 80,
+    "label": "Room 210",
+    "roomId": "210",
+    "x3d": -3.5,
+    "z3d": 0,
+    "xSvg": 440,
+    "ySvg": 242.5
   },
   {
     "location": "201",
-    "x": 120,
-    "y": 360,
+    "x": -11.75,
+    "y": 7.25,
     "floorId": "floor-2",
     "bssids": {
       "90:14:AF:5F:6A:00": 89,
@@ -882,12 +1002,18 @@ export const fingerprints = [
       "90:14:AF:5F:B2:10": 9,
       "90:14:AF:5F:9D:90": 3
     },
-    "apCount": 55
+    "apCount": 55,
+    "label": "Room 201",
+    "roomId": "201",
+    "x3d": -11.75,
+    "z3d": 7.25,
+    "xSvg": 303.75,
+    "ySvg": 135
   },
   {
     "location": "BOYS WASHROOM NEAR 201",
-    "x": 120,
-    "y": 420,
+    "x": -15.75,
+    "y": 7.25,
     "floorId": "floor-2",
     "bssids": {
       "90:14:AF:5F:6A:00": 89,
@@ -926,12 +1052,18 @@ export const fingerprints = [
       "90:14:AF:5E:E3:F0": 18,
       "90:14:AF:5F:B2:10": 9
     },
-    "apCount": 35
+    "apCount": 35,
+    "label": "Male Washroom (NW)",
+    "roomId": "wash-nw",
+    "x3d": -15.75,
+    "z3d": 7.25,
+    "xSvg": 240,
+    "ySvg": 135
   },
   {
     "location": "IN FRONT OF BALCONY",
-    "x": 300,
-    "y": 480,
+    "x": -21,
+    "y": 0,
     "floorId": "floor-2",
     "bssids": {
       "90:14:AF:5F:94:E0": 100,
@@ -955,12 +1087,18 @@ export const fingerprints = [
       "90:14:AF:5F:BC:C0": 45,
       "FC:11:65:DF:B1:A0": 24
     },
-    "apCount": 20
+    "apCount": 20,
+    "label": "Balcony Entrance",
+    "roomId": "c-west",
+    "x3d": -21,
+    "z3d": 0,
+    "xSvg": 160,
+    "ySvg": 242.5
   },
   {
     "location": "IN CIRCULAR BALCONY",
-    "x": 300,
-    "y": 560,
+    "x": -24,
+    "y": 0,
     "floorId": "floor-2",
     "bssids": {
       "90:14:AF:5F:6C:60": 85,
@@ -984,12 +1122,18 @@ export const fingerprints = [
       "FC:11:65:DF:B1:A0": 24,
       "90:14:AF:5F:93:A0": 21
     },
-    "apCount": 20
+    "apCount": 20,
+    "label": "Circular Balcony",
+    "roomId": "balcony",
+    "x3d": -24,
+    "z3d": 0,
+    "xSvg": 120,
+    "ySvg": 242.5
   },
   {
     "location": "GIRLS WASHROOM IN FRONT OF 211",
-    "x": 500,
-    "y": 360,
+    "x": -15.75,
+    "y": -7.25,
     "floorId": "floor-2",
     "bssids": {
       "90:14:AF:5F:6C:70": 91,
@@ -1027,12 +1171,18 @@ export const fingerprints = [
       "90:14:AF:5E:F5:D0": 9,
       "90:14:AF:5E:E3:F0": 6
     },
-    "apCount": 34
+    "apCount": 34,
+    "label": "Female Washroom (SW)",
+    "roomId": "wash-sw",
+    "x3d": -15.75,
+    "z3d": -7.25,
+    "xSvg": 240,
+    "ySvg": 351.25
   },
   {
     "location": "211",
-    "x": 500,
-    "y": 220,
+    "x": -11.5,
+    "y": 0,
     "floorId": "floor-2",
     "bssids": {
       "90:14:AF:5F:6C:70": 91,
@@ -1065,12 +1215,18 @@ export const fingerprints = [
       "90:14:AF:5E:F5:D0": 9,
       "90:14:AF:5E:E3:F0": 6
     },
-    "apCount": 29
+    "apCount": 29,
+    "label": "Room 211",
+    "roomId": "211",
+    "x3d": -11.5,
+    "z3d": 0,
+    "xSvg": 340,
+    "ySvg": 242.5
   },
   {
     "location": "220",
-    "x": 720,
-    "y": 220,
+    "x": -11.75,
+    "y": -7.25,
     "floorId": "floor-2",
     "bssids": {
       "FC:11:65:DE:E9:90": 90,
@@ -1107,12 +1263,18 @@ export const fingerprints = [
       "90:14:AF:5F:A0:C0": 12,
       "90:14:AF:5E:F5:D0": 9
     },
-    "apCount": 33
+    "apCount": 33,
+    "label": "Room 220",
+    "roomId": "220",
+    "x3d": -11.75,
+    "z3d": -7.25,
+    "xSvg": 303.75,
+    "ySvg": 351.25
   },
   {
     "location": "212",
-    "x": 440,
-    "y": 220,
+    "x": 4.5,
+    "y": 0,
     "floorId": "floor-2",
     "bssids": {
       "90:14:AF:5F:A0:C0": 89,
@@ -1200,6 +1362,12 @@ export const fingerprints = [
       "90:14:AF:5F:80:00": 9,
       "90:14:AF:5F:76:90": 3
     },
-    "apCount": 84
+    "apCount": 84,
+    "label": "Room 212",
+    "roomId": "212",
+    "x3d": 4.5,
+    "z3d": 0,
+    "xSvg": 540,
+    "ySvg": 242.5
   }
-] as const;
+];

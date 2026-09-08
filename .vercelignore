@@ -1,0 +1,8 @@
+node_modules
+apps/android
+firmware
+.git
+.turbo
+*.log
+*.csv
+.env*
