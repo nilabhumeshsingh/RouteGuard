@@ -70,6 +70,10 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
     const [loadError, setLoadError] = useState<string | null>(null);
     const [mapType, setMapType] = useState<"satellite" | "hybrid" | "roadmap">("satellite");
 
+    const toggleSatelliteDefault = () => {
+      setMapType((prev) => (prev === "satellite" || prev === "hybrid" ? "roadmap" : "satellite"));
+    };
+
     // Dynamic objects on map
     const userMarkerRef = useRef<any>(null);
     const userCircleRef = useRef<any>(null);
@@ -509,37 +513,43 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
             </span>
           </div>
 
-          {/* Map Layer Switcher: Satellite / Hybrid / Roadmap */}
+          {/* Google Maps Style Switcher: Default View vs Satellite vs Hybrid */}
           <div className="flex items-center gap-1 bg-white/95 backdrop-blur-md rounded-xl p-1 shadow-md border border-[#DADCE0] text-xs font-semibold text-[#5F6368]">
             <button
-              onClick={() => setMapType("satellite")}
-              className={`px-2.5 py-1 rounded-lg transition-all ${
-                mapType === "satellite"
-                  ? "bg-[#1A73E8] text-white shadow-sm font-bold"
-                  : "hover:bg-[#F1F3F4] text-[#202124]"
-              }`}
-            >
-              Satellite
-            </button>
-            <button
-              onClick={() => setMapType("hybrid")}
-              className={`px-2.5 py-1 rounded-lg transition-all ${
-                mapType === "hybrid"
-                  ? "bg-[#1A73E8] text-white shadow-sm font-bold"
-                  : "hover:bg-[#F1F3F4] text-[#202124]"
-              }`}
-            >
-              Hybrid
-            </button>
-            <button
               onClick={() => setMapType("roadmap")}
-              className={`px-2.5 py-1 rounded-lg transition-all ${
+              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all ${
                 mapType === "roadmap"
                   ? "bg-[#1A73E8] text-white shadow-sm font-bold"
                   : "hover:bg-[#F1F3F4] text-[#202124]"
               }`}
+              title="Standard Google vector map (streets, campus outline & indoor points)"
             >
-              Roadmap
+              <span className="material-symbols-outlined text-[16px]">map</span>
+              <span>Default View</span>
+            </button>
+            <button
+              onClick={() => setMapType("satellite")}
+              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all ${
+                mapType === "satellite"
+                  ? "bg-[#1A73E8] text-white shadow-sm font-bold"
+                  : "hover:bg-[#F1F3F4] text-[#202124]"
+              }`}
+              title="Photographic satellite aerial view"
+            >
+              <span className="material-symbols-outlined text-[16px]">satellite_alt</span>
+              <span>Satellite Mode</span>
+            </button>
+            <button
+              onClick={() => setMapType("hybrid")}
+              className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition-all ${
+                mapType === "hybrid"
+                  ? "bg-[#1A73E8] text-white shadow-sm font-bold"
+                  : "hover:bg-[#F1F3F4] text-[#202124]"
+              }`}
+              title="Satellite view with road and landmark labels"
+            >
+              <span className="material-symbols-outlined text-[16px]">layers</span>
+              <span>Hybrid</span>
             </button>
           </div>
         </div>
@@ -571,6 +581,35 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
             <p className="text-xs font-semibold">Connecting to Google Maps Platform…</p>
           </div>
         )}
+
+        {/* Iconic 1-Tap Quick Toggle: Satellite Mode <-> Default View */}
+        <div className="absolute left-4 bottom-24 md:bottom-6 z-20 select-none">
+          <button
+            onClick={toggleSatelliteDefault}
+            className="h-11 px-3.5 bg-white/95 backdrop-blur-md rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.25)] border border-[#DADCE0] flex items-center gap-2.5 text-xs font-bold text-[#202124] hover:bg-[#F8F9FA] active:scale-95 transition-all cursor-pointer"
+            title={
+              mapType === "satellite" || mapType === "hybrid"
+                ? "Switch to Default View (Vector Map)"
+                : "Switch to Satellite Mode (Aerial Photos)"
+            }
+          >
+            <div
+              className={`w-7 h-7 rounded-lg flex items-center justify-center text-white shadow-sm transition-colors ${
+                mapType === "satellite" || mapType === "hybrid" ? "bg-[#1A73E8]" : "bg-[#34A853]"
+              }`}
+            >
+              <span className="material-symbols-outlined text-[18px]">
+                {mapType === "satellite" || mapType === "hybrid" ? "map" : "satellite_alt"}
+              </span>
+            </div>
+            <div className="flex flex-col text-left">
+              <span className="text-[9px] text-[#5F6368] uppercase tracking-wider font-semibold">Toggle Mode</span>
+              <span className="text-[12px] font-bold text-[#1A73E8]">
+                {mapType === "satellite" || mapType === "hybrid" ? "Default View" : "Satellite Mode"}
+              </span>
+            </div>
+          </button>
+        </div>
 
         {/* Google Maps Container DOM */}
         <div ref={mapContainerRef} className="w-full h-full" />
