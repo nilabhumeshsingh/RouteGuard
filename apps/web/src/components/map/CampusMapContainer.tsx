@@ -228,6 +228,7 @@ export const CampusMapContainer = forwardRef<CampusMapContainerHandle, CampusMap
           routePoints={routePoints}
           routeIsStepFree={routeIsStepFree}
           isEmergencyRoute={isEmergencyRoute}
+          isNightSafety={isNightSafety}
           hazardOverlays={hazardOverlays}
           smokeMinutes={smokeMinutes}
           guardianState={guardianState}

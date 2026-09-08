@@ -513,23 +513,127 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
       safetyMarkersRef.current = [];
 
       if (isNightSafety) {
-        // High-Footfall Central Concourse polygon highlight
-        const concourseCoords = [
-          indoorToLatLng(350, 180),
-          indoorToLatLng(650, 180),
-          indoorToLatLng(650, 310),
-          indoorToLatLng(350, 310)
+        // 1. 🟢 GREEN ZONE: High-Footfall Central Concourse & Monitored Security Zone (85%+ Footfall)
+        const greenConcourseCoords = [
+          indoorToLatLng(430, 160),
+          indoorToLatLng(650, 160),
+          indoorToLatLng(650, 330),
+          indoorToLatLng(430, 330)
         ];
+        const greenPolygon = new google.maps.Polygon({
+          paths: greenConcourseCoords,
+          strokeColor: "#16A34A",
+          strokeOpacity: 0.9,
+          strokeWeight: 2.5,
+          fillColor: "#22C55E",
+          fillOpacity: 0.30,
+          map: mapInstanceRef.current,
+          zIndex: 60
+        });
 
-        const concoursePolygon = new google.maps.Polygon({
-          paths: concourseCoords,
-          strokeColor: "#00B4D8",
-          strokeOpacity: 0.8,
-          strokeWeight: 2,
-          fillColor: "#00B4D8",
-          fillOpacity: 0.18,
+        // 2. 🟠 ORANGE ZONES: Moderate Footfall Academic Wings (50%-80% Footfall)
+        const orangeMidNorthCoords = [
+          indoorToLatLng(270, 80),
+          indoorToLatLng(430, 80),
+          indoorToLatLng(430, 205),
+          indoorToLatLng(270, 205)
+        ];
+        const orangeNorthPolygon = new google.maps.Polygon({
+          paths: orangeMidNorthCoords,
+          strokeColor: "#EA580C",
+          strokeOpacity: 0.85,
+          strokeWeight: 1.5,
+          fillColor: "#F97316",
+          fillOpacity: 0.25,
+          map: mapInstanceRef.current,
+          zIndex: 55
+        });
+
+        const orangeMidSouthCoords = [
+          indoorToLatLng(270, 280),
+          indoorToLatLng(430, 280),
+          indoorToLatLng(430, 405),
+          indoorToLatLng(270, 405)
+        ];
+        const orangeSouthPolygon = new google.maps.Polygon({
+          paths: orangeMidSouthCoords,
+          strokeColor: "#EA580C",
+          strokeOpacity: 0.85,
+          strokeWeight: 1.5,
+          fillColor: "#F97316",
+          fillOpacity: 0.25,
+          map: mapInstanceRef.current,
+          zIndex: 55
+        });
+
+        const orangeMidEastCoords = [
+          indoorToLatLng(650, 80),
+          indoorToLatLng(780, 80),
+          indoorToLatLng(780, 405),
+          indoorToLatLng(650, 405)
+        ];
+        const orangeEastPolygon = new google.maps.Polygon({
+          paths: orangeMidEastCoords,
+          strokeColor: "#EA580C",
+          strokeOpacity: 0.85,
+          strokeWeight: 1.5,
+          fillColor: "#F97316",
+          fillOpacity: 0.25,
+          map: mapInstanceRef.current,
+          zIndex: 55
+        });
+
+        // 3. 🔴 LIGHTER RED ZONES: Low Footfall Peripheral Wings & Restrooms (20%-45% Footfall)
+        const redWestWingCoords = [
+          indoorToLatLng(165, 80),
+          indoorToLatLng(270, 80),
+          indoorToLatLng(270, 405),
+          indoorToLatLng(165, 405)
+        ];
+        const redWestPolygon = new google.maps.Polygon({
+          paths: redWestWingCoords,
+          strokeColor: "#DC2626",
+          strokeOpacity: 0.85,
+          strokeWeight: 1.5,
+          fillColor: "#EF4444",
+          fillOpacity: 0.28,
           map: mapInstanceRef.current,
           zIndex: 50
+        });
+
+        const redEastWingCoords = [
+          indoorToLatLng(780, 80),
+          indoorToLatLng(885, 80),
+          indoorToLatLng(885, 405),
+          indoorToLatLng(780, 405)
+        ];
+        const redEastPolygon = new google.maps.Polygon({
+          paths: redEastWingCoords,
+          strokeColor: "#DC2626",
+          strokeOpacity: 0.85,
+          strokeWeight: 1.5,
+          fillColor: "#EF4444",
+          fillOpacity: 0.28,
+          map: mapInstanceRef.current,
+          zIndex: 50
+        });
+
+        // 4. ⚫ DARKER RED TO BLACK ZONE: Deserted West Balcony & Rear Alleys (<15% Footfall · Avoid at Night)
+        const blackBalconyCoords = [
+          indoorToLatLng(50, 140),
+          indoorToLatLng(165, 140),
+          indoorToLatLng(165, 345),
+          indoorToLatLng(50, 345)
+        ];
+        const blackBalconyPolygon = new google.maps.Polygon({
+          paths: blackBalconyCoords,
+          strokeColor: "#000000",
+          strokeOpacity: 0.95,
+          strokeWeight: 2.5,
+          fillColor: "#7F1D1D",
+          fillOpacity: 0.65,
+          map: mapInstanceRef.current,
+          zIndex: 65
         });
 
         // Security Help Desk Point (Central AB1 Security Station)
@@ -537,7 +641,7 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
         const securityMarker = new google.maps.Marker({
           position: securityPos,
           map: mapInstanceRef.current,
-          title: "Central Security Station (24/7 Monitored)",
+          title: "Central Security Station (24/7 Monitored Safe Zone)",
           label: {
             text: "👮",
             fontSize: "16px"
@@ -548,31 +652,54 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
         securityMarker.addListener("click", () => {
           infoWindowRef.current.setContent(`
             <div style="padding: 6px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-              <div style="font-weight: 700; color: #0077b6; font-size: 13px;">🛡️ Central Security Station</div>
-              <div style="font-size: 11px; color: #444; margin-top: 2px;">24/7 Security Guard & CCTV Desk</div>
-              <div style="font-size: 11px; color: #0077b6; font-weight: 600; margin-top: 4px;">Ext: 100 · +91 141 3999100</div>
-              <div style="margin-top: 4px; font-size: 10px; background: #e0f2fe; color: #0284c7; padding: 2px 6px; border-radius: 4px; display: inline-block;">
-                VERIFIED HIGH FOOTFALL
+              <div style="font-weight: 700; color: #15803D; font-size: 13px;">🛡️ Central Security Station</div>
+              <div style="font-size: 11px; color: #444; margin-top: 2px;">24/7 Security Guard Desk · CCTV Surveillance</div>
+              <div style="font-size: 11px; color: #0284C7; font-weight: 600; margin-top: 4px;">Ext: 100 · +91 141 3999100</div>
+              <div style="margin-top: 4px; font-size: 10px; background: #DCFCE7; color: #166534; font-weight: 700; padding: 2px 6px; border-radius: 4px; display: inline-block;">
+                🟢 92% FOOTFALL · HIGH SAFETY CONCOURSE
               </div>
             </div>
           `);
           infoWindowRef.current.open(mapInstanceRef.current, securityMarker);
         });
 
-        // Low-footfall cautionary pin at West service alley
-        const isolatedPos = indoorToLatLng(191, 291);
-        const cautionMarker = new google.maps.Marker({
-          position: isolatedPos,
+        // Low-footfall cautionary pin at West Balcony (Deserted zone)
+        const balconyPos = indoorToLatLng(110, 240);
+        const balconyWarningMarker = new google.maps.Marker({
+          position: balconyPos,
           map: mapInstanceRef.current,
-          title: "Isolated Low-Footfall Area (Bypassed at Night)",
+          title: "Deserted Balcony Terrace (Strictly Bypassed at Night)",
           label: {
-            text: "⚠️",
-            fontSize: "14px"
+            text: "🚫",
+            fontSize: "16px"
           },
           zIndex: 150
         });
 
-        safetyMarkersRef.current.push(concoursePolygon, securityMarker, cautionMarker);
+        balconyWarningMarker.addListener("click", () => {
+          infoWindowRef.current.setContent(`
+            <div style="padding: 6px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+              <div style="font-weight: 700; color: #991B1B; font-size: 13px;">🚫 Deserted Balcony Terrace</div>
+              <div style="font-size: 11px; color: #444; margin-top: 2px;">Unlit outdoor zone with zero night surveillance</div>
+              <div style="margin-top: 4px; font-size: 10px; background: #FEE2E2; color: #991B1B; font-weight: 700; padding: 2px 6px; border-radius: 4px; display: inline-block;">
+                ⚫ 6% FOOTFALL · STRICTLY AVOID AT NIGHT
+              </div>
+            </div>
+          `);
+          infoWindowRef.current.open(mapInstanceRef.current, balconyWarningMarker);
+        });
+
+        safetyMarkersRef.current.push(
+          greenPolygon,
+          orangeNorthPolygon,
+          orangeSouthPolygon,
+          orangeEastPolygon,
+          redWestPolygon,
+          redEastPolygon,
+          blackBalconyPolygon,
+          securityMarker,
+          balconyWarningMarker
+        );
       }
     }, [isLoaded, isNightSafety]);
 
@@ -663,10 +790,38 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
           </div>
 
           {isNightSafety && (
-            <div className="bg-[#1C1C1E]/95 backdrop-blur-md text-[#FFD60A] rounded-xl px-3 py-1 shadow-md border border-[#FFD60A]/30 flex items-center gap-1.5 text-[10px] font-bold animate-pulse">
-              <span className="material-symbols-outlined text-[14px]">shield</span>
-              <span>Women's Safe Path Active</span>
-            </div>
+            <>
+              <div className="bg-[#1C1C1E]/95 backdrop-blur-md text-[#FFD60A] rounded-xl px-3 py-1 shadow-md border border-[#FFD60A]/30 flex items-center gap-1.5 text-[10px] font-bold animate-pulse">
+                <span className="material-symbols-outlined text-[14px]">shield</span>
+                <span>Women's Safe Path Active</span>
+              </div>
+
+              {/* Night Safety Footfall Heatmap Legend */}
+              <div className="bg-white/95 backdrop-blur-md rounded-2xl p-2.5 shadow-xl border border-[#DADCE0] text-xs max-w-[220px] pointer-events-auto text-left">
+                <div className="flex items-center gap-1.5 pb-1 mb-1.5 border-b border-[#E5E7EB]">
+                  <span className="material-symbols-outlined text-[15px] text-[#1A73E8]">shield</span>
+                  <span className="font-bold text-[#111827] text-[11px]">Footfall Safety Zones</span>
+                </div>
+                <div className="space-y-1 text-[10px]">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 rounded bg-[#22C55E] shrink-0 border border-[#16A34A]" />
+                    <span className="text-[#15803D] font-semibold">Green: High (85%+) · Safe</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 rounded bg-[#F97316] shrink-0 border border-[#EA580C]" />
+                    <span className="text-[#C2410C] font-semibold">Orange: Moderate (50-80%)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 rounded bg-[#EF4444] shrink-0 border border-[#DC2626]" />
+                    <span className="text-[#B91C1C] font-semibold">Lighter Red: Low (20-45%)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 rounded bg-[#7F1D1D] shrink-0 border border-[#000000]" />
+                    <span className="text-[#7F1D1D] font-semibold">Dark Red/Black: &lt;15% (Avoid)</span>
+                  </div>
+                </div>
+              </div>
+            </>
           )}
         </div>
 

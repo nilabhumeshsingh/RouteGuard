@@ -399,3 +399,127 @@ export const RAW_POIS: POI[] = [
   { id: "poi-exit-east", name: "Fire Exit East", category: "Emergency Exit", nodeId: "exit-east", aliases: ["east exit", "fire exit east", "stair ne"] },
   { id: "poi-balcony", name: "Circular Balcony", category: "Outdoor Terrace", nodeId: "c-balcony-circ", aliases: ["balcony", "terrace", "circular balcony"] }
 ];
+
+export type FootfallTier = "high" | "moderate" | "low" | "deserted";
+
+export interface FootfallRating {
+  tier: FootfallTier;
+  percentage: number;
+  color: string;
+  fillColor: string;
+  strokeColor: string;
+  label: string;
+  badge: string;
+  description: string;
+}
+
+/**
+ * Returns the night-time footfall safety rating and color tier for any room or zone.
+ * - High Footfall (85%+): Green (Central concourse, security desk, active labs)
+ * - Moderate Footfall (50%-80%): Orange (Standard classroom wings)
+ * - Low Footfall (20%-45%): Lighter Red (Peripheral faculty cabins & washrooms)
+ * - Deserted (<15%): Darker Red to Black (Terraces, outer balconies, dead-ends)
+ */
+export function getRoomFootfall(roomId: string): FootfallRating {
+  const code = roomId.replace(/^(room-|node-|poi-)/i, "").toLowerCase();
+
+  // 1. High Footfall (85%+): Green
+  if (
+    ["204", "208", "219", "212", "st-nm", "stair-nm", "c-lift", "c-atrium", "lift"].includes(code) ||
+    code.includes("ai") ||
+    code.includes("iot")
+  ) {
+    const pct = code.includes("219") ? 94 : code.includes("st-nm") || code.includes("lift") ? 95 : 88;
+    return {
+      tier: "high",
+      percentage: pct,
+      color: "#22C55E",
+      fillColor: "#052e16",
+      strokeColor: "#22C55E",
+      label: "High Footfall (85%+)",
+      badge: `${pct}%`,
+      description: "100% well-lit, active central concourse with 24/7 CCTV surveillance"
+    };
+  }
+
+  // 2. Deserted / Dangerous at Night (<15%): Darker Red to Deep Black
+  if (
+    [
+      "balcony",
+      "c-balcony",
+      "c-balcony-circ",
+      "c-west",
+      "node-wash-boys",
+      "st-nw",
+      "stair-nw",
+      "st-se",
+      "stair-se",
+      "c-se",
+      "void-1",
+      "void-2",
+      "void-3"
+    ].includes(code) ||
+    code.includes("balcony") ||
+    code.includes("void")
+  ) {
+    const pct = code.includes("balcony") ? 6 : code.includes("void") ? 0 : 9;
+    return {
+      tier: "deserted",
+      percentage: pct,
+      color: "#7F1D1D",
+      fillColor: "#110204",
+      strokeColor: "#7F1D1D",
+      label: "Deserted (<15%)",
+      badge: `${pct}%`,
+      description: "Dark, isolated exterior zone. Strictly avoided by night routing"
+    };
+  }
+
+  // 3. Low Footfall (20%-45%): Lighter Red
+  if (
+    [
+      "201",
+      "207",
+      "211",
+      "213",
+      "214",
+      "215",
+      "217",
+      "w-nw",
+      "w-ne",
+      "w-sw",
+      "w-se",
+      "wash-nw",
+      "wash-ne",
+      "wash-sw",
+      "wash-se"
+    ].includes(code) ||
+    code.includes("wash") ||
+    code.includes("prof")
+  ) {
+    const pct = code.includes("207") || code.includes("217") ? 26 : 34;
+    return {
+      tier: "low",
+      percentage: pct,
+      color: "#EF4444",
+      fillColor: "#2a080c",
+      strokeColor: "#EF4444",
+      label: "Low Footfall (20%-45%)",
+      badge: `${pct}%`,
+      description: "Infrequent evening footfall, peripheral office and restroom wing"
+    };
+  }
+
+  // 4. Moderate Footfall (50%-80%): Orange
+  return {
+    tier: "moderate",
+    percentage: 65,
+    color: "#F97316",
+    fillColor: "#2b1303",
+    strokeColor: "#F97316",
+    label: "Moderate Footfall (50%-80%)",
+    badge: "65%",
+    description: "Standard academic wing corridor with regular class transit"
+  };
+}
+
