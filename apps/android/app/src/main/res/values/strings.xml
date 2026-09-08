@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">CampusSafe Scanner</string>
+    <string name="status_idle">Scanner Idle</string>
+    <string name="status_scanning">Scanning WiFi...</string>
+    <string name="status_dispatching">Posting to Vercel...</string>
+    <string name="status_success">Position Estimated</string>
+    <string name="status_error">Scan / Dispatch Failed</string>
+    <string name="permission_rationale">Location permission is required to scan nearby WiFi BSSIDs for indoor positioning.</string>
+</resources>

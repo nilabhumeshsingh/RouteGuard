@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { HeaderNav } from "./components/common/HeaderNav";
 import { FloatingControls } from "./components/controls/FloatingControls";
 import { BottomSheet } from "./components/sheet/BottomSheet";
@@ -216,6 +216,27 @@ export const App: React.FC = () => {
       nearestPlaceName: pos.nearestPlaceName || "Corridor"
     });
   }, []);
+
+  // Listen for native Android scanner updates via JavaScript Bridge
+  useEffect(() => {
+    // 1. Global callback handler
+    (window as any).onNativePositionUpdate = (pos: PositionEstimate) => {
+      handlePositionUpdate(pos);
+    };
+
+    // 2. CustomEvent listener
+    const handleCustomEvent = (e: any) => {
+      if (e.detail) {
+        handlePositionUpdate(e.detail);
+      }
+    };
+    window.addEventListener("nativePositionUpdate", handleCustomEvent as EventListener);
+
+    return () => {
+      window.removeEventListener("nativePositionUpdate", handleCustomEvent as EventListener);
+      delete (window as any).onNativePositionUpdate;
+    };
+  }, [handlePositionUpdate]);
 
   const handleToggleStepFreeProfile = () => {
     const nextProfile = activeProfile === "step-free" ? "recommended" : "step-free";
