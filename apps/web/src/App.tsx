@@ -6,10 +6,12 @@ import { CampusMapContainer } from "./components/map/CampusMapContainer";
 import { SearchSheet } from "./components/search/SearchSheet";
 import { RoutePreviewCard } from "./components/navigation/RoutePreviewCard";
 import { TurnByTurnNav } from "./components/navigation/TurnByTurnNav";
+import { EmergencyBanner } from "./components/emergency/EmergencyBanner";
+import { SmokeScrubber } from "./components/emergency/SmokeScrubber";
 import { FloorId, MapLayerConfig, SnapPoint, UserPositionState } from "./types";
 import { HazardOverlay, MobilityProfile, RoutePoint, RouteResult } from "@routeguard/shared";
 import { ArchitecturalRoom, POI } from "./data/floor2Data";
-import { calculateRouteTradeOffs, RouteComparison } from "./services/routingService";
+import { calculateRouteTradeOffs, calculateEvacuationRoute, RouteComparison, speakInstruction } from "./services/routingService";
 
 export const App: React.FC = () => {
   const [currentFloor, setCurrentFloor] = useState<FloorId>("floor-2");
@@ -32,8 +34,10 @@ export const App: React.FC = () => {
     nearestPlaceName: "AB1 Room 204"
   });
 
+  // Emergency & Hazard State
   const [isAlarmActive, setIsAlarmActive] = useState(false);
   const [smokeMinutes, setSmokeMinutes] = useState<0 | 2 | 5 | 10>(0);
+  const [showSmokeScrubber, setShowSmokeScrubber] = useState(false);
 
   // Routing State
   const [selectedPOI, setSelectedPOI] = useState<POI | null>(null);
@@ -66,13 +70,42 @@ export const App: React.FC = () => {
     setUserPos((prev) => ({ ...prev }));
   };
 
+  // One-Tap Evacuation Handler
+  const handleEvacuate = () => {
+    // Block the fire room, adjacent smoke corridor, and lifts
+    const blockedNodes = new Set(["node-208", "c-208", "c-lift"]);
+    const currentUserNode = "node-204";
+
+    const evacRoute = calculateEvacuationRoute(currentUserNode, blockedNodes);
+
+    if (evacRoute.status === "found") {
+      const exitPoi: POI = {
+        id: "poi-evac-exit",
+        name: "Fire Exit West (Ramp)",
+        category: "Emergency Exit",
+        nodeId: "exit-west",
+        aliases: ["fire exit", "west ramp"]
+      };
+
+      setSelectedPOI(exitPoi);
+      setActiveProfile("emergency");
+      setActiveRoute(evacRoute);
+      setIsNavigating(true);
+      setSnapPoint("half");
+
+      speakInstruction(
+        "Emergency evacuation started. Follow the green route to Fire Exit West Ramp. Avoid Corridor 208 and do not use elevators."
+      );
+    }
+  };
+
   // Start route preview when selecting a destination
   const handleSelectDestination = (poi: POI) => {
     setSelectedPOI(poi);
-    const startNode = "node-204"; // Default user location node
+    const startNode = "node-204"; // Current user location node
     const endNode = poi.nodeId;
 
-    const blocked = isAlarmActive ? new Set(["node-208", "c-208"]) : undefined;
+    const blocked = isAlarmActive ? new Set(["node-208", "c-208", "c-lift"]) : undefined;
     const comparison = calculateRouteTradeOffs(startNode, endNode, blocked);
     setRouteComparison(comparison);
     setActiveProfile("recommended");
@@ -129,23 +162,53 @@ export const App: React.FC = () => {
         currentFloor={currentFloor}
         isAlarmActive={isAlarmActive}
         onOpenGuardian={() => {}}
-        onOpenEmergency={() => setIsAlarmActive(!isAlarmActive)}
+        onOpenEmergency={() => {
+          const next = !isAlarmActive;
+          setIsAlarmActive(next);
+          if (next) {
+            setShowSmokeScrubber(true);
+            speakInstruction("Attention: Emergency alarm activated for Floor 2.");
+          }
+        }}
+      />
+
+      {/* Persistent Emergency Fire Banner */}
+      <EmergencyBanner
+        isAlarmActive={isAlarmActive}
+        alarmLocation="Room 208 (Computer & IoT Lab)"
+        onEvacuate={handleEvacuate}
+        onOpenSmokeScrubber={() => setShowSmokeScrubber(!showSmokeScrubber)}
       />
 
       {/* Main Map Viewport */}
-      <main className="relative flex-1 w-full h-full pt-11 pb-20 overflow-hidden">
+      <main
+        className={`relative flex-1 w-full h-full pb-20 overflow-hidden transition-all duration-200 ${
+          isAlarmActive ? "pt-28" : "pt-11"
+        }`}
+      >
         <CampusMapContainer
           currentFloor={currentFloor}
           layers={layers}
           userPosition={userPos}
           routePoints={activeRoute?.pathPoints || null}
-          routeIsStepFree={activeProfile === "step-free"}
+          routeIsStepFree={activeProfile === "step-free" || activeProfile === "emergency"}
           isEmergencyRoute={isAlarmActive}
           hazardOverlays={hazardOverlays}
           smokeMinutes={smokeMinutes}
           onSelectRoom={handleSelectRoom}
           onSelectNode={handleSelectNode}
         />
+
+        {/* Floating Smoke Scrubber Card */}
+        {showSmokeScrubber && (
+          <div className="absolute left-4 top-4 z-20 w-80 max-w-[calc(100vw-32px)]">
+            <SmokeScrubber
+              smokeMinutes={smokeMinutes}
+              onSelectMinutes={(m) => setSmokeMinutes(m)}
+              onClose={() => setShowSmokeScrubber(false)}
+            />
+          </div>
+        )}
 
         {/* Floating Action Controls */}
         <FloatingControls
