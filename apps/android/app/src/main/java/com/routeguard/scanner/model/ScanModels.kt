@@ -7,9 +7,10 @@ import com.google.gson.annotations.SerializedName
  */
 data class WifiReading(
     @SerializedName("bssid") val bssid: String,
-    @SerializedName("rssi") val rssi: Int,
-    @SerializedName("frequency") val frequency: Int,
-    @SerializedName("channel") val channel: Int,
+    @SerializedName("signal") val signal: Int,
+    @SerializedName("rssi") val rssi: Int = signal,
+    @SerializedName("frequency") val frequency: Int = 2412,
+    @SerializedName("channel") val channel: Int = 1,
     @SerializedName("ssid") val ssid: String = ""
 )
 
@@ -17,7 +18,8 @@ data class WifiReading(
  * Ingestion request payload dispatched to /api/position/estimate
  */
 data class PositionEstimateRequest(
-    @SerializedName("fingerprints") val fingerprints: List<WifiReading>,
+    @SerializedName("items") val items: List<WifiReading>,
+    @SerializedName("fingerprints") val fingerprints: List<WifiReading> = items,
     @SerializedName("previousPosition") val previousPosition: PreviousPosition? = null
 )
 

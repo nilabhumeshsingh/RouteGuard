@@ -15,12 +15,19 @@ router.post("/estimate", async (req: Request, res: Response) => {
       items = req.body.items;
     } else if (Array.isArray(req.body?.scan)) {
       items = req.body.scan;
+    } else if (Array.isArray(req.body?.fingerprints)) {
+      items = req.body.fingerprints;
     } else {
       res.status(400).json({
         error: "Invalid request payload. Expected { items: [{ bssid, signal }] } or array of scan items."
       });
       return;
     }
+
+    items = items.map((it: any) => ({
+      ...it,
+      signal: it.signal !== undefined ? it.signal : it.rssi
+    }));
 
     if (items.length === 0) {
       res.status(400).json({

@@ -35,6 +35,7 @@ class PositionApiClient(var baseUrl: String = "https://routeguard.vercel.app") {
             val endpoint = "$normalizedBaseUrl/api/position/estimate"
 
             val requestData = PositionEstimateRequest(
+                items = fingerprints,
                 fingerprints = fingerprints,
                 previousPosition = previousPosition
             )
