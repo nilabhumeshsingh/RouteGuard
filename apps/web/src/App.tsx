@@ -3,6 +3,7 @@ import { HeaderNav } from "./components/common/HeaderNav";
 import { FloatingControls } from "./components/controls/FloatingControls";
 import { BottomSheet } from "./components/sheet/BottomSheet";
 import { CampusMapContainer } from "./components/map/CampusMapContainer";
+import { TopSearchBar } from "./components/search/TopSearchBar";
 import { SearchSheet } from "./components/search/SearchSheet";
 import { RoutePreviewCard } from "./components/navigation/RoutePreviewCard";
 import { TurnByTurnNav } from "./components/navigation/TurnByTurnNav";
@@ -250,6 +251,14 @@ export const App: React.FC = () => {
         alarmLocation="Room 208 (Computer & IoT Lab)"
         onEvacuate={handleEvacuate}
         onOpenSmokeScrubber={() => setShowSmokeScrubber(!showSmokeScrubber)}
+      />
+
+      {/* Floating Top Search Bar (Apple Maps Style) */}
+      <TopSearchBar
+        onSelectDestination={handleSelectDestination}
+        selectedPOI={selectedPOI}
+        onClearDestination={handleEndNavigation}
+        isAlarmActive={isAlarmActive}
       />
 
       {/* Admin Demo Simulation Toolbar */}

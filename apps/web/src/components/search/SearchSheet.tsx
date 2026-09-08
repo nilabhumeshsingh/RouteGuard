@@ -1,17 +1,16 @@
 import React, { useState, useMemo } from "react";
-import { Search, MapPin, Compass, ShieldAlert, Cpu, User, DoorOpen, Sparkles, Navigation } from "lucide-react";
+import { Compass, ShieldAlert, Cpu, User, DoorOpen, Navigation, Sparkles } from "lucide-react";
 import { RAW_POIS, POI } from "../../data/floor2Data";
 
 interface SearchSheetProps {
   onSelectDestination: (poi: POI) => void;
-  searchQuery: string;
-  onSearchChange: (q: string) => void;
+  searchQuery?: string;
+  onSearchChange?: (q: string) => void;
 }
 
 export const SearchSheet: React.FC<SearchSheetProps> = ({
   onSelectDestination,
-  searchQuery,
-  onSearchChange
+  searchQuery = ""
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
 
@@ -26,7 +25,7 @@ export const SearchSheet: React.FC<SearchSheetProps> = ({
       if (selectedCategory === "Faculty" && poi.category !== "Faculty Office") return false;
       if (selectedCategory === "Classrooms" && poi.category !== "Classroom" && poi.category !== "Seminar Room") return false;
 
-      // Query filter
+      // Query filter if provided
       if (!searchQuery.trim()) return true;
       const q = searchQuery.toLowerCase();
       const matchName = poi.name.toLowerCase().includes(q);
@@ -57,24 +56,20 @@ export const SearchSheet: React.FC<SearchSheetProps> = ({
 
   return (
     <div className="space-y-3.5">
-      {/* Search Input Box (Apple Pill) */}
-      <div className="relative flex items-center">
-        <Search className="absolute left-3.5 w-4 h-4 text-[#86868b] pointer-events-none" />
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Search rooms, labs, exits, restrooms..."
-          className="w-full h-11 pl-10 pr-4 rounded-full bg-[#e3e3e8]/60 focus:bg-white text-[15px] text-[#1d1d1f] placeholder:text-[#86868b] border border-transparent focus:border-[#0071e3] focus:outline-none transition-all shadow-inner"
-        />
-        {searchQuery && (
-          <button
-            onClick={() => onSearchChange("")}
-            className="absolute right-3.5 text-xs text-[#86868b] hover:text-[#1d1d1f] bg-black/5 rounded-full px-2 py-0.5"
-          >
-            Clear
-          </button>
-        )}
+      {/* Directory Header */}
+      <div className="flex items-center justify-between pt-1">
+        <div>
+          <h3 className="text-[16px] font-bold text-[#1d1d1f] tracking-tight">
+            Floor 2 Directory
+          </h3>
+          <p className="text-[12px] text-[#86868b]">
+            Tap any destination below or use the top search bar
+          </p>
+        </div>
+        <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#0066cc]/10 text-[#0066cc] text-[11px] font-semibold">
+          <Sparkles className="w-3 h-3" />
+          <span>{RAW_POIS.length} Places</span>
+        </div>
       </div>
 
       {/* Category Filter Chips */}
@@ -97,11 +92,11 @@ export const SearchSheet: React.FC<SearchSheetProps> = ({
         })}
       </div>
 
-      {/* Autocomplete Results List */}
+      {/* Directory Results List */}
       <div className="space-y-1.5 max-h-[50vh] overflow-y-auto pt-1">
         {filteredPOIs.length === 0 ? (
           <div className="text-center py-8 text-[#86868b] text-[14px]">
-            No destinations found matching "{searchQuery}"
+            No destinations found in this category
           </div>
         ) : (
           filteredPOIs.map((poi) => (
@@ -110,27 +105,27 @@ export const SearchSheet: React.FC<SearchSheetProps> = ({
               onClick={() => onSelectDestination(poi)}
               className="flex items-center justify-between p-3 rounded-[14px] bg-white hover:bg-[#f2f2f7] border border-black/5 active:scale-[0.99] transition-all cursor-pointer"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-black/5 flex items-center justify-center">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-black/5 flex items-center justify-center shrink-0">
                   {getCategoryIcon(poi.category)}
                 </div>
-                <div>
-                  <h4 className="text-[14px] font-semibold text-[#1d1d1f] flex items-center gap-1.5">
+                <div className="min-w-0">
+                  <h4 className="text-[14px] font-semibold text-[#1d1d1f] flex items-center gap-1.5 truncate">
                     {poi.name}
                     {poi.category === "Emergency Exit" && (
-                      <span className="text-[10px] bg-[#34c759]/15 text-[#248a3d] font-bold px-1.5 py-0.5 rounded-md">
+                      <span className="text-[10px] bg-[#34c759]/15 text-[#248a3d] font-bold px-1.5 py-0.5 rounded-md shrink-0">
                         SAFE EXIT
                       </span>
                     )}
                   </h4>
-                  <p className="text-[12px] text-[#86868b]">
+                  <p className="text-[12px] text-[#86868b] truncate">
                     {poi.category} • 2nd Floor
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5 text-[#0066cc] text-[13px] font-semibold">
-                <span>Navigate</span>
+              <div className="flex items-center gap-1.5 text-[#0066cc] text-[13px] font-semibold shrink-0 pl-2">
+                <span>Route</span>
                 <Navigation className="w-3.5 h-3.5" />
               </div>
             </div>

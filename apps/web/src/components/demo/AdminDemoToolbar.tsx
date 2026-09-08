@@ -56,7 +56,7 @@ export const AdminDemoToolbar: React.FC<AdminDemoToolbarProps> = ({
   };
 
   return (
-    <div className="fixed left-4 top-14 z-20 select-none">
+    <div className="fixed left-4 bottom-24 z-20 select-none flex flex-col-reverse items-start">
       {/* Mini Toggle Pill */}
       <div className="flex items-center gap-1.5 p-1 bg-white/90 backdrop-blur-md rounded-full border border-black/8 shadow-sm">
         <button
@@ -65,13 +65,13 @@ export const AdminDemoToolbar: React.FC<AdminDemoToolbarProps> = ({
         >
           <Sliders className="w-3.5 h-3.5 text-[#0066cc]" />
           <span>Demo Controls</span>
-          {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
         </button>
       </div>
 
       {/* Expanded Control Palette */}
       {isExpanded && (
-        <div className="mt-2 w-72 bg-white/95 backdrop-blur-xl border border-black/8 rounded-[20px] shadow-floating p-3 space-y-2.5 animate-in fade-in zoom-in-95 duration-150">
+        <div className="mb-2 w-72 bg-white/95 backdrop-blur-xl border border-black/8 rounded-[20px] shadow-floating p-3 space-y-2.5 animate-in fade-in zoom-in-95 duration-150">
           <div className="px-1 flex items-center justify-between border-b border-black/5 pb-1.5">
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#86868b]">
               Interactive Simulation

@@ -26,7 +26,7 @@ export const FloatingControls: React.FC<FloatingControlsProps> = ({
   ];
 
   return (
-    <div className="fixed right-4 top-16 z-20 flex flex-col items-end gap-3 pointer-events-none">
+    <div className="fixed right-4 top-32 z-20 flex flex-col items-end gap-3 pointer-events-none">
       {/* Floor Selector (Vertical Capsule) */}
       <div className="pointer-events-auto flex flex-col bg-white/90 backdrop-blur-md rounded-2xl border border-black/8 shadow-sm overflow-hidden p-1 gap-1">
         {floors.map((fl) => {
