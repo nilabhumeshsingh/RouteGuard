@@ -159,6 +159,39 @@ export const App: React.FC = () => {
     };
   }, []);
 
+  // Poll live WiFi scanner from backend (laptop-1 or active device)
+  useEffect(() => {
+    let cancelled = false;
+    const pollInterval = setInterval(async () => {
+      try {
+        const res = await fetch("/api/scan/laptop-1");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled || !data || !data.position) return;
+
+        const pos = data.position;
+        setUserPos({
+          x: pos.x,
+          y: pos.y,
+          floorId: "floor-2",
+          uncertaintyRadius: pos.uncertaintyMeters || 2.0,
+          nearestPlaceName: pos.label || "Floor 2"
+        });
+        setSignalAge(Math.max(0, Math.round((data.ageMs || 0) / 1000)));
+        setScannerLabel(`WIFI · ${pos.confidence ?? 1}`);
+        if (data.apCount !== undefined) setApCount(data.apCount);
+        setIsScannerConnected(true);
+      } catch {
+        // Backend temporarily offline
+      }
+    }, 2000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(pollInterval);
+    };
+  }, []);
+
   // Toggle map detail layer
   const toggleLayer = (layer: keyof MapLayerConfig) => {
     setLayers((prev) => ({ ...prev, [layer]: !prev[layer] }));

@@ -58,16 +58,78 @@ def export_csv(aps, filename="muj_wifi_scan.csv"):
         writer.writerows(aps)
     print(f"✓ Exported {len(aps)} APs to {filename}")
 
-if __name__ == "__main__":
-    aps = scan()
-    print(f"\nFound {len(aps)} iBUS@MUJ Access Points:")
-    print("-" * 75)
-    print(f"{'STATUS':<8} {'BSSID':<20} {'CHAN':<6} {'FREQ':<12} {'SIGNAL':<8} {'RATE'}")
-    print("-" * 75)
-    for ap in aps:
-        status = "* LIVE" if ap["in_use"] else "  NEAR"
-        print(f"{status:<8} {ap['bssid']:<20} {ap['channel']:<6} {ap['frequency']:<12} {ap['signal_pct'] + '%':<8} {ap['rate']}")
-    print("-" * 75)
+def post_scan(aps, url="http://localhost:4000/api/scan", device_id="laptop-1"):
+    import urllib.request
+    import urllib.error
+    
+    payload = {
+        "deviceId": device_id,
+        "timestamp": int(datetime.datetime.now().timestamp() * 1000),
+        "aps": [
+            {
+                "bssid": a["bssid"],
+                "rssi": int(float(a["signal_pct"]) / 2 - 100) if a["signal_pct"] else -70,
+                "ssid": a["ssid"]
+            }
+            for a in aps
+        ]
+    }
+    
+    try:
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(req, timeout=5) as res:
+            data = json.loads(res.read().decode("utf-8"))
+            pos = data.get("position")
+            if pos:
+                print("\n=======================================================")
+                print(f"📍 ESTIMATED LOCATION: {pos.get('label', 'Unknown')}")
+                print(f"   Coordinates:  (X: {pos.get('x')}, Y: {pos.get('y')})")
+                print(f"   Confidence:   {int(pos.get('confidence', 0) * 100)}%")
+                print(f"   Anchors Used: {pos.get('anchorsUsed', 0)} APs")
+                print(f"   Uncertainty:  ±{pos.get('uncertaintyMeters', 0)}m")
+                print("=======================================================\n")
+            else:
+                print("Scan posted. No confident location found.")
+            return data
+    except Exception as e:
+        print(f"Could not reach {url}: {e}")
+        return None
 
-    if "--csv" in sys.argv:
-        export_csv(aps)
+if __name__ == "__main__":
+    import time
+    
+    continuous = "-c" in sys.argv or "--continuous" in sys.argv or "--live" in sys.argv
+    device_id = "laptop-1"
+    url = "http://localhost:4000/api/scan"
+    
+    for i, arg in enumerate(sys.argv):
+        if arg in ("--device", "-d") and i + 1 < len(sys.argv):
+            device_id = sys.argv[i + 1]
+        elif arg in ("--url", "-u") and i + 1 < len(sys.argv):
+            url = sys.argv[i + 1]
+
+    while True:
+        aps = scan()
+        print(f"\nFound {len(aps)} iBUS@MUJ Access Points:")
+        print("-" * 75)
+        print(f"{'STATUS':<8} {'BSSID':<20} {'CHAN':<6} {'FREQ':<12} {'SIGNAL':<8} {'RATE'}")
+        print("-" * 75)
+        for ap in aps:
+            status = "* LIVE" if ap["in_use"] else "  NEAR"
+            print(f"{status:<8} {ap['bssid']:<20} {ap['channel']:<6} {ap['frequency']:<12} {ap['signal_pct'] + '%':<8} {ap['rate']}")
+        print("-" * 75)
+
+        if "--csv" in sys.argv:
+            export_csv(aps)
+
+        # Query location from MongoDB via API
+        post_scan(aps, url=url, device_id=device_id)
+
+        if not continuous:
+            break
+        time.sleep(2)
+

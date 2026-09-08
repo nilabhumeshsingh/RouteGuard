@@ -32,10 +32,30 @@ scanRouter.post("/", async (req: Request, res: Response) => {
     // DB not connected yet; fallback
   }
 
+  const normalizedAps = aps.map((ap: any) => {
+    let rssi = ap.rssi;
+    if (rssi === undefined && ap.signal !== undefined) {
+      const s = typeof ap.signal === "string" ? parseFloat(ap.signal) : ap.signal;
+      rssi = s > 0 ? Math.round(s / 2 - 100) : s;
+    }
+    if (rssi === undefined && ap.signal_pct !== undefined) {
+      const s = typeof ap.signal_pct === "string" ? parseFloat(ap.signal_pct) : ap.signal_pct;
+      rssi = s > 0 ? Math.round(s / 2 - 100) : s;
+    }
+    if (typeof rssi === "number" && rssi > 0) {
+      rssi = Math.round(rssi / 2 - 100);
+    }
+    return {
+      ...ap,
+      bssid: (ap.bssid || "").toUpperCase(),
+      rssi: typeof rssi === "number" ? rssi : -70
+    };
+  });
+
   if (db) {
     try {
       const fingerprints = await db.collection("fingerprints").find({}).toArray();
-      position = runKNN(aps, fingerprints as any);
+      position = runKNN(normalizedAps, fingerprints as any);
     } catch (err: any) {
       console.warn("[scan] k-NN calculation fallback notice:", err?.message || err);
     }
