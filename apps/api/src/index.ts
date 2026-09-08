@@ -3,6 +3,9 @@ import { createApp } from "./app.js";
 import { config } from "./config.js";
 import { connectMongo, disconnectMongo } from "./db.js";
 
+export * from "./safety/index.js";
+export { createApp } from "./app.js";
+
 async function bootstrap() {
   // Connect to database
   await connectMongo();
