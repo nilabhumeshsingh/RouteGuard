@@ -532,9 +532,11 @@
       // C. Hazard Overlays
       const hazardsMap = new Map();
 
+      let activeHazardPosition = { x: -7.25, z: -7.25 };
+
       function setHazard(hazard) {
         if (!hazard) return;
-        const raw = String(hazard.roomId || hazard.id || hazard.zoneId || '208');
+        const raw = String(hazard.roomId || hazard.id || hazard.zoneId || '219');
         const cleanId = raw.replace(/^(room-|node-|ZONE_FLOOR2_)/i, '').trim();
         const id = hazard.id || `hazard-${cleanId}`;
         clearHazard(id);
@@ -544,6 +546,8 @@
 
         const cx = (targetRoom.x0 + targetRoom.x1) / 2;
         const cz = (targetRoom.z0 + targetRoom.z1) / 2;
+        activeHazardPosition = { x: cx, z: cz };
+
         const w = targetRoom.x1 - targetRoom.x0;
         const d = targetRoom.z1 - targetRoom.z0;
 
@@ -595,17 +599,30 @@
         const minutes = typeof forecast === 'number' ? forecast : (forecast.minutes || 0);
         if (minutes <= 0) return;
 
+        let cx = activeHazardPosition.x;
+        let cz = activeHazardPosition.z;
+
+        if (forecast && typeof forecast === 'object') {
+          if (forecast.roomId) {
+            const cleanId = String(forecast.roomId).replace(/^(room-|node-|ZONE_FLOOR2_)/i, '').trim();
+            const rm = ROOMS_DATA.find(r => r.id === cleanId || r.id === forecast.roomId);
+            if (rm) {
+              cx = (rm.x0 + rm.x1) / 2;
+              cz = (rm.z0 + rm.z1) / 2;
+            }
+          }
+        }
+
         const r = minutes === 2 ? 3.5 : minutes === 5 ? 7.0 : 12.0;
         const smokeGeo = new THREE.SphereGeometry(r, 16, 16);
         const smokeMat = new THREE.MeshStandardMaterial({
           color: 0x11161f,
           transparent: true,
-          opacity: 0.5,
+          opacity: 0.55,
           roughness: 0.95
         });
         const smokeMesh = new THREE.Mesh(smokeGeo, smokeMat);
-        // Default epicenter at IoT Lab 208
-        smokeMesh.position.set(20.5, 1.5, 0);
+        smokeMesh.position.set(cx, 1.8, cz);
         smokeGroup.add(smokeMesh);
       }
 

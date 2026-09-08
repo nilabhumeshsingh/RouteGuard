@@ -102,21 +102,8 @@ export const App: React.FC = () => {
   });
 
   // Hazard Overlays
-  const [hazardOverlays, setHazardOverlays] = useState<HazardOverlay[]>([
-    {
-      zoneId: "room-207",
-      floorId: "floor-2",
-      severity: "fire",
-      polygon: [
-        { x: 757.5, y: 205 },
-        { x: 817.5, y: 205 },
-        { x: 817.5, y: 280 },
-        { x: 757.5, y: 280 }
-      ],
-      pulsed: true,
-      smokeIntensity: 0.85
-    }
-  ]);
+  const [hazardOverlays, setHazardOverlays] = useState<HazardOverlay[]>([]);
+  const [activeFireRoom, setActiveFireRoom] = useState<string | null>(null);
 
   // Signal age ticker
   useEffect(() => {
@@ -243,6 +230,7 @@ export const App: React.FC = () => {
   // Dismiss Alarm
   const handleDismissAlarm = () => {
     setIsAlarmActive(false);
+    setActiveFireRoom(null);
     setIsNavigating(false);
     setSelectedPOI(null);
     setActiveRoute(null);
@@ -271,7 +259,7 @@ export const App: React.FC = () => {
         }
 
         if (al) {
-          const fireRoomCode = (al.roomId || "208").replace(/^(room\s*|node-)/i, "").trim();
+          const fireRoomCode = (al.roomId || "219").replace(/^(room\s*|node-)/i, "").trim();
           const fireLabel = al.label || `Room ${fireRoomCode}`;
 
           setAlarmLocation(fireLabel);
@@ -282,19 +270,36 @@ export const App: React.FC = () => {
             })
           );
 
-          if (!isAlarmActive) {
+          if (!isAlarmActive || activeFireRoom !== fireRoomCode) {
             setIsAlarmActive(true);
+            setActiveFireRoom(fireRoomCode);
+
+            const rm = ARCHITECTURAL_ROOMS.find(
+              (r) =>
+                r.code.toLowerCase() === fireRoomCode.toLowerCase() ||
+                r.id.toLowerCase() === `room-${fireRoomCode.toLowerCase()}` ||
+                r.name.toLowerCase().includes(fireRoomCode.toLowerCase())
+            );
+            const poly = rm
+              ? [
+                  { x: rm.bounds.x, y: rm.bounds.y },
+                  { x: rm.bounds.x + rm.bounds.width, y: rm.bounds.y },
+                  { x: rm.bounds.x + rm.bounds.width, y: rm.bounds.y + rm.bounds.height },
+                  { x: rm.bounds.x, y: rm.bounds.y + rm.bounds.height }
+                ]
+              : [
+                  { x: 337.5, y: 302.5 },
+                  { x: 405, y: 302.5 },
+                  { x: 405, y: 400 },
+                  { x: 337.5, y: 400 }
+                ];
+
             setHazardOverlays([
               {
                 zoneId: "room-" + fireRoomCode,
                 floorId: "floor-2",
                 severity: "fire",
-                polygon: [
-                  { x: 757.5, y: 205 },
-                  { x: 817.5, y: 205 },
-                  { x: 817.5, y: 280 },
-                  { x: 757.5, y: 280 }
-                ],
+                polygon: poly,
                 pulsed: true,
                 smokeIntensity: 0.85
               }
@@ -304,6 +309,7 @@ export const App: React.FC = () => {
           }
         } else if ((data.active === false || (Array.isArray(data) && !data.some((i: any) => i.active))) && isAlarmActive && !isScenarioRunning) {
           setIsAlarmActive(false);
+          setActiveFireRoom(null);
           setHazardOverlays([]);
           setSmokeMinutes(0);
           setActiveRoute(null);
@@ -318,7 +324,7 @@ export const App: React.FC = () => {
       cancelled = true;
       clearInterval(fireInterval);
     };
-  }, [isAlarmActive, handleEvacuate, isScenarioRunning]);
+  }, [isAlarmActive, activeFireRoom, handleEvacuate, isScenarioRunning]);
 
   // Toggle map detail layer
   const toggleLayer = (layer: keyof MapLayerConfig) => {
@@ -338,7 +344,11 @@ export const App: React.FC = () => {
 
       const startNode = "node-204";
       const endNode = poi.nodeId;
-      const blocked = isAlarmActive ? new Set(["node-207", "node-208", "c-208", "c-lift"]) : undefined;
+      const blocked = isAlarmActive
+        ? activeFireRoom === "219"
+          ? new Set(["node-219", "node-219a", "node-219c", "c-219"])
+          : new Set(["node-207", "node-208", "c-208", "c-lift"])
+        : undefined;
 
       const comparison = calculateRouteTradeOffs(startNode, endNode, blocked);
       setRouteComparison(comparison);
@@ -417,8 +427,42 @@ export const App: React.FC = () => {
     setScenarioTimeLeft(60);
     setEvacuationProgress(0);
     setIsAlarmActive(true);
-    setAlarmLocation(`Room ${params.fireRoomId}`);
+    const fireCode = (params.fireRoomId || "219").replace(/^(room\s*|node-)/i, "").trim();
+    setActiveFireRoom(fireCode);
+    setAlarmLocation(`Room ${fireCode}`);
     setAlarmTime(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+
+    const rm = ARCHITECTURAL_ROOMS.find(
+      (r) =>
+        r.code.toLowerCase() === fireCode.toLowerCase() ||
+        r.id.toLowerCase() === `room-${fireCode.toLowerCase()}` ||
+        r.name.toLowerCase().includes(fireCode.toLowerCase())
+    );
+    const poly = rm
+      ? [
+          { x: rm.bounds.x, y: rm.bounds.y },
+          { x: rm.bounds.x + rm.bounds.width, y: rm.bounds.y },
+          { x: rm.bounds.x + rm.bounds.width, y: rm.bounds.y + rm.bounds.height },
+          { x: rm.bounds.x, y: rm.bounds.y + rm.bounds.height }
+        ]
+      : [
+          { x: 337.5, y: 302.5 },
+          { x: 405, y: 302.5 },
+          { x: 405, y: 400 },
+          { x: 337.5, y: 400 }
+        ];
+
+    setHazardOverlays([
+      {
+        zoneId: "room-" + fireCode,
+        floorId: "floor-2",
+        severity: "fire",
+        polygon: poly,
+        pulsed: true,
+        smokeIntensity: 0.85
+      }
+    ]);
+    setSmokeMinutes(2);
 
     // Advance smoke & evac % over 60s
     if (scenarioTimerRef.current) clearInterval(scenarioTimerRef.current);
@@ -444,7 +488,7 @@ export const App: React.FC = () => {
     }, 1000);
 
     // Trigger dynamic evacuation rerouting
-    handleEvacuate();
+    handleEvacuate(fireCode);
   };
 
   const handleStopScenario = () => {

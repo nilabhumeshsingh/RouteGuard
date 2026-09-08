@@ -157,15 +157,18 @@ export const Indoor3DAdapter = forwardRef<Indoor3DAdapterRef, Indoor3DAdapterPro
   // Forward smoke minutes
   useEffect(() => {
     if (ready) {
+      const activeHazard = props.hazards && props.hazards.length > 0 ? props.hazards[0] : null;
+      const rawRoomId = activeHazard ? ((activeHazard as any).roomId || activeHazard.zoneId) : undefined;
+      const roomId = rawRoomId ? String(rawRoomId).replace(/^(room-|ZONE_FLOOR2_)/i, '') : undefined;
       iframeRef.current?.contentWindow?.postMessage(
         {
           type: 'SET_SMOKE_FORECAST',
-          forecast: { minutes: props.smokeMinutes || 0 }
+          forecast: { minutes: props.smokeMinutes || 0, roomId }
         },
         '*'
       );
     }
-  }, [props.smokeMinutes, ready]);
+  }, [props.smokeMinutes, props.hazards, ready]);
 
   // Forward users
   useEffect(() => {

@@ -249,6 +249,33 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
 
   const smokeProps = getSmokeProps(smokeMinutes);
 
+  // Active fire hazard detection & coordinate computation
+  const activeFireHazard = hazardOverlays.find((h) => h.severity === "fire");
+  const rawFireCode = (activeFireHazard?.zoneId || (activeFireHazard as any)?.roomId || "219")
+    .replace(/^(room-|ZONE_FLOOR2_)/i, "")
+    .trim();
+  const matchedFireRoom = ARCHITECTURAL_ROOMS.find(
+    (r) =>
+      r.code.toLowerCase() === rawFireCode.toLowerCase() ||
+      r.id.toLowerCase() === `room-${rawFireCode.toLowerCase()}` ||
+      r.id.toLowerCase() === rawFireCode.toLowerCase() ||
+      r.name.toLowerCase().includes(rawFireCode.toLowerCase())
+  );
+  const fireBounds = matchedFireRoom
+    ? matchedFireRoom.bounds
+    : activeFireHazard?.polygon && activeFireHazard.polygon.length > 0
+    ? {
+        x: Math.min(...activeFireHazard.polygon.map((p) => p.x)),
+        y: Math.min(...activeFireHazard.polygon.map((p) => p.y)),
+        width: Math.max(...activeFireHazard.polygon.map((p) => p.x)) - Math.min(...activeFireHazard.polygon.map((p) => p.x)) || 60,
+        height: Math.max(...activeFireHazard.polygon.map((p) => p.y)) - Math.min(...activeFireHazard.polygon.map((p) => p.y)) || 75
+      }
+    : { x: 337.5, y: 302.5, width: 67.5, height: 97.5 };
+
+  const fireCx = fireBounds.x + fireBounds.width / 2;
+  const fireCy = fireBounds.y + fireBounds.height / 2;
+  const fireLabel = matchedFireRoom ? `FIRE ${matchedFireRoom.name.toUpperCase()}` : `FIRE ROOM ${rawFireCode}`;
+
   return (
     <div
       ref={containerRef}
@@ -670,36 +697,36 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
           </g>
         )}
 
-        {/* Hazard Overlays (Fire Compartment & Smoke Plumes in Room 208) */}
+        {/* Hazard Overlays (Fire Compartment & Dynamic Smoke Plumes) */}
         {layers.hazards && (
           <g id="hazards-layer">
-            {/* Active Fire Compartment (Room 208: x 757.5, y 205, w 60, h 75) */}
-            {hazardOverlays.some((h) => h.severity === "fire") && (
+            {/* Active Fire Compartment */}
+            {activeFireHazard && (
               <g className="animate-fire pointer-events-none">
                 <rect
-                  x="757.5"
-                  y="205"
-                  width="60"
-                  height="75"
+                  x={fireBounds.x}
+                  y={fireBounds.y}
+                  width={fireBounds.width}
+                  height={fireBounds.height}
                   rx="6"
                   fill="url(#fireCompartmentGrad)"
                   stroke="#ff3b30"
                   strokeWidth="2.5"
                   strokeDasharray="6 3"
                 />
-                <g transform="translate(787.5, 235)">
+                <g transform={`translate(${fireCx}, ${fireCy - 8})`}>
                   <circle r="13" fill="#ff3b30" stroke="#ffffff" strokeWidth="2" filter="url(#pinShadow)" />
                   <text textAnchor="middle" y="1" dominantBaseline="central" className="text-[12px]">
                     🔥
                   </text>
                 </g>
                 <text
-                  x="787.5"
-                  y="262"
+                  x={fireCx}
+                  y={fireCy + 18}
                   textAnchor="middle"
                   className="text-[8px] font-bold fill-[#ff453a] tracking-wide"
                 >
-                  FIRE LAB 208
+                  {fireLabel}
                 </text>
               </g>
             )}
@@ -708,8 +735,8 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
             {smokeMinutes > 0 && (
               <g id="smoke-simulation" className="pointer-events-none">
                 <circle
-                  cx="787.5"
-                  cy="242.5"
+                  cx={fireCx}
+                  cy={fireCy}
                   r={smokeProps.r}
                   fill="url(#smokePlumeGrad)"
                   opacity={smokeProps.opacity}
@@ -717,8 +744,8 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
                 />
                 {smokeMinutes >= 5 && (
                   <circle
-                    cx="727.5"
-                    cy="242.5"
+                    cx={fireCx - (fireCx > 500 ? 60 : -60)}
+                    cy={fireCy}
                     r={smokeProps.r * 0.75}
                     fill="url(#smokePlumeGrad)"
                     opacity={smokeProps.opacity * 0.8}
@@ -727,8 +754,8 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
                 )}
                 {smokeMinutes >= 10 && (
                   <circle
-                    cx="660"
-                    cy="242.5"
+                    cx={fireCx - (fireCx > 500 ? 120 : -120)}
+                    cy={fireCy}
                     r={smokeProps.r * 0.85}
                     fill="url(#smokePlumeGrad)"
                     opacity={smokeProps.opacity * 0.8}

@@ -167,8 +167,8 @@ def listen_serial():
 
     RESET_KEYWORDS = [
         "rst cause", "ets jan", "rst:0x", "ets jun",
-        "boot", "button", "fire", "trigger", "reset", "reboot",
-        "starting scan pass", "fire_trigger"
+        "hard resetting", "system reset", "fire_trigger",
+        "manual emergency push button", "boot_reset"
     ]
 
     while True:
