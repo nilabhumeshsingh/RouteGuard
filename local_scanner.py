@@ -58,9 +58,13 @@ def export_csv(aps, filename="muj_wifi_scan.csv"):
         writer.writerows(aps)
     print(f"✓ Exported {len(aps)} APs to {filename}")
 
+_history_labels = []
+_history_coords = []
+
 def post_scan(aps, url=None, device_id="laptop-1"):
     import urllib.request
     import urllib.error
+    from collections import Counter
     
     payload = {
         "deviceId": device_id,
@@ -98,9 +102,27 @@ def post_scan(aps, url=None, device_id="laptop-1"):
             pass
 
     if last_pos:
+        raw_label = last_pos.get('label', 'Unknown')
+        _history_labels.append(raw_label)
+        if len(_history_labels) > 3:
+            _history_labels.pop(0)
+
+        stable_label = Counter(_history_labels).most_common(1)[0][0]
+
+        px = last_pos.get('x')
+        py = last_pos.get('y')
+        if px is not None and py is not None:
+            _history_coords.append((px, py))
+            if len(_history_coords) > 3:
+                _history_coords.pop(0)
+            disp_x = round(sum(c[0] for c in _history_coords) / len(_history_coords), 2)
+            disp_y = round(sum(c[1] for c in _history_coords) / len(_history_coords), 2)
+        else:
+            disp_x, disp_y = px, py
+
         print("\n=======================================================")
-        print(f"📍 ESTIMATED LOCATION: {last_pos.get('label', 'Unknown')}")
-        print(f"   Coordinates:  (X: {last_pos.get('x')}, Y: {last_pos.get('y')})")
+        print(f"📍 ESTIMATED LOCATION: {stable_label}")
+        print(f"   Coordinates:  (X: {disp_x}, Y: {disp_y})")
         print(f"   Confidence:   {int(last_pos.get('confidence', 0) * 100)}%")
         print(f"   Anchors Used: {last_pos.get('anchorsUsed', 0)} APs")
         print(f"   Uncertainty:  ±{last_pos.get('uncertaintyMeters', 0)}m")

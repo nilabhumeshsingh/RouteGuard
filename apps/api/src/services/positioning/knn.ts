@@ -74,12 +74,23 @@ export function runKNN(scanAps: APReading[], fingerprints: Fingerprint[]): Posit
     };
   }
 
+  // Spatial consensus: prune candidates farther than 6.5m from top match
+  const bestX = distances[0].fp.x;
+  const bestY = distances[0].fp.y;
+  const cluster = distances.filter(d => {
+    const dx = d.fp.x - bestX;
+    const dy = d.fp.y - bestY;
+    return Math.sqrt(dx * dx + dy * dy) <= 6.5;
+  });
+
+  const effective = cluster.length > 0 ? cluster : distances.slice(0, 3);
+
   const epsilon = 0.1;
   let totalWeight = 0;
   let xSum = 0, ySum = 0;
 
-  for (const d of distances) {
-    const w = 1 / (d.dist + epsilon);
+  for (const d of effective) {
+    const w = 1 / ((d.dist + epsilon) * (d.dist + epsilon));
     xSum += d.fp.x * w;
     ySum += d.fp.y * w;
     totalWeight += w;
@@ -93,8 +104,8 @@ export function runKNN(scanAps: APReading[], fingerprints: Fingerprint[]): Posit
   ).length;
   const confidence = Number(Math.min(1, bestOverlap / 5).toFixed(2));
 
-  const xs = distances.map(d => d.fp.x);
-  const ys = distances.map(d => d.fp.y);
+  const xs = effective.map(d => d.fp.x);
+  const ys = effective.map(d => d.fp.y);
   const xRange = Math.max(...xs) - Math.min(...xs);
   const yRange = Math.max(...ys) - Math.min(...ys);
   const uncertainty = Number((Math.max(xRange, yRange) / 2).toFixed(2));

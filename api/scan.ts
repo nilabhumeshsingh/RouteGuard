@@ -37,7 +37,7 @@ async function getDb() {
   }
 }
 
-function runKnnEstimate(scanAps: any[], fingerprints: any[]) {
+function runKnnEstimate(scanAps: any[], fingerprints: any[], prevPosition?: any) {
   if (!scanAps || scanAps.length === 0 || !fingerprints || fingerprints.length === 0) return null;
 
   function rssiDist(sAps: any[], fp: any) {
@@ -76,7 +76,7 @@ function runKnnEstimate(scanAps: any[], fingerprints: any[]) {
     .map(fp => ({ fp, dist: rssiDist(scanAps, fp) }))
     .filter(m => m.dist < Infinity)
     .sort((a, b) => a.dist - b.dist)
-    .slice(0, 5);
+    .slice(0, 6);
 
   if (matches.length === 0) return null;
 
@@ -119,52 +119,95 @@ function runKnnEstimate(scanAps: any[], fingerprints: any[]) {
     return [0, 0];
   }
 
+  // Spatial consensus: prune candidates farther than 6.5m from top match to prevent balcony/wing distortion
+  const [bestFx, bestFy] = getFingerprint3D(matches[0].fp);
+  const cluster = matches.filter(m => {
+    const [fx, fy] = getFingerprint3D(m.fp);
+    const dx = fx - bestFx;
+    const dy = fy - bestFy;
+    return Math.sqrt(dx * dx + dy * dy) <= 6.5;
+  });
+
+  const effectiveMatches = cluster.length > 0 ? cluster : matches.slice(0, 3);
+
   const epsilon = 0.1;
   let totalWeight = 0;
   let xSum = 0;
   let ySum = 0;
 
-  for (const m of matches) {
-    const w = 1 / (m.dist + epsilon);
+  // Group candidate votes by room code to prevent single-AP noise from flipping adjacent rooms
+  const roomVotes = new Map<string, { weight: number; cleanLabel: string; fp: any }>();
+
+  for (const m of effectiveMatches) {
+    const w = 1 / ((m.dist + epsilon) * (m.dist + epsilon));
     const [fx, fy] = getFingerprint3D(m.fp);
     xSum += fx * w;
     ySum += fy * w;
     totalWeight += w;
+
+    const raw = m.fp.label || m.fp.location || "Indoor Location";
+    let norm = raw;
+    const numMatch = raw.match(/\b(20[1-9]|21[0-9]|220)\b/);
+    if (numMatch) {
+      norm = `Room ${numMatch[1]}`;
+    } else if (/^room\s*/i.test(raw)) {
+      norm = raw.replace(/^room\s*/i, "Room ");
+    }
+    const existing = roomVotes.get(norm);
+    if (existing) {
+      existing.weight += w;
+    } else {
+      roomVotes.set(norm, { weight: w, cleanLabel: norm, fp: m.fp });
+    }
   }
 
-  const best = matches[0].fp;
+  // Consensus winner by weight
+  let winningRoom = Array.from(roomVotes.values()).sort((a, b) => b.weight - a.weight)[0];
+
+  // Temporal hysteresis: keep previous room unless new room wins by decisive margin (>35% advantage)
+  if (prevPosition?.label && roomVotes.has(prevPosition.label)) {
+    const prevVote = roomVotes.get(prevPosition.label)!;
+    if (prevVote.weight >= 0.65 * winningRoom.weight) {
+      winningRoom = prevVote;
+    }
+  }
+
+  const chosenFp = winningRoom?.fp || matches[0].fp;
   const bestBssids = new Set<string>();
-  if (Array.isArray(best.aps)) {
-    best.aps.forEach((a: any) => bestBssids.add((a.bssid || "").toUpperCase()));
-  } else if (best.bssids) {
-    Object.keys(best.bssids).forEach(b => bestBssids.add(b.toUpperCase()));
+  if (Array.isArray(chosenFp.aps)) {
+    chosenFp.aps.forEach((a: any) => bestBssids.add((a.bssid || "").toUpperCase()));
+  } else if (chosenFp.bssids) {
+    Object.keys(chosenFp.bssids).forEach(b => bestBssids.add(b.toUpperCase()));
   }
 
   const bestOverlap = scanAps.filter(ap => bestBssids.has((ap.bssid || "").toUpperCase())).length;
+  const cleanLabel = winningRoom?.cleanLabel || matches[0].fp.label || "Indoor Location";
 
-  const rawLabel = best.label || best.location || "Indoor Location";
-  let cleanLabel = rawLabel;
-  if (/^room\s*219/i.test(rawLabel) || /^219/i.test(rawLabel)) {
-    cleanLabel = "Room 219";
-  } else if (/^room\s*(\d+)/i.test(rawLabel)) {
-    cleanLabel = rawLabel.replace(/^room\s*/i, "Room ");
-  } else if (/^\d{3}/.test(rawLabel)) {
-    cleanLabel = "Room " + rawLabel;
+  let estX = Number((xSum / totalWeight).toFixed(2));
+  let estY = Number((ySum / totalWeight).toFixed(2));
+
+  // Temporal coordinate smoothing (EMA)
+  if (prevPosition && typeof prevPosition.x === "number" && typeof prevPosition.y === "number") {
+    const distPrev = Math.hypot(estX - prevPosition.x, estY - prevPosition.y);
+    if (distPrev < 5.0) {
+      estX = Number((0.75 * estX + 0.25 * prevPosition.x).toFixed(2));
+      estY = Number((0.75 * estY + 0.25 * prevPosition.y).toFixed(2));
+    }
   }
 
   return {
-    x: Number((xSum / totalWeight).toFixed(2)),
-    y: Number((ySum / totalWeight).toFixed(2)),
-    x3d: Number((xSum / totalWeight).toFixed(2)),
-    z3d: Number((ySum / totalWeight).toFixed(2)),
+    x: estX,
+    y: estY,
+    x3d: estX,
+    z3d: estY,
     confidence: Number(Math.min(1, Math.max(0.2, bestOverlap / 5)).toFixed(2)),
     source: "wifi",
     label: cleanLabel,
-    type: best.type || "office",
-    visible: best.visible ?? true,
+    type: chosenFp.type || "office",
+    visible: chosenFp.visible ?? true,
     roomId: cleanLabel.replace(/^(ab1\s*|room\s*)/i, "").trim().toLowerCase(),
     anchorsUsed: bestOverlap,
-    uncertaintyMeters: 3.0
+    uncertaintyMeters: 2.5
   };
 }
 
@@ -227,7 +270,8 @@ export default async function handler(req: any, res: any) {
       fps = staticFingerprints as any[];
     }
 
-    const position = runKnnEstimate(normalizedAps, fps);
+    const prevRecord = scanStore.get(deviceId);
+    const position = runKnnEstimate(normalizedAps, fps, prevRecord?.position);
 
     const record: StoredScan = {
       deviceId,
