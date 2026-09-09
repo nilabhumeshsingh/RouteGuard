@@ -12,8 +12,14 @@ import {
 } from "@routeguard/graph";
 import { getCampusGraph, loadFloor2Graph, loadPois } from "../data/loader.js";
 
-// Hook to allow safety engine to provide active blocked nodes
-export type BlockedNodesProvider = () => Set<string>;
+// Hook to allow the safety engine to provide active blocked route elements.
+export interface BlockedRouteElements {
+  blockedNodes: Set<string>;
+  blockedEdges: Set<string>;
+}
+
+// Accept the old Set form so existing integrations remain compatible.
+export type BlockedNodesProvider = () => Set<string> | BlockedRouteElements;
 let blockedNodesProvider: BlockedNodesProvider | null = null;
 
 export function registerBlockedNodesProvider(provider: BlockedNodesProvider): void {
@@ -85,14 +91,22 @@ export function calculateCampusRoute(req: RouteRequest): RouteResult {
 
   // Setup blocked nodes from safety engine if avoidAlarms is active
   let blockedNodes: Set<string> | undefined;
+  let blockedEdges: Set<string> | undefined;
   if (avoidAlarms && blockedNodesProvider) {
-    blockedNodes = blockedNodesProvider();
+    const blocked = blockedNodesProvider();
+    if (blocked instanceof Set) {
+      blockedNodes = blocked;
+    } else {
+      blockedNodes = blocked.blockedNodes;
+      blockedEdges = blocked.blockedEdges;
+    }
   }
 
   const context: CostContext = {
     profile,
     timeOfDay: req.timeOfDay || "day",
-    blockedNodes
+    blockedNodes,
+    blockedEdges
   };
 
   // Emergency evacuation without specific destination

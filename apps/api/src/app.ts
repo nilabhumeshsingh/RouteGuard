@@ -14,14 +14,15 @@ import scanRouter, { scannerRouter } from "./routes/scan.routes.js";
 import fingerprintsRouter from "./routes/fingerprints.routes.js";
 import alarmsRouter from "./routes/alarms.routes.js";
 import { registerBlockedNodesProvider } from "./services/routing.service.js";
+import { buildActiveHazardState } from "./safety/hazard.service.js";
 
-// Wire safety smoke forecast into dynamic route obstruction provider
+// Wire the shared hazard state into dynamic route obstruction provider
 registerBlockedNodesProvider(() => {
-  if (sharedAlarmStateMachine.getState() !== "NORMAL") {
-    const forecast = sharedSmokeSimulation.getForecast(10);
-    return new Set(forecast.blockedNodeIds);
-  }
-  return new Set<string>();
+  const hazard = buildActiveHazardState(sharedAlarmStateMachine, sharedSmokeSimulation);
+  return {
+    blockedNodes: new Set(hazard.blockedNodeIds),
+    blockedEdges: new Set(hazard.blockedEdgeIds)
+  };
 });
 
 export function createApp(): Express {
