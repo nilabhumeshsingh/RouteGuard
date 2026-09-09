@@ -107,15 +107,25 @@ function resolveRoomFromAps(scanAps: any[], fps: any[]): { roomId: string; label
     .filter(m => m.dist < Infinity)
     .sort((a, b) => a.dist - b.dist);
 
-  if (matches.length === 0) {
-    return { roomId: "208", label: "Room 208", x: 20.5, y: 0.0 };
+  const topMatches = matches.slice(0, 5);
+  const roomWeights = new Map<string, { weight: number; roomId: string; label: string }>();
+
+  for (const m of topMatches) {
+    const w = 1 / ((m.dist + 0.1) * (m.dist + 0.1));
+    const rawLabel = m.fp.label || m.fp.location || "Room 208";
+    const numMatch = rawLabel.match(/\b(20[1-9]|21[0-9]|220)\b/);
+    const rId = numMatch ? numMatch[1] : (m.fp.roomId || "208");
+    const existing = roomWeights.get(rId);
+    if (existing) {
+      existing.weight += w;
+    } else {
+      roomWeights.set(rId, { weight: w, roomId: rId, label: `Room ${rId}` });
+    }
   }
 
-  const best = matches[0].fp;
-  const rawLabel = best.label || best.location || "Room 208";
-  const numMatch = rawLabel.match(/\b(20[1-9]|21[0-9]|220)\b/);
-  const roomId = numMatch ? numMatch[1] : (best.roomId || "208");
-  const label = `Room ${roomId}`;
+  const winning = Array.from(roomWeights.values()).sort((a, b) => b.weight - a.weight)[0];
+  const roomId = winning ? winning.roomId : "208";
+  const label = winning ? winning.label : `Room ${roomId}`;
   const [x, y] = resolveRoomCoords(roomId);
 
   return { roomId, label, x, y };

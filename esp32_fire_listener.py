@@ -17,6 +17,7 @@ import subprocess
 import threading
 import urllib.request
 import urllib.error
+import re
 
 try:
     import serial
@@ -41,50 +42,40 @@ BG_RED = "\033[41m"
 def log(msg, color=RESET):
     print(f"{color}{msg}{RESET}")
 
+from local_scanner import scan as local_scan, _history_labels, _history_coords
+from collections import Counter
+
 def scan_nearby_bssids():
-    """Scans nearby WiFi networks using nmcli."""
-    aps = []
-    try:
-        cmd = ["nmcli", "-t", "-f", "BSSID,SSID,SIGNAL,FREQ", "dev", "wifi", "list"]
-        out = subprocess.check_output(cmd, stderr=subprocess.DEVNULL, timeout=5).decode("utf-8")
-        for line in out.strip().split("\n"):
-            parts = line.split(":")
-            if len(parts) >= 6:
-                # BSSID might have colons
-                bssid = ":".join(parts[0:6]).upper().strip()
-                rest = ":".join(parts[6:])
-                sub = rest.split(":")
-                ssid = sub[0] if len(sub) > 0 else ""
-                signal = int(sub[1]) if len(sub) > 1 and sub[1].isdigit() else 50
-                rssi = int(signal / 2 - 100)
-                aps.append({
-                    "bssid": bssid,
-                    "ssid": ssid,
-                    "rssi": rssi,
-                    "signal": signal
-                })
-    except Exception as e:
-        log(f"WiFi scan notice: {e}", YELLOW)
-    return aps
+    """Scans nearby WiFi networks using the exact algorithm as local_scanner.py."""
+    return local_scan()
 
 def resolve_location_and_trigger_fire(source="ESP32 BOOT Button"):
     log("\n" + "="*60, RED)
     log(f"🔥 [FIRE EVENT] Triggered via {source}!", BOLD + RED)
     log("="*60, RED)
 
-    # 1. Scan WiFi
-    log("📡 1. Scanning surrounding WiFi BSSIDs...", CYAN)
+    # 1. Scan WiFi using exact iBUS@MUJ algorithm
+    log("📡 1. Scanning surrounding WiFi BSSIDs (iBUS@MUJ algorithm)...", CYAN)
     aps = scan_nearby_bssids()
-    log(f"   ✓ Captured {len(aps)} Access Points", GREEN)
+    log(f"   ✓ Captured {len(aps)} iBUS@MUJ Access Points", GREEN)
 
     # 2. Query location via Vercel / Localhost scan endpoint
     log("🧠 2. Querying MongoDB Atlas k-NN to resolve room...", CYAN)
     resolved_room = "219"
     resolved_label = "Room 219"
+    pos_data = {}
 
     try:
-        # POST scan payload to Vercel to resolve position
-        payload = json.dumps({"deviceId": "esp32-fire-node", "aps": aps}).encode("utf-8")
+        # Build payload with exact formatting as local_scanner
+        scan_payload_aps = [
+            {
+                "bssid": a["bssid"],
+                "rssi": int(float(a["signal_pct"]) / 2 - 100) if a.get("signal_pct") else a.get("rssi", -70),
+                "ssid": a["ssid"]
+            }
+            for a in aps
+        ]
+        payload = json.dumps({"deviceId": "esp32-fire-node-01", "aps": scan_payload_aps}).encode("utf-8")
         req = urllib.request.Request(
             f"{VERCEL_URL}/api/scan",
             data=payload,
@@ -93,11 +84,28 @@ def resolve_location_and_trigger_fire(source="ESP32 BOOT Button"):
         with urllib.request.urlopen(req, timeout=5) as resp:
             data = json.loads(resp.read().decode("utf-8"))
             pos = data.get("position") or {}
-            if pos.get("label"):
-                resolved_label = pos["label"]
-            if pos.get("roomId"):
+            pos_data = pos
+            raw_label = pos.get("label") or "Room 219"
+            _history_labels.append(raw_label)
+            if len(_history_labels) > 3:
+                _history_labels.pop(0)
+
+            resolved_label = Counter(_history_labels).most_common(1)[0][0]
+            m = re.search(r"\b(20[1-9]|21[0-9]|220)\b", resolved_label)
+            if m:
+                resolved_room = m.group(1)
+            elif pos.get("roomId"):
                 resolved_room = str(pos["roomId"])
+
             log(f"   ✓ Resolved via MongoDB Atlas: {resolved_label} (Room {resolved_room})", BOLD + GREEN)
+            print("\n=======================================================")
+            print(f"📍 ESTIMATED LOCATION: {resolved_label}")
+            print(f"   Coordinates:  (X: {pos.get('x')}, Y: {pos.get('y')})")
+            print(f"   Confidence:   {int(pos.get('confidence', 0) * 100)}%")
+            print(f"   Anchors Used: {pos.get('anchorsUsed', 0)} APs")
+            print(f"   Uncertainty:  ±{pos.get('uncertaintyMeters', 0)}m")
+            print("   ✓ Synced with: Live PWA Map")
+            print("=======================================================\n")
     except Exception as e:
         log(f"   ⚠️ Atlas k-NN fallback to current room: {e}", YELLOW)
 
