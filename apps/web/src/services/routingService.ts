@@ -202,9 +202,14 @@ export const REFERENCE_GUIDE_SEGMENTS: Array<[
   [{ x: 191.25, y: 193.75 }, { x: 862.5, y: 193.75 }],
   [{ x: 191.25, y: 291.25 }, { x: 862.5, y: 291.25 }],
   [{ x: 191.25, y: 193.75 }, { x: 191.25, y: 291.25 }],
-  [{ x: 566.25, y: 193.75 }, { x: 566.25, y: 291.25 }],
+  // The reference route crosses through the open VOID-2 passage, not through classroom 212.
+  [{ x: 487.5, y: 193.75 }, { x: 487.5, y: 291.25 }],
+  // A second open crossing is available through VOID-3 for east-side routes.
+  [{ x: 667.5, y: 193.75 }, { x: 667.5, y: 291.25 }],
   [{ x: 862.5, y: 193.75 }, { x: 862.5, y: 291.25 }]
 ];
+
+const REFERENCE_VOID_LANE_X = [487.5, 667.5];
 
 function projectToSegment(
   point: { x: number; y: number },
@@ -258,7 +263,17 @@ export function projectRouteToReferenceGuide(points: RoutePoint[]): RoutePoint[]
   appendUniquePoint(visibleRoute, firstGuidePoint);
 
   for (const point of points.slice(1, -1)) {
-    appendUniquePoint(visibleRoute, nearestReferencePoint(point));
+    // Replace the graph's central stair-core crossing with the supplied plan's
+    // open void lane so the visible line never cuts through a classroom block.
+    if (Math.abs(point.x - 566.25) < 1 && (Math.abs(point.y - 193.75) < 1 || Math.abs(point.y - 291.25) < 1)) {
+      const voidLaneX = REFERENCE_VOID_LANE_X.reduce((closest, x) =>
+        Math.abs(x - point.x) < Math.abs(closest - point.x) ? x : closest,
+        REFERENCE_VOID_LANE_X[0]
+      );
+      appendUniquePoint(visibleRoute, { x: voidLaneX, y: point.y, floorId: "floor-2" });
+    } else {
+      appendUniquePoint(visibleRoute, nearestReferencePoint(point));
+    }
   }
 
   appendUniquePoint(visibleRoute, lastGuidePoint);

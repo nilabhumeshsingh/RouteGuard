@@ -91,8 +91,11 @@ describe("Corridor-Strict Pathfinding & Safest Stair Egress", () => {
     for (const point of visiblePoints.slice(1, -1)) {
       const onNorth = Math.abs(point.y - 193.75) < 0.5;
       const onSouth = Math.abs(point.y - 291.25) < 0.5;
-      const onVertical = [191.25, 566.25, 862.5].some((x) => Math.abs(point.x - x) < 0.5);
+      const onVertical = [191.25, 487.5, 667.5, 862.5].some((x) => Math.abs(point.x - x) < 0.5);
       expect(onNorth || onSouth || onVertical).toBe(true);
     }
+
+    expect(visiblePoints.some((point) => Math.abs(point.x - 487.5) < 0.5)).toBe(true);
+    expect(visiblePoints.some((point) => Math.abs(point.x - 566.25) < 0.5)).toBe(false);
   });
 });
