@@ -32,7 +32,7 @@ export const ARCHITECTURAL_NODE_COORDS: Record<string, { x: number; y: number }>
   "c-202": { x: 371.25, y: 193.75 }, // Doorway to Room 202
   "c-203": { x: 438.75, y: 193.75 }, // Doorway to Room 203
   "c-204": { x: 506.25, y: 193.75 }, // Doorway to Room 204
-  "c-lift": { x: 566.25, y: 193.75 }, // Central North Elevator & Stairs Concourse (95% footfall core)
+  "c-lift": { x: 487.5, y: 193.75 }, // VOID-2 north crossing / central monitored approach
   "c-205": { x: 626.25, y: 193.75 }, // Doorway to Room 205
   "c-206": { x: 693.75, y: 193.75 }, // Doorway to Room 206
   "c-207": { x: 761.25, y: 193.75 }, // Doorway to Room 207
@@ -61,7 +61,7 @@ export const ARCHITECTURAL_NODE_COORDS: Record<string, { x: number; y: number }>
   "c-219": { x: 371.25, y: 291.25 }, // Doorway to AI Lab 219
   "c-218": { x: 438.75, y: 291.25 }, // Doorway to Room 218
   "c-217": { x: 506.25, y: 291.25 }, // Doorway to Room 217
-  "c-sm": { x: 566.25, y: 291.25 }, // Central South Stairs Concourse (95% footfall core)
+  "c-sm": { x: 487.5, y: 291.25 }, // VOID-2 south crossing / central monitored approach
   "c-216": { x: 626.25, y: 291.25 }, // Doorway to Room 216
   "c-215": { x: 693.75, y: 291.25 }, // Doorway to Room 215
   "c-214": { x: 761.25, y: 291.25 }, // Doorway to Room 214

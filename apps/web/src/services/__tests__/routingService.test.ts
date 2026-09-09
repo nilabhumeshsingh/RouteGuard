@@ -27,10 +27,10 @@ describe("Corridor-Strict Pathfinding & Safest Stair Egress", () => {
     expect(endPoint.y).toBeCloseTo(351.25);
 
     // Verify all intermediate corridor waypoints lie strictly on the corridor grid:
-    // North corridor y = 193.75, South corridor y = 291.25, or Vertical connectors x in {191.25, 566.25, 862.5}
+    // North corridor y = 193.75, South corridor y = 291.25, or void/corridor connectors.
     const CORRIDOR_Y_NORTH = 193.75;
     const CORRIDOR_Y_SOUTH = 291.25;
-    const VALID_X_CONNECTORS = [191.25, 566.25, 862.5];
+    const VALID_X_CONNECTORS = [191.25, 487.5, 667.5, 862.5];
 
     for (let i = 1; i < points.length - 1; i++) {
       const pt = points[i];
@@ -40,6 +40,9 @@ describe("Corridor-Strict Pathfinding & Safest Stair Egress", () => {
 
       expect(isOnNorthCorridor || isOnSouthCorridor || isOnVerticalConnector).toBe(true);
     }
+
+    expect(points.some((point) => Math.abs(point.x - 566.25) < 0.01)).toBe(false);
+    expect(points.some((point) => Math.abs(point.x - 487.5) < 0.01)).toBe(true);
   });
 
   it("selects Central Monitored Stairs (ST-NM) as the safest stairs from Room 204", () => {
