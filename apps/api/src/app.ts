@@ -13,12 +13,13 @@ import geofencesRouter from "./routes/geofences.routes.js";
 import scanRouter, { scannerRouter } from "./routes/scan.routes.js";
 import fingerprintsRouter from "./routes/fingerprints.routes.js";
 import alarmsRouter from "./routes/alarms.routes.js";
+import { getActiveAlarm } from "./routes/alarms.routes.js";
 import { registerBlockedNodesProvider } from "./services/routing.service.js";
 import { buildActiveHazardState } from "./safety/hazard.service.js";
 
 // Wire the shared hazard state into dynamic route obstruction provider
 registerBlockedNodesProvider(() => {
-  const hazard = buildActiveHazardState(sharedAlarmStateMachine, sharedSmokeSimulation);
+  const hazard = buildActiveHazardState(sharedAlarmStateMachine, sharedSmokeSimulation, getActiveAlarm());
   return {
     blockedNodes: new Set(hazard.blockedNodeIds),
     blockedEdges: new Set(hazard.blockedEdgeIds)

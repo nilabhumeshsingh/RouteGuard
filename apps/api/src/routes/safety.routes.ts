@@ -15,6 +15,7 @@ import {
   SOSNotFoundError
 } from "../safety/sos-service.js";
 import { buildActiveHazardState } from "../safety/hazard.service.js";
+import { getActiveAlarm } from "./alarms.routes.js";
 
 const router = Router();
 
@@ -28,7 +29,7 @@ export const sharedSOSDispatcher = new SOSDispatcherService({
 
 // GET /api/safety/hazards/active — shared hazard state for navigation clients
 router.get("/hazards/active", (_req: Request, res: Response) => {
-  res.json(buildActiveHazardState(sharedAlarmStateMachine, sharedSmokeSimulation));
+  res.json(buildActiveHazardState(sharedAlarmStateMachine, sharedSmokeSimulation, getActiveAlarm()));
 });
 
 // GET /api/safety/alarm/state

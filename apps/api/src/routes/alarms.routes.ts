@@ -7,6 +7,10 @@ export const alarmsRouter = Router();
 // In-memory active alarm cache
 let activeAlarmState: any = null;
 
+export function getActiveAlarm(): any | null {
+  return activeAlarmState && activeAlarmState.active ? activeAlarmState : null;
+}
+
 const ROOM_COORDS_3D: Record<string, [number, number]> = {
   "201": [-11.75, 7.25],
   "202": [-7.25, 7.25],

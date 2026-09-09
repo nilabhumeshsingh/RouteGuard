@@ -2,8 +2,8 @@ import { ActiveHazardState, AlarmEvent } from "@routeguard/shared";
 import { LatchingAlarmStateMachine } from "./alarm-state-machine.js";
 import { SmokeSimulationEngine } from "./smoke-simulation.js";
 
-function resolveIncident(alarm?: AlarmEvent): { roomId?: string; origin: string } {
-  const source = `${alarm?.zoneId || ""} ${alarm?.message || ""}`;
+function resolveIncident(alarm?: Partial<AlarmEvent> & { roomId?: string }): { roomId?: string; origin: string } {
+  const source = `${alarm?.roomId || ""} ${alarm?.zoneId || ""} ${alarm?.message || ""}`;
   const roomMatch = source.match(/\b(20[1-9]|21[0-9]|220)\b/);
   const roomId = roomMatch?.[1];
 
@@ -15,11 +15,12 @@ function resolveIncident(alarm?: AlarmEvent): { roomId?: string; origin: string 
 
 export function buildActiveHazardState(
   alarmStateMachine: LatchingAlarmStateMachine,
-  smokeSimulation: SmokeSimulationEngine
+  smokeSimulation: SmokeSimulationEngine,
+  externalAlarm?: (Partial<AlarmEvent> & { roomId?: string }) | null
 ): ActiveHazardState {
-  const activeAlarm = alarmStateMachine.getActiveAlarms()[0];
+  const activeAlarm = alarmStateMachine.getActiveAlarms()[0] || externalAlarm;
 
-  if (alarmStateMachine.getState() === "NORMAL" || !activeAlarm) {
+  if (!activeAlarm) {
     return {
       active: false,
       blockedNodeIds: [],
