@@ -20,6 +20,7 @@ import {
   calculateRouteTradeOffs,
   calculateEvacuationRoute,
   findSafestStairRoute,
+  resolveNearestGraphNode,
   SAFE_STAIR_TARGETS,
   RouteComparison,
   speakInstruction
@@ -186,20 +187,14 @@ export const App: React.FC = () => {
     };
   }, []);
 
-  // Evacuate dynamically from user's current location to nearest safe stairs/exit
+  // Evacuate dynamically from user's current location to nearest safe stairs and ground floor exit
   const handleEvacuate = useCallback((fireRoomId?: string) => {
     setIsAlarmActive(true);
-    const fireCode = (fireRoomId || "219").replace(/^(room\s*|node-)/i, "").trim();
+    const fireCode = (fireRoomId || "208").replace(/^(room\s*|node-)/i, "").trim();
     setActiveFireRoom(fireCode);
 
-    // Determine current user node based on live positioning
-    let currentUserNode = "node-219";
-    if (userPos.nearestPlaceName) {
-      const match = userPos.nearestPlaceName.match(/\b(20[1-9]|21[0-9]|220)\b/);
-      if (match) {
-        currentUserNode = `node-${match[1]}`;
-      }
-    }
+    // Determine current user node accurately based on live positioning
+    const currentUserNode = resolveNearestGraphNode(userPos);
 
     // Build blocked nodes for hazardous zones
     // CRITICAL: The occupant's current room and immediate exit door must NOT be blocked for evacuation!
@@ -209,15 +204,23 @@ export const App: React.FC = () => {
     }
 
     if (fireCode === "208") {
-      if (currentUserNode !== "node-207") blockedNodes.add("node-207");
       if (currentUserNode !== "node-208") blockedNodes.add("c-208");
+      if (currentUserNode !== "node-207") blockedNodes.add("node-207");
       blockedNodes.add("node-wash-girls-208");
-      blockedNodes.add("c-lift");
+      blockedNodes.add("c-wash-ne");
+      blockedNodes.add("c-ne"); // Smoke spreading towards East Wing
+      blockedNodes.add("exit-east"); // East exit compromised by smoke
+      // Note: c-lift and Central Stairs remain clear for west/central evacuation
     } else if (fireCode === "219") {
       blockedNodes.add("node-219a");
       blockedNodes.add("node-219c");
       if (currentUserNode !== "node-219") {
         blockedNodes.add("c-219");
+      }
+    } else {
+      blockedNodes.add(`node-${fireCode}`);
+      if (currentUserNode !== `node-${fireCode}`) {
+        blockedNodes.add(`c-${fireCode}`);
       }
     }
 
@@ -235,92 +238,27 @@ export const App: React.FC = () => {
       evacRoute = calculateEvacuationRoute(currentUserNode, fallbackBlocked, isNightSafetyActive);
     }
 
-    // Fail-safe: if still unavailable, compute guaranteed life-safety path to nearest stairs
-    if (!evacRoute || evacRoute.status !== "found" || !evacRoute.pathPoints || evacRoute.pathPoints.length < 2) {
-      const targetExit = (currentUserNode === "node-208" || currentUserNode === "node-207") ? "exit-east" : "exit-west";
-      evacRoute = {
-        status: "found",
-        routeId: `rt-emergency-${Date.now()}`,
-        profile: "emergency",
-        totalDistanceMeters: 16.5,
-        estimatedTimeSeconds: 14,
-        isEmergencyExit: true,
-        tradeOffExplanation: "Emergency evacuation path to nearest clear fire exit stairs.",
-        segments: [
-          {
-            fromNodeId: currentUserNode,
-            toNodeId: `c-${fireCode}`,
-            distanceMeters: 4,
-            travelTimeSeconds: 3,
-            instruction: "Exit room into corridor",
-            isStepFree: true,
-            edgeType: "door",
-            hazardLevel: "none"
-          },
-          {
-            fromNodeId: `c-${fireCode}`,
-            toNodeId: "c-220",
-            distanceMeters: 4.5,
-            travelTimeSeconds: 4,
-            instruction: "Head west along south corridor",
-            isStepFree: true,
-            edgeType: "corridor",
-            hazardLevel: "none"
-          },
-          {
-            fromNodeId: "c-220",
-            toNodeId: "c-west",
-            distanceMeters: 4.5,
-            travelTimeSeconds: 4,
-            instruction: "Continue straight towards Fire Exit West",
-            isStepFree: true,
-            edgeType: "corridor",
-            hazardLevel: "none"
-          },
-          {
-            fromNodeId: "c-west",
-            toNodeId: targetExit,
-            distanceMeters: 3.5,
-            travelTimeSeconds: 3,
-            instruction: "Enter Stairs & Fire Exit Ramp SW",
-            isStepFree: true,
-            edgeType: "ramp",
-            hazardLevel: "none"
-          }
-        ],
-        pathPoints: [
-          { x: 371.25, y: 351.25, floorId: "floor-2" },
-          { x: 371.25, y: 291.25, floorId: "floor-2" },
-          { x: 303.75, y: 291.25, floorId: "floor-2" },
-          { x: 191.25, y: 291.25, floorId: "floor-2" },
-          { x: 191.25, y: 351.25, floorId: "floor-2" }
-        ]
+    if (evacRoute && evacRoute.status === "found") {
+      const exitPoi: POI = {
+        id: "poi-evac-exit",
+        name: "Ground Floor Fire Exit (Level 0 Assembly Area)",
+        category: "Emergency Exit",
+        nodeId: evacRoute.segments[evacRoute.segments.length - 1]?.toNodeId || "node-stairs-north",
+        aliases: ["fire exit", "ground fire exit", "stairs", "emergency stairs"]
       };
+
+      setSelectedPOI(exitPoi);
+      setActiveProfile("emergency");
+      setActiveRoute(evacRoute);
+      setIsNavigating(true);
+      setSnapPoint("half");
+
+      speakInstruction(
+        evacRoute.tradeOffExplanation ||
+        `Fire alarm active! Evacuate immediately via stairs to Ground Floor exterior assembly.`
+      );
     }
-
-    const lastSeg = evacRoute.segments[evacRoute.segments.length - 1];
-    const destinationNode = lastSeg?.toNodeId || "exit-west";
-    const targetObj = SAFE_STAIR_TARGETS.find((s) => s.id === destinationNode);
-
-    const exitPoi: POI = {
-      id: "poi-evac-exit",
-      name: targetObj ? targetObj.name : destinationNode === "exit-east" ? "Stairs & Fire Exit NE" : "Stairs & Fire Exit Ramp SW",
-      category: "Emergency Exit",
-      nodeId: destinationNode,
-      aliases: ["fire exit", "stairs", "emergency stairs"]
-    };
-
-    setSelectedPOI(exitPoi);
-    setActiveProfile("emergency");
-    setActiveRoute(evacRoute);
-    setIsNavigating(true);
-    setSnapPoint("half");
-
-    speakInstruction(
-      evacRoute.tradeOffExplanation ||
-      `Emergency evacuation active! Fire detected in Room ${fireCode}. Proceed directly to ${exitPoi.name}.`
-    );
-  }, [userPos.nearestPlaceName, isNightSafetyActive]);
+  }, [userPos, isNightSafetyActive]);
 
   // One-tap navigation to safest stairs through corridors
   const handleNavigateToSafestStairs = useCallback(() => {

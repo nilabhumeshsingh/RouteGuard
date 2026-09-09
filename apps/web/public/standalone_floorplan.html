@@ -664,6 +664,243 @@
           transitionTo(new THREE.Vector3(cx, y + 16, cz + 20), new THREE.Vector3(cx, y, cz));
         }
 
+        // --- 3D GLOWING ROUTE LAYER & GROUND FIRE EXIT BEACON ---
+        const routeLayerGroup = new THREE.Group();
+        scene.add(routeLayerGroup);
+
+        let activeRouteMesh = null;
+        let activeRouteGlowMesh = null;
+        let groundExitBeaconGroup = null;
+        let isEmergencyRouteActive = false;
+
+        function clearRoute3D() {
+          while (routeLayerGroup.children.length > 0) {
+            const obj = routeLayerGroup.children[0];
+            routeLayerGroup.remove(obj);
+            if (obj.geometry) obj.geometry.dispose();
+            if (obj.material) {
+              if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+              else obj.material.dispose();
+            }
+          }
+          activeRouteMesh = null;
+          activeRouteGlowMesh = null;
+          groundExitBeaconGroup = null;
+          isEmergencyRouteActive = false;
+        }
+
+        function createGroundExitBeacon(x, y, z) {
+          const grp = new THREE.Group();
+          grp.position.set(x, y, z);
+
+          // Dynamic PointLight illuminating ground exit
+          const light = new THREE.PointLight(0x00ff66, 5.0, 20, 1.2);
+          light.position.set(0, 1.5, 0);
+          grp.add(light);
+
+          // Glowing Ground Exit Sphere
+          const sphere = new THREE.Mesh(
+            new THREE.SphereGeometry(0.42, 24, 24),
+            new THREE.MeshBasicMaterial({ color: 0x00ff66 })
+          );
+          sphere.position.y = 1.0;
+          grp.add(sphere);
+
+          // Expanding Ground Ripple Rings
+          const ringGeo = new THREE.RingGeometry(0.6, 1.4, 32);
+          ringGeo.rotateX(-Math.PI / 2);
+          const ringMat = new THREE.MeshBasicMaterial({
+            color: 0x00ff66,
+            transparent: true,
+            opacity: 0.9,
+            side: THREE.DoubleSide,
+            blending: THREE.AdditiveBlending
+          });
+          const ring = new THREE.Mesh(ringGeo, ringMat);
+          ring.position.y = 0.05;
+          grp.add(ring);
+          grp.userData = { ring, ringMat, light, sphere };
+
+          // Billboard Sprite Badge: "GROUND FLOOR FIRE EXIT"
+          const canvas = document.createElement('canvas');
+          const scale = 4;
+          canvas.width = 340 * scale; canvas.height = 86 * scale;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = 'rgba(4, 38, 18, 0.96)';
+          ctx.strokeStyle = '#00ff66';
+          ctx.lineWidth = 3.5 * scale;
+          ctx.shadowColor = '#00ff66';
+          ctx.shadowBlur = 14 * scale;
+          ctx.beginPath();
+          ctx.roundRect(8 * scale, 8 * scale, canvas.width - 16 * scale, canvas.height - 16 * scale, 14 * scale);
+          ctx.fill(); ctx.stroke();
+
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillStyle = '#ffffff';
+          ctx.font = "900 " + (22 * scale) + "px system-ui, -apple-system, sans-serif";
+          ctx.fillText('🏃 GROUND FIRE EXIT', canvas.width / 2, canvas.height * 0.38);
+
+          ctx.fillStyle = '#86efac';
+          ctx.font = "700 " + (14 * scale) + "px system-ui, -apple-system, sans-serif";
+          ctx.fillText('Level 0 Exterior Safe Assembly Area', canvas.width / 2, canvas.height * 0.72);
+
+          const tex = new THREE.CanvasTexture(canvas);
+          const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
+          sprite.scale.set(4.6, 1.16, 1);
+          sprite.position.y = 2.5;
+          sprite.renderOrder = 2000;
+          grp.add(sprite);
+
+          return grp;
+        }
+
+        function setRoute3D(routePoints, options = {}) {
+          clearRoute3D();
+          if (!routePoints || routePoints.length < 2) return;
+
+          const isEmergency = !!(options.isEmergency || options.profile === 'emergency');
+          isEmergencyRouteActive = isEmergency;
+
+          // Convert points to 3D coordinates
+          const pts3D = [];
+          for (let i = 0; i < routePoints.length; i++) {
+            const pt = routePoints[i];
+            let x3d = pt.x;
+            let z3d = pt.y;
+            if (Math.abs(pt.x) > 50 || Math.abs(pt.y) > 50) {
+              x3d = (pt.x - 480) / 15;
+              z3d = (242.5 - pt.y) / 15;
+            }
+            // Floor 2 corridor level
+            pts3D.push(new THREE.Vector3(x3d, 12.25, z3d));
+          }
+
+          // If Emergency route, lead DOWN the stairs to Ground Floor (Level 0)
+          if (isEmergency) {
+            const lastCorridorPt = pts3D[pts3D.length - 1];
+            const lx = lastCorridorPt.x;
+            const lz = lastCorridorPt.z;
+
+            let groundExitX = lx;
+            let groundExitZ = lz;
+
+            if (lz > 3.0) {
+              // North Stairs (ST-NM, ST-NE, ST-NW)
+              pts3D.push(new THREE.Vector3(lx + 0.6, 9.2, lz));
+              pts3D.push(new THREE.Vector3(lx, 6.25, lz));
+              pts3D.push(new THREE.Vector3(lx + 0.6, 3.2, lz));
+              pts3D.push(new THREE.Vector3(lx, 0.35, lz));
+              // Egress to exterior ground North apron
+              groundExitX = lx;
+              groundExitZ = Math.min(14.5, lz + 3.5);
+              pts3D.push(new THREE.Vector3(groundExitX, 0.35, groundExitZ));
+            } else if (lx < -15.0) {
+              // West Ramp (ST-SW)
+              pts3D.push(new THREE.Vector3(lx - 2.0, 9.2, lz));
+              pts3D.push(new THREE.Vector3(lx - 4.0, 6.25, lz));
+              pts3D.push(new THREE.Vector3(lx - 6.0, 3.2, lz));
+              pts3D.push(new THREE.Vector3(lx - 8.0, 0.35, lz));
+              groundExitX = -28.5;
+              groundExitZ = 0.0;
+              pts3D.push(new THREE.Vector3(groundExitX, 0.35, groundExitZ));
+            } else {
+              // South Stairs (ST-SM, ST-SE)
+              pts3D.push(new THREE.Vector3(lx + 0.6, 9.2, lz));
+              pts3D.push(new THREE.Vector3(lx, 6.25, lz));
+              pts3D.push(new THREE.Vector3(lx + 0.6, 3.2, lz));
+              pts3D.push(new THREE.Vector3(lx, 0.35, lz));
+              // Egress to exterior ground South apron
+              groundExitX = lx;
+              groundExitZ = Math.max(-14.5, lz - 3.5);
+              pts3D.push(new THREE.Vector3(groundExitX, 0.35, groundExitZ));
+            }
+
+            // Place radiant Ground Floor Fire Exit Beacon
+            groundExitBeaconGroup = createGroundExitBeacon(groundExitX, 0.25, groundExitZ);
+            routeLayerGroup.add(groundExitBeaconGroup);
+          }
+
+          // Build smooth 3D CatmullRom Curve
+          const curve = new THREE.CatmullRomCurve3(pts3D, false, 'catmullrom', 0.15);
+
+          // 1. Core Glowing Tube
+          const tubeGeo = new THREE.TubeGeometry(curve, Math.max(64, pts3D.length * 16), isEmergency ? 0.26 : 0.18, 12, false);
+          const tubeMat = new THREE.MeshStandardMaterial({
+            color: isEmergency ? 0x00ff66 : 0x00d2ff,
+            emissive: isEmergency ? 0x00dd44 : 0x0077dd,
+            emissiveIntensity: 1.5,
+            roughness: 0.15,
+            metalness: 0.2
+          });
+          activeRouteMesh = new THREE.Mesh(tubeGeo, tubeMat);
+          routeLayerGroup.add(activeRouteMesh);
+
+          // 2. Volumetric Glowing Ribbon/Aura Tube
+          const glowTubeGeo = new THREE.TubeGeometry(curve, Math.max(64, pts3D.length * 16), isEmergency ? 0.55 : 0.42, 12, false);
+          const glowTubeMat = new THREE.MeshBasicMaterial({
+            color: isEmergency ? 0x22c55e : 0x0099ff,
+            transparent: true,
+            opacity: 0.5,
+            blending: THREE.AdditiveBlending,
+            side: THREE.BackSide
+          });
+          activeRouteGlowMesh = new THREE.Mesh(glowTubeGeo, glowTubeMat);
+          routeLayerGroup.add(activeRouteGlowMesh);
+
+          // 3. Start Point Indicator
+          const startPt = pts3D[0];
+          const startMarker = new THREE.Mesh(
+            new THREE.SphereGeometry(0.35, 16, 16),
+            new THREE.MeshBasicMaterial({ color: isEmergency ? 0x00ff66 : 0x00e5ff })
+          );
+          startMarker.position.copy(startPt);
+          routeLayerGroup.add(startMarker);
+        }
+
+        // --- HAZARD HIGHLIGHTING IN 3D ---
+        const activeHazardMeshes = [];
+        let hazardPointLight = null;
+
+        function highlightHazardRoom(rawRoomId) {
+          clearHazardRooms();
+          const targetCode = String(rawRoomId).replace(/^(room-|ZONE_FLOOR2_)/i, '').trim();
+          floorMeshes.forEach(mesh => {
+            if (mesh.userData && (mesh.userData.id === targetCode || mesh.userData.id === 'room-' + targetCode)) {
+              const origMat = mesh.material;
+              mesh.userData._originalMaterial = origMat;
+              mesh.material = new THREE.MeshStandardMaterial({
+                color: 0xff2200,
+                emissive: 0xff0000,
+                emissiveIntensity: 1.2,
+                roughness: 0.3
+              });
+              activeHazardMeshes.push(mesh);
+
+              // Add flickering fire PointLight
+              if (!hazardPointLight) {
+                hazardPointLight = new THREE.PointLight(0xff3300, 5.0, 20, 1.2);
+                hazardPointLight.position.set((mesh.userData.x0 + mesh.userData.x1) / 2, 13.5, (mesh.userData.z0 + mesh.userData.z1) / 2);
+                scene.add(hazardPointLight);
+              }
+            }
+          });
+        }
+
+        function clearHazardRooms() {
+          activeHazardMeshes.forEach(mesh => {
+            if (mesh.userData._originalMaterial) {
+              mesh.material = mesh.userData._originalMaterial;
+              delete mesh.userData._originalMaterial;
+            }
+          });
+          activeHazardMeshes.length = 0;
+          if (hazardPointLight) {
+            scene.remove(hazardPointLight);
+            hazardPointLight.dispose();
+            hazardPointLight = null;
+          }
+        }
+
         // PostMessage API for parent PWA container
         window.addEventListener('message', (event) => {
           const msg = event.data;
@@ -677,6 +914,21 @@
               break;
             case 'SET_POSITION':
               updatePositionMarker(msg.position || msg.payload);
+              break;
+            case 'SET_ROUTE':
+              setRoute3D(msg.route || msg.payload, {
+                isEmergency: msg.isEmergency,
+                profile: msg.profile
+              });
+              break;
+            case 'CLEAR_ROUTE':
+              clearRoute3D();
+              break;
+            case 'SET_HAZARD':
+              highlightHazardRoom(msg.hazard?.roomId || '208');
+              break;
+            case 'CLEAR_HAZARD':
+              clearHazardRooms();
               break;
             case 'ZOOM_IN':
               zoomCamera(0.8);
@@ -770,6 +1022,31 @@
             const r2 = 1.0 + (((t * 1.8) + 1.25) % 2.5);
             ringMesh2.scale.set(r2, r2, 1);
             ringMat2.opacity = Math.max(0, 0.65 - (r2 - 1.0) / 2.5);
+          }
+
+          // Ground Exit Beacon Animation
+          if (groundExitBeaconGroup && groundExitBeaconGroup.userData) {
+            const t = performance.now() * 0.003;
+            const u = groundExitBeaconGroup.userData;
+            u.light.intensity = 4.5 + Math.sin(t * 6) * 2.0;
+            u.sphere.position.y = 1.0 + Math.sin(t * 4) * 0.15;
+            const r = 1.0 + ((t * 2.0) % 2.5);
+            u.ring.scale.set(r, r, 1);
+            u.ringMat.opacity = Math.max(0, 0.9 - (r - 1.0) / 2.5);
+          }
+
+          // Active 3D Route Pulsating Glow
+          if (activeRouteGlowMesh) {
+            const t = performance.now() * 0.004;
+            activeRouteGlowMesh.material.opacity = isEmergencyRouteActive
+              ? 0.5 + Math.sin(t * 4) * 0.25
+              : 0.4 + Math.sin(t * 3) * 0.18;
+          }
+
+          // Fire Hazard Light Flicker
+          if (hazardPointLight) {
+            const t = performance.now() * 0.01;
+            hazardPointLight.intensity = 4.5 + Math.sin(t * 8) * 1.8 + Math.cos(t * 13) * 1.2;
           }
           controls.update();
           renderer.render(scene, camera);

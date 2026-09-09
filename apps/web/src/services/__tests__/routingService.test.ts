@@ -4,6 +4,7 @@ import {
   calculateRouteTradeOffs,
   findSafestStairRoute,
   calculateEvacuationRoute,
+  resolveNearestGraphNode,
   SAFE_STAIR_TARGETS,
   ARCHITECTURAL_NODE_COORDS
 } from "../routingService.js";
@@ -79,4 +80,71 @@ describe("Corridor-Strict Pathfinding & Safest Stair Egress", () => {
     expect(destinationNode).toBe("exit-west");
     expect(stepFreeRoute.segments.every((s) => s.isStepFree)).toBe(true);
   });
+
+  describe("Dynamic Node Resolution & Emergency Ground Floor Descent", () => {
+    it("resolves node correctly from place name or coordinates", () => {
+      // Direct room code
+      expect(resolveNearestGraphNode({ x: 0, y: 0, nearestPlaceName: "Room 208" })).toBe("node-208");
+      expect(resolveNearestGraphNode({ x: 0, y: 0, nearestPlaceName: "Faculty Office 219" })).toBe("node-219");
+
+      // Washroom recognition
+      expect(resolveNearestGraphNode({ x: 0, y: 0, nearestPlaceName: "Girls Washroom near 208" })).toBe("node-wash-girls-208");
+      expect(resolveNearestGraphNode({ x: 0, y: 0, nearestPlaceName: "Boys Washroom East" })).toBe("node-wash-boys");
+
+      // 2D coordinate Euclidean distance fallback
+      expect(resolveNearestGraphNode({ x: 506.25, y: 133.75 })).toBe("node-204");
+      expect(resolveNearestGraphNode({ x: 371.25, y: 351.25 })).toBe("node-219");
+
+      // 3D coordinate conversion to 2D
+      // For node-204: x_3d = (506.25 - 480)/15 = 1.75, y_3d = (242.5 - 133.75)/15 = 7.25
+      expect(resolveNearestGraphNode({ x: 1.75, y: 7.25 })).toBe("node-204");
+    });
+
+    it("calculates emergency evacuation route leading to Ground Floor (Level 0) exit", () => {
+      // When evacuating from Room 204
+      const evacRoute = calculateEvacuationRoute("node-204");
+      expect(evacRoute.status).toBe("found");
+      expect(evacRoute.isEmergencyExit).toBe(true);
+
+      // Verify ground floor exit points and segments
+      const points = evacRoute.pathPoints;
+      expect(points[points.length - 1].floorId).toBe("floor-g");
+
+      // Check the final segment instructs egress through Ground Floor Fire Exit Door
+      const lastSegment = evacRoute.segments[evacRoute.segments.length - 1];
+      expect(lastSegment.instruction).toContain("Ground Floor Fire Exit Door");
+      expect(lastSegment.toNodeId).toContain("ground-exit");
+
+      // Check second-to-last segment instructs stairwell descent
+      const descentSegment = evacRoute.segments[evacRoute.segments.length - 2];
+      expect(descentSegment.instruction).toContain("descend stairwell to Ground Floor (Level 0)");
+      expect(descentSegment.instruction).toContain("DO NOT USE LIFTS");
+    });
+
+    it("dynamically reroutes around active fire incident in Room 208 and its smoke zone", () => {
+      // Fire in Room 208 blocks node-208, c-208, washrooms, and exit-east
+      const fireBlocked = new Set([
+        "node-208",
+        "c-208",
+        "node-wash-girls-208",
+        "c-wash-ne",
+        "c-ne",
+        "exit-east"
+      ]);
+
+      // User is at Room 207 (next to 208)
+      const evacRoute = calculateEvacuationRoute("node-207", fireBlocked);
+      expect(evacRoute.status).toBe("found");
+
+      // Must safely route westward to central stairs (ST-NM / node-stairs-north), avoiding blocked 208 corridor
+      const traversedNodes = evacRoute.segments.map((s) => s.toNodeId);
+      expect(traversedNodes).not.toContain("node-208");
+      expect(traversedNodes).not.toContain("c-208");
+      expect(traversedNodes).not.toContain("exit-east");
+
+      // Ensures user exits to ground floor via safe stair
+      expect(evacRoute.pathPoints[evacRoute.pathPoints.length - 1].floorId).toBe("floor-g");
+    });
+  });
 });
+

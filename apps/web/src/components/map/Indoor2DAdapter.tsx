@@ -372,6 +372,17 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
             <path d="M 2 2 L 7 5 L 2 8" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" />
           </marker>
 
+          {/* Radiant Neon Green Emergency Glow Filter */}
+          <filter id="emergencyPathGlow" x="-80%" y="-80%" width="260%" height="260%">
+            <feGaussianBlur stdDeviation="8" result="blur1" />
+            <feGaussianBlur stdDeviation="16" result="blur2" />
+            <feMerge>
+              <feMergeNode in="blur2" />
+              <feMergeNode in="blur1" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+
           {/* Intense Dark Blue Light Glow Filter */}
           <filter id="neonBlueGlow" x="-80%" y="-80%" width="260%" height="260%">
             <feGaussianBlur stdDeviation="5" result="blur1" />
@@ -916,23 +927,25 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
         {/* Active Route Path Layer */}
         {routePoints && routePoints.length > 1 && (
           <g id="active-route" className="pointer-events-none">
-            {/* Soft Route Halo / Glow */}
+            {/* Soft Radiant Route Halo / Glow */}
             <path
               d={getPathData(routePoints)}
               fill="none"
-              stroke={isEmergencyRoute ? "#34c759" : "#4fd1c2"}
-              strokeWidth={isEmergencyRoute ? "14" : "10"}
-              strokeOpacity={isEmergencyRoute ? "0.35" : "0.25"}
+              stroke={isEmergencyRoute ? "#00ff66" : "#4fd1c2"}
+              strokeWidth={isEmergencyRoute ? "18" : "12"}
+              strokeOpacity={isEmergencyRoute ? "0.6" : "0.3"}
               strokeLinecap="round"
               strokeLinejoin="round"
+              filter={isEmergencyRoute ? "url(#emergencyPathGlow)" : undefined}
+              className={isEmergencyRoute ? "animate-pulse" : undefined}
             />
 
             {/* Core Route Polyline */}
             <path
               d={getPathData(routePoints)}
               fill="none"
-              stroke={isEmergencyRoute ? "#34c759" : "#4fd1c2"}
-              strokeWidth={isEmergencyRoute ? "5" : "4"}
+              stroke={isEmergencyRoute ? "#00e676" : "#4fd1c2"}
+              strokeWidth={isEmergencyRoute ? "6" : "4"}
               strokeLinecap="round"
               strokeLinejoin="round"
             />
@@ -942,8 +955,8 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
               d={getPathData(routePoints)}
               fill="none"
               stroke="#ffffff"
-              strokeWidth="2.5"
-              strokeDasharray="6 14"
+              strokeWidth={isEmergencyRoute ? "3.5" : "2.5"}
+              strokeDasharray={isEmergencyRoute ? "10 14" : "6 14"}
               strokeLinecap="round"
               strokeLinejoin="round"
               className="animate-route-flow"
@@ -953,25 +966,31 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
             <circle
               cx={normalizePt(routePoints[0]).x}
               cy={normalizePt(routePoints[0]).y}
-              r="7"
-              fill={isEmergencyRoute ? "#34c759" : "#4fd1c2"}
+              r={isEmergencyRoute ? "8" : "7"}
+              fill={isEmergencyRoute ? "#00ff66" : "#4fd1c2"}
               stroke="#ffffff"
               strokeWidth="2.5"
+              filter={isEmergencyRoute ? "url(#emergencyPathGlow)" : undefined}
             />
 
-            {/* Destination Target Pin (Stairs Beacon in Emergency) */}
+            {/* Destination Target Pin (Ground Floor Fire Exit in Emergency) */}
             <g transform={`translate(${normalizePt(routePoints[routePoints.length - 1]).x}, ${normalizePt(routePoints[routePoints.length - 1]).y})`}>
               {isEmergencyRoute ? (
                 <g>
-                  <circle r="18" fill="none" stroke="#34c759" strokeWidth="2" strokeDasharray="4 2" className="animate-ping opacity-75" />
-                  <circle r="12" fill="#2e7d32" stroke="#34c759" strokeWidth="2.5" filter="url(#pinShadow)" />
-                  <text textAnchor="middle" y="1" dominantBaseline="central" className="text-[13px]">
+                  {/* Expanding Pulsing Ring */}
+                  <circle r="26" fill="none" stroke="#00ff66" strokeWidth="2.5" strokeDasharray="6 3" className="animate-ping opacity-80" />
+                  <circle r="16" fill="#042612" stroke="#00ff66" strokeWidth="3" filter="url(#emergencyPathGlow)" />
+                  <text textAnchor="middle" y="2" dominantBaseline="central" className="text-[15px]">
                     🏃
                   </text>
-                  <g transform="translate(16, -10)">
-                    <rect x="0" y="0" width="86" height="20" rx="6" fill="#1b5e20" stroke="#34c759" strokeWidth="1.5" filter="url(#pinShadow)" />
-                    <text x="8" y="13" className="text-[9px] font-bold fill-white tracking-wide">
-                      SAFE STAIRS
+                  {/* High-visibility badge with ground exit details */}
+                  <g transform="translate(22, -18)">
+                    <rect x="0" y="0" width="168" height="34" rx="8" fill="#042612" fillOpacity="0.96" stroke="#00ff66" strokeWidth="2" filter="url(#emergencyPathGlow)" />
+                    <text x="10" y="14" className="text-[10px] font-bold fill-white tracking-wide">
+                      GROUND FLOOR FIRE EXIT
+                    </text>
+                    <text x="10" y="27" className="text-[8.5px] font-semibold fill-[#86efac]">
+                      ⬇️ Descend Stairs · Safe Assembly
                     </text>
                   </g>
                 </g>

@@ -118,7 +118,9 @@ export const Indoor3DAdapter = forwardRef<Indoor3DAdapterRef, Indoor3DAdapterPro
             type: 'SET_ROUTE',
             route: props.route.pathPoints,
             profile: props.route.profile,
-            etaSeconds: props.route.estimatedTimeSeconds
+            isEmergency: props.route.profile === 'emergency' || props.route.isEmergencyExit || false,
+            etaSeconds: props.route.estimatedTimeSeconds,
+            destinationNode: props.route.segments?.[props.route.segments.length - 1]?.toNodeId
           },
           '*'
         );

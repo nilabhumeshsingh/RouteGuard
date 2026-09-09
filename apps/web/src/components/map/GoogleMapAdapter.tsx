@@ -99,6 +99,7 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
     const childMarkerRef = useRef<any>(null);
     const routePolylineRef = useRef<any>(null);
     const routeGlowLineRef = useRef<any>(null);
+    const routeDestinationMarkerRef = useRef<any>(null);
     const roomMarkersRef = useRef<any[]>([]);
     const hazardMarkersRef = useRef<any[]>([]);
     const exitMarkersRef = useRef<any[]>([]);
@@ -429,7 +430,7 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
       if (!isLoaded || !mapInstanceRef.current) return;
       const google = (window as any).google;
 
-      // Clean up previous polylines
+      // Clean up previous polylines & markers
       if (routePolylineRef.current) {
         routePolylineRef.current.setMap(null);
         routePolylineRef.current = null;
@@ -437,6 +438,10 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
       if (routeGlowLineRef.current) {
         routeGlowLineRef.current.setMap(null);
         routeGlowLineRef.current = null;
+      }
+      if (routeDestinationMarkerRef.current) {
+        routeDestinationMarkerRef.current.setMap(null);
+        routeDestinationMarkerRef.current = null;
       }
 
       const points: Array<{ x: number; y: number }> =
@@ -450,9 +455,9 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
           routeGlowLineRef.current = new google.maps.Polyline({
             path: pathCoords,
             geodesic: true,
-            strokeColor: "#34C759",
-            strokeOpacity: 0.4,
-            strokeWeight: 10,
+            strokeColor: "#00ff66",
+            strokeOpacity: 0.55,
+            strokeWeight: 14,
             map: mapInstanceRef.current,
             zIndex: 100
           });
@@ -461,11 +466,45 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
           routePolylineRef.current = new google.maps.Polyline({
             path: pathCoords,
             geodesic: true,
-            strokeColor: "#28a745",
+            strokeColor: "#00e676",
             strokeOpacity: 1.0,
-            strokeWeight: 5,
+            strokeWeight: 6,
             map: mapInstanceRef.current,
             zIndex: 101
+          });
+
+          // Destination Beacon Marker for Ground Floor Fire Exit
+          const lastPoint = pathCoords[pathCoords.length - 1];
+          routeDestinationMarkerRef.current = new google.maps.Marker({
+            position: lastPoint,
+            map: mapInstanceRef.current,
+            title: "Ground Floor Fire Exit (Safe Assembly Area)",
+            zIndex: 105,
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 14,
+              fillColor: "#00E676",
+              fillOpacity: 1,
+              strokeColor: "#FFFFFF",
+              strokeWeight: 3
+            },
+            label: {
+              text: "🏃",
+              fontSize: "13px"
+            }
+          });
+
+          routeDestinationMarkerRef.current.addListener("click", () => {
+            infoWindowRef.current.setContent(`
+              <div style="padding: 8px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                <div style="font-weight: 800; color: #00c853; font-size: 14px;">🏃 GROUND FLOOR FIRE EXIT</div>
+                <div style="font-size: 12px; color: #333; margin-top: 4px; font-weight: 600;">Descend via stairs to Level 0 Exterior</div>
+                <div style="margin-top: 6px; font-size: 11px; background: #e8f5e9; color: #1b5e20; padding: 4px 8px; border-radius: 4px; display: inline-block;">
+                  ✅ Exterior Safe Assembly Area
+                </div>
+              </div>
+            `);
+            infoWindowRef.current.open(mapInstanceRef.current, routeDestinationMarkerRef.current);
           });
         } else if (isNightSafety) {
           // Night Safety / High Footfall Route line (Sapphire / Cyan Glow)

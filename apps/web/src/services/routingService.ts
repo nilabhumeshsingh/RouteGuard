@@ -1,5 +1,5 @@
 import { CampusGraph, findPath, findStepFreeRoute, findEmergencyEvacuationRoute, generateTradeOffExplanation } from "@routeguard/graph";
-import { RouteResult, RoutePoint } from "@routeguard/shared";
+import { RouteResult, RoutePoint, RouteSegment } from "@routeguard/shared";
 
 // Architectural coordinate mapping strictly matched to 2D SVG blueprint and dollhouse model
 export const ARCHITECTURAL_NODE_COORDS: Record<string, { x: number; y: number }> = {
@@ -417,10 +417,52 @@ export function findSafestStairRoute(
   }
 
   if (bestRoute && bestTarget) {
-    const isCentral = bestTarget.safetyTier === "highest";
-    const explanation = isEmergency
-      ? `Emergency Evacuation: Safest route to ${bestTarget.name} via monitored corridors (${bestTarget.footfallPercentage}% footfall).`
-      : isNightSafety
+    if (isEmergency) {
+      const groundDescendSegments: RouteSegment[] = [
+        {
+          fromNodeId: bestTarget.id,
+          toNodeId: `${bestTarget.id}-ground-stairs`,
+          distanceMeters: 6.0,
+          travelTimeSeconds: 5,
+          instruction: `Enter ${bestTarget.name} — descend stairwell to Ground Floor (Level 0). DO NOT USE LIFTS.`,
+          isStepFree: bestTarget.isStepFree,
+          edgeType: bestTarget.isStepFree ? "ramp" : "stairs",
+          hazardLevel: "none"
+        },
+        {
+          fromNodeId: `${bestTarget.id}-ground-stairs`,
+          toNodeId: `${bestTarget.id}-ground-exit`,
+          distanceMeters: 4.0,
+          travelTimeSeconds: 3,
+          instruction: `Egress through Ground Floor Fire Exit Door directly to safe outside assembly area (${bestTarget.code} Ground Exit).`,
+          isStepFree: true,
+          edgeType: "door",
+          hazardLevel: "none"
+        }
+      ];
+
+      const lastPt = bestRoute.pathPoints[bestRoute.pathPoints.length - 1];
+      const groundPathPoints: RoutePoint[] = [
+        ...bestRoute.pathPoints,
+        {
+          x: lastPt.x,
+          y: lastPt.y,
+          floorId: "floor-g"
+        }
+      ];
+
+      return {
+        ...bestRoute,
+        isEmergencyExit: true,
+        segments: [...bestRoute.segments, ...groundDescendSegments],
+        pathPoints: groundPathPoints,
+        totalDistanceMeters: Math.round((bestRoute.totalDistanceMeters + 10.0) * 10) / 10,
+        estimatedTimeSeconds: bestRoute.estimatedTimeSeconds + 8,
+        tradeOffExplanation: `Emergency Fire Evacuation: Safest egress path to Ground Floor Fire Exit via ${bestTarget.name}. Descend stairs to Level 0 exterior safe assembly area.`
+      };
+    }
+
+    const explanation = isNightSafety
       ? `Women's Safe Stair Path: Guided strictly via well-lit corridors to ${bestTarget.name} (${bestTarget.footfallPercentage}% footfall, 24/7 CCTV).`
       : `Safest Stair Route: Direct corridor navigation to ${bestTarget.name} (${bestTarget.description}).`;
 
@@ -536,6 +578,49 @@ export function calculateEvacuationRoute(
     isNightSafety,
     isEmergency: true
   });
+}
+
+/**
+ * Resolves the closest graph node to a given position or place name.
+ * Handles room names, washrooms, corridor midpoints, and coordinate Euclidean matching.
+ */
+export function resolveNearestGraphNode(userPos: { x: number; y: number; nearestPlaceName?: string }): string {
+  // 1. Direct match in nearestPlaceName
+  if (userPos.nearestPlaceName) {
+    // Restrooms & POIs first to prevent "Girls Washroom near 208" matching "node-208"
+    if (/boys/i.test(userPos.nearestPlaceName)) return "node-wash-boys";
+    if (/girls.*208|washroom.*208|restroom.*208/i.test(userPos.nearestPlaceName)) return "node-wash-girls-208";
+    if (/214.*washroom|washroom.*214|restroom.*214/i.test(userPos.nearestPlaceName)) return "node-wash-214";
+    if (/girls.*211|washroom.*211|restroom.*211/i.test(userPos.nearestPlaceName)) return "node-wash-girls-211";
+    if (/balcony/i.test(userPos.nearestPlaceName)) return "c-balcony";
+
+    // Direct room code match (e.g. "Room 204", "208", "AB1 219")
+    const match = userPos.nearestPlaceName.match(/\b(20[1-9]|21[0-9]|220)\b/);
+    if (match) return `node-${match[1]}`;
+  }
+
+  // 2. Resolve via spatial coordinates
+  let targetX = userPos.x;
+  let targetY = userPos.y;
+
+  // Convert 3D coordinates to 2D SVG space if needed (|x| < 50)
+  if (Math.abs(userPos.x) < 50 && Math.abs(userPos.y) < 50) {
+    targetX = userPos.x * 15 + 480;
+    targetY = 242.5 - userPos.y * 15;
+  }
+
+  let nearestNode = "node-204";
+  let minDistance = Infinity;
+
+  for (const [nodeId, coords] of Object.entries(ARCHITECTURAL_NODE_COORDS)) {
+    const dist = Math.hypot(coords.x - targetX, coords.y - targetY);
+    if (dist < minDistance) {
+      minDistance = dist;
+      nearestNode = nodeId;
+    }
+  }
+
+  return nearestNode;
 }
 
 // Web Speech API Voice Guidance
