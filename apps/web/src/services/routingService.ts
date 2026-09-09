@@ -259,6 +259,28 @@ export function projectRouteToReferenceGuide(points: RoutePoint[]): RoutePoint[]
   const firstGuidePoint = nearestReferencePoint(first);
   const lastGuidePoint = nearestReferencePoint(last);
 
+  // The graph's central stair node is an implementation waypoint. Rebuild this
+  // visible crossing through the nearest open void lane instead of retaining the
+  // graph point, which can land inside a classroom in the rendered floor plan.
+  const usesCentralCrossing = points.some(
+    (point) => Math.abs(point.x - 566.25) < 2 &&
+      (Math.abs(point.y - 193.75) < 2 || Math.abs(point.y - 291.25) < 2)
+  );
+  if (usesCentralCrossing) {
+    const voidLaneX = REFERENCE_VOID_LANE_X.reduce((closest, x) =>
+      Math.abs(x - firstGuidePoint.x) < Math.abs(closest - firstGuidePoint.x) ? x : closest,
+      REFERENCE_VOID_LANE_X[0]
+    );
+    return [
+      first,
+      firstGuidePoint,
+      { x: voidLaneX, y: 193.75, floorId: "floor-2" },
+      { x: voidLaneX, y: 291.25, floorId: "floor-2" },
+      lastGuidePoint,
+      last
+    ].filter((point, index, route) => index === 0 || Math.hypot(point.x - route[index - 1].x, point.y - route[index - 1].y) > 0.5);
+  }
+
   appendUniquePoint(visibleRoute, first);
   appendUniquePoint(visibleRoute, firstGuidePoint);
 

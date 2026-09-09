@@ -97,5 +97,9 @@ describe("Corridor-Strict Pathfinding & Safest Stair Egress", () => {
 
     expect(visiblePoints.some((point) => Math.abs(point.x - 487.5) < 0.5)).toBe(true);
     expect(visiblePoints.some((point) => Math.abs(point.x - 566.25) < 0.5)).toBe(false);
+    expect(visiblePoints).toEqual(expect.arrayContaining([
+      expect.objectContaining({ x: 487.5, y: 193.75 }),
+      expect.objectContaining({ x: 487.5, y: 291.25 })
+    ]));
   });
 });
