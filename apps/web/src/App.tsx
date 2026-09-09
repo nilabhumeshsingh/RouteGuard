@@ -22,6 +22,7 @@ import {
   findSafestStairRoute,
   SAFE_STAIR_TARGETS,
   RouteComparison,
+  projectRouteToReferenceGuide,
   speakInstruction
 } from "./services/routingService";
 import { fetchActiveHazard } from "./services/hazardService";
@@ -876,6 +877,10 @@ export const App: React.FC = () => {
     );
   };
 
+  const visibleRoute = activeRoute
+    ? { ...activeRoute, pathPoints: projectRouteToReferenceGuide(activeRoute.pathPoints) }
+    : null;
+
   return (
     <div
       className={`relative w-full h-screen overflow-hidden ${
@@ -909,8 +914,8 @@ export const App: React.FC = () => {
           currentFloor={currentFloor}
           layers={layers}
           userPosition={userPos}
-          routePoints={activeRoute?.pathPoints}
-          activeRoute={activeRoute}
+          routePoints={visibleRoute?.pathPoints}
+          activeRoute={visibleRoute}
           routeIsStepFree={activeProfile === "step-free"}
           isEmergencyRoute={isAlarmActive || !!activeRoute?.isEmergencyExit || selectedPOI?.category === "Stairs" || selectedPOI?.category === "Emergency Exit"}
           hazardOverlays={hazardOverlays}

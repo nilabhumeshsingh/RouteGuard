@@ -187,6 +187,86 @@ export const LOW_FOOTFALL_NIGHT_NODES = new Set<string>([
   "wash-se"
 ]);
 
+export interface ReferenceGuidePoint {
+  x: number;
+  y: number;
+  floorId: string;
+}
+
+// Canonical corridor centerlines based on the supplied second-floor reference plan.
+// These lines are used as an invisible navigation guide; only the active route is rendered.
+export const REFERENCE_GUIDE_SEGMENTS: Array<[
+  { x: number; y: number },
+  { x: number; y: number }
+]> = [
+  [{ x: 191.25, y: 193.75 }, { x: 862.5, y: 193.75 }],
+  [{ x: 191.25, y: 291.25 }, { x: 862.5, y: 291.25 }],
+  [{ x: 191.25, y: 193.75 }, { x: 191.25, y: 291.25 }],
+  [{ x: 566.25, y: 193.75 }, { x: 566.25, y: 291.25 }],
+  [{ x: 862.5, y: 193.75 }, { x: 862.5, y: 291.25 }]
+];
+
+function projectToSegment(
+  point: { x: number; y: number },
+  start: { x: number; y: number },
+  end: { x: number; y: number }
+): ReferenceGuidePoint {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const lengthSquared = dx * dx + dy * dy;
+  const ratio = lengthSquared === 0
+    ? 0
+    : Math.max(0, Math.min(1, ((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared));
+
+  return {
+    x: start.x + ratio * dx,
+    y: start.y + ratio * dy,
+    floorId: "floor-2"
+  };
+}
+
+function nearestReferencePoint(point: ReferenceGuidePoint): ReferenceGuidePoint {
+  return REFERENCE_GUIDE_SEGMENTS.reduce((closest, [start, end]) => {
+    const candidate = projectToSegment(point, start, end);
+    const candidateDistance = Math.hypot(candidate.x - point.x, candidate.y - point.y);
+    const closestDistance = Math.hypot(closest.x - point.x, closest.y - point.y);
+    return candidateDistance < closestDistance ? candidate : closest;
+  }, projectToSegment(point, REFERENCE_GUIDE_SEGMENTS[0][0], REFERENCE_GUIDE_SEGMENTS[0][1]));
+}
+
+function appendUniquePoint(points: ReferenceGuidePoint[], point: ReferenceGuidePoint): void {
+  const previous = points[points.length - 1];
+  if (!previous || Math.hypot(previous.x - point.x, previous.y - point.y) > 0.5) {
+    points.push(point);
+  }
+}
+
+/**
+ * Projects the visible route onto the reference corridor network while preserving
+ * short connectors from rooms, stairs, and other destinations to that network.
+ */
+export function projectRouteToReferenceGuide(points: RoutePoint[]): RoutePoint[] {
+  if (!points || points.length < 2) return points || [];
+
+  const visibleRoute: ReferenceGuidePoint[] = [];
+  const first = points[0];
+  const last = points[points.length - 1];
+  const firstGuidePoint = nearestReferencePoint(first);
+  const lastGuidePoint = nearestReferencePoint(last);
+
+  appendUniquePoint(visibleRoute, first);
+  appendUniquePoint(visibleRoute, firstGuidePoint);
+
+  for (const point of points.slice(1, -1)) {
+    appendUniquePoint(visibleRoute, nearestReferencePoint(point));
+  }
+
+  appendUniquePoint(visibleRoute, lastGuidePoint);
+  appendUniquePoint(visibleRoute, last);
+
+  return visibleRoute;
+}
+
 /**
  * Builds the authentic Floor 2 architectural graph.
  * Pure corridor routing: all corridors are linear horizontal or vertical segments,

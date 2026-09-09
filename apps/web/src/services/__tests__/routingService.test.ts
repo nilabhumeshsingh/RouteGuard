@@ -5,7 +5,8 @@ import {
   findSafestStairRoute,
   calculateEvacuationRoute,
   SAFE_STAIR_TARGETS,
-  ARCHITECTURAL_NODE_COORDS
+  ARCHITECTURAL_NODE_COORDS,
+  projectRouteToReferenceGuide
 } from "../routingService.js";
 
 describe("Corridor-Strict Pathfinding & Safest Stair Egress", () => {
@@ -78,5 +79,20 @@ describe("Corridor-Strict Pathfinding & Safest Stair Egress", () => {
     const destinationNode = stepFreeRoute.segments[stepFreeRoute.segments.length - 1].toNodeId;
     expect(destinationNode).toBe("exit-west");
     expect(stepFreeRoute.segments.every((s) => s.isStepFree)).toBe(true);
+  });
+
+  it("keeps visible navigation on the reference corridors with room connectors", () => {
+    const route = calculateRouteTradeOffs("node-204", "node-219").recommended;
+    const visiblePoints = projectRouteToReferenceGuide(route.pathPoints);
+
+    expect(visiblePoints[0]).toEqual(route.pathPoints[0]);
+    expect(visiblePoints[visiblePoints.length - 1]).toEqual(route.pathPoints[route.pathPoints.length - 1]);
+
+    for (const point of visiblePoints.slice(1, -1)) {
+      const onNorth = Math.abs(point.y - 193.75) < 0.5;
+      const onSouth = Math.abs(point.y - 291.25) < 0.5;
+      const onVertical = [191.25, 566.25, 862.5].some((x) => Math.abs(point.x - x) < 0.5);
+      expect(onNorth || onSouth || onVertical).toBe(true);
+    }
   });
 });
