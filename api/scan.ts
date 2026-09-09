@@ -160,6 +160,8 @@ function runKnnEstimate(scanAps: any[], fingerprints: any[]) {
     confidence: Number(Math.min(1, Math.max(0.2, bestOverlap / 5)).toFixed(2)),
     source: "wifi",
     label: cleanLabel,
+    type: best.type || "office",
+    visible: best.visible ?? true,
     roomId: cleanLabel.replace(/^(ab1\s*|room\s*)/i, "").trim().toLowerCase(),
     anchorsUsed: bestOverlap,
     uncertaintyMeters: 3.0

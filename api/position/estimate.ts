@@ -1,3 +1,4 @@
+import { MongoClient } from "mongodb";
 import { fingerprints as rawFingerprints } from "./fingerprints.js";
 
 interface WifiReading {
@@ -8,13 +9,35 @@ interface WifiReading {
 
 interface SurveyFingerprint {
   location: string;
+  label?: string;
   x: number;
   y: number;
   floorId: string;
+  type?: string;
+  visible?: boolean;
   bssids: Record<string, number>;
 }
 
-const fingerprints = rawFingerprints as unknown as SurveyFingerprint[];
+let cachedClient: MongoClient | null = null;
+async function getDb() {
+  const uri = process.env.MONGODB_URI;
+  if (!uri) return null;
+  if (cachedClient) {
+    try {
+      return cachedClient.db("campussafe");
+    } catch {
+      cachedClient = null;
+    }
+  }
+  try {
+    cachedClient = new MongoClient(uri, { serverSelectionTimeoutMS: 5000 });
+    await cachedClient.connect();
+    return cachedClient.db("campussafe");
+  } catch (err) {
+    console.warn("[Vercel estimate] MongoDB connection warning:", err);
+    return null;
+  }
+}
 
 function normalizeBssid(bssid: string): string {
   return (bssid || "").trim().toUpperCase().replace(/\\/g, "");
@@ -23,7 +46,6 @@ function normalizeBssid(bssid: string): string {
 function parseSignalStrength(val: number | string | undefined): number {
   if (val === undefined || val === null) return 0.5;
   if (typeof val === "number") {
-    // If negative RSSI in dBm (e.g. -65), map [-100, -30] to [0, 1]
     if (val < 0) {
       return Math.min(1, Math.max(0, (val + 100) / 70));
     }
@@ -64,9 +86,7 @@ function cosineSimilarity(query: Map<string, number>, reference: Map<string, num
 function computeDistance(query: Map<string, number>, reference: Map<string, number>) {
   let sharedAps = 0;
   for (const [bssid] of query) {
-    if (reference.has(bssid)) {
-      sharedAps++;
-    }
+    if (reference.has(bssid)) sharedAps++;
   }
 
   const similarity = cosineSimilarity(query, reference);
@@ -78,10 +98,9 @@ function computeDistance(query: Map<string, number>, reference: Map<string, numb
 }
 
 export default async function handler(req: any, res: any) {
-  // CORS configuration
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, User-Agent");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
   if (req.method === "OPTIONS") {
     res.status(200).end();
@@ -117,6 +136,39 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
+    // Dynamic MongoDB loading
+    let activeFingerprints: SurveyFingerprint[] = rawFingerprints as any[];
+    const db = await getDb();
+    if (db) {
+      try {
+        const dbFps = await db.collection("fingerprints").find({}).toArray();
+        if (dbFps && dbFps.length > 0) {
+          activeFingerprints = dbFps.map((d: any) => {
+            const bssids: Record<string, number> = {};
+            if (Array.isArray(d.aps)) {
+              d.aps.forEach((a: any) => {
+                if (a.bssid) bssids[a.bssid] = a.signalPercent ?? a.rssi ?? 50;
+              });
+            } else if (d.bssids) {
+              Object.assign(bssids, d.bssids);
+            }
+            return {
+              location: d.location || d.label,
+              label: d.label,
+              x: Number(d.x) || 0,
+              y: Number(d.y) || 0,
+              type: d.type,
+              visible: d.visible,
+              floorId: d.floorId || "floor-2",
+              bssids
+            };
+          });
+        }
+      } catch (err) {
+        console.warn("[estimate] MongoDB load notice:", err);
+      }
+    }
+
     const queryMap = new Map<string, number>();
     for (const item of items) {
       if (item && item.bssid) {
@@ -127,8 +179,8 @@ export default async function handler(req: any, res: any) {
 
     if (queryMap.size === 0) {
       res.status(200).json({
-        x: 120,
-        y: 220,
+        x: 1.75,
+        y: 7.25,
         floorId: "floor-2",
         confidence: 0,
         uncertaintyRadius: 50,
@@ -142,7 +194,7 @@ export default async function handler(req: any, res: any) {
     // Score against survey fingerprints
     const candidates: Array<{ fp: SurveyFingerprint; similarity: number; distance: number; sharedAps: number }> = [];
 
-    for (const fp of fingerprints) {
+    for (const fp of activeFingerprints) {
       const refMap = new Map<string, number>();
       for (const [bssid, val] of Object.entries(fp.bssids)) {
         refMap.set(normalizeBssid(bssid), parseSignalStrength(val));
@@ -157,13 +209,17 @@ export default async function handler(req: any, res: any) {
     const k = Math.min(3, Math.max(1, candidates.length));
     const topK = candidates.slice(0, k);
 
-    let estX = 120;
-    let estY = 220;
+    let estX = 1.75;
+    let estY = 7.25;
     let nearestName = "Academic Block 1 Corridor";
     let confidence = 0.5;
+    let estType = "office";
+    let estVisible = true;
 
     if (topK.length > 0) {
       nearestName = topK[0].fp.location;
+      estType = topK[0].fp.type || "office";
+      estVisible = topK[0].fp.visible ?? true;
       confidence = Math.max(0.2, Math.min(0.98, topK[0].similarity));
 
       let totalWeight = 0;
@@ -192,6 +248,8 @@ export default async function handler(req: any, res: any) {
       confidence: Math.round(confidence * 100) / 100,
       uncertaintyRadius,
       nearestPlaceName: nearestName,
+      type: estType,
+      visible: estVisible,
       source: "wifi-knn",
       timestamp: Date.now()
     });
