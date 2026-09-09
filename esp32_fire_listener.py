@@ -42,6 +42,10 @@ BG_RED = "\033[41m"
 def log(msg, color=RESET):
     print(f"{color}{msg}{RESET}")
 
+script_dir = os.path.dirname(os.path.abspath(__file__))
+if script_dir not in sys.path:
+    sys.path.insert(0, script_dir)
+
 from local_scanner import scan as local_scan, _history_labels, _history_coords
 from collections import Counter
 
