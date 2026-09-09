@@ -789,20 +789,32 @@
             pts3D.push(new THREE.Vector3(x3d, 12.25, z3d));
           }
 
-          // Snap start point directly to the active user beacon so path originates from the user
+          // If the user beacon is close to the start waypoint (< 2.5m), smoothly nudge the start to the beacon
+          // without slicing across rooms/walls
           if (userBeaconGroup && userBeaconGroup.visible && pts3D.length > 0) {
             const bx = userBeaconGroup.position.x;
             const bz = userBeaconGroup.position.z;
             const distToBeacon = Math.hypot(pts3D[0].x - bx, pts3D[0].z - bz);
-            if (distToBeacon < 15.0 && distToBeacon > 0.4) {
-              pts3D.unshift(new THREE.Vector3(bx, 12.25, bz));
+            if (distToBeacon < 2.5) {
+              pts3D[0].x = bx;
+              pts3D[0].z = bz;
             }
           }
 
+          // Remove consecutive duplicate / nearly identical points
+          const filteredPts = [];
+          for (let i = 0; i < pts3D.length; i++) {
+            if (i === 0 || pts3D[i].distanceTo(filteredPts[filteredPts.length - 1]) > 0.1) {
+              filteredPts.push(pts3D[i].clone());
+            }
+          }
+          if (filteredPts.length < 2) return;
+
           // Identify closest stair core to the route destination
-          const lastCorridorPt = pts3D[pts3D.length - 1];
-          let closestCore = null;
+          const lastCorridorPt = filteredPts[filteredPts.length - 1];
+          let matchedStairCore = null;
           let minCoreDist = Infinity;
+          let closestCore = null;
 
           for (const core of STAIR_CORES_3D) {
             const d = Math.hypot(lastCorridorPt.x - core.x, lastCorridorPt.z - core.z);
@@ -812,91 +824,116 @@
             }
           }
 
-          const isStairRoute = isEmergency ||
-            (options.destinationNode && /(stair|exit|ramp)/i.test(options.destinationNode)) ||
-            minCoreDist < 12.0;
+          // Strict stair route determination:
+          // Must explicitly have a stair/exit destination OR be an emergency route,
+          // AND must terminate near an actual stair core (<= 4.0m).
+          if (options.destinationNode) {
+            const destStr = String(options.destinationNode).toLowerCase();
+            if (destStr.includes('stair-nw') || destStr.includes('exit-nw')) matchedStairCore = STAIR_CORES_3D.find(c => c.id === 'stair-nw');
+            else if (destStr.includes('stair-sw') || destStr.includes('exit-west')) matchedStairCore = STAIR_CORES_3D.find(c => c.id === 'stair-sw');
+            else if (destStr.includes('stairs-north') || destStr.includes('stair-nm') || destStr.includes('stair-mid-n')) matchedStairCore = STAIR_CORES_3D.find(c => c.id === 'stair-nm');
+            else if (destStr.includes('stairs-south') || destStr.includes('stair-sm') || destStr.includes('stair-mid-s')) matchedStairCore = STAIR_CORES_3D.find(c => c.id === 'stair-sm');
+            else if (destStr.includes('stair-ne') || destStr.includes('exit-east')) matchedStairCore = STAIR_CORES_3D.find(c => c.id === 'stair-ne');
+            else if (destStr.includes('stairs-se') || destStr.includes('stair-se')) matchedStairCore = STAIR_CORES_3D.find(c => c.id === 'stair-se');
+          }
 
+          if (!matchedStairCore && closestCore && minCoreDist <= 4.0) {
+            if (isEmergency || (options.destinationNode && /(stair|exit|ramp)/i.test(options.destinationNode))) {
+              matchedStairCore = closestCore;
+            }
+          }
+
+          const isStairRoute = !!matchedStairCore;
           isEmergencyRouteActive = isEmergency || isStairRoute;
 
           let groundExitX = lastCorridorPt.x;
           let groundExitZ = lastCorridorPt.z;
 
           // FOLLOW THE STAIRS DOWN TO GROUND FLOOR:
-          if (isStairRoute && closestCore) {
-            const cx = closestCore.x;
-            const cz = closestCore.z;
+          if (isStairRoute && matchedStairCore) {
+            const cx = matchedStairCore.x;
+            const cz = matchedStairCore.z;
 
-            if (closestCore.isRamp) {
+            // If the last waypoint was an abstract stair node right next to the stair core,
+            // remove it so we connect seamlessly from the corridor directly into the stair entrance
+            if (filteredPts.length > 1) {
+              const last = filteredPts[filteredPts.length - 1];
+              if (Math.hypot(last.x - cx, last.z - cz) < 3.0) {
+                filteredPts.pop();
+              }
+            }
+
+            if (matchedStairCore.isRamp) {
               // West Egress Ramp (ST-SW) - follows the gentle ramp slope down to Ground Floor
-              pts3D.push(new THREE.Vector3(-19.25, 12.25, -7.75));
-              pts3D.push(new THREE.Vector3(-21.5, 9.25, -5.0));
-              pts3D.push(new THREE.Vector3(-23.5, 6.25, -2.5));
-              pts3D.push(new THREE.Vector3(-25.5, 3.25, 0.0));
-              pts3D.push(new THREE.Vector3(-28.0, 0.35, 0.0));
+              filteredPts.push(new THREE.Vector3(-19.25, 12.25, -7.75));
+              filteredPts.push(new THREE.Vector3(-21.5, 9.25, -5.0));
+              filteredPts.push(new THREE.Vector3(-23.5, 6.25, -2.5));
+              filteredPts.push(new THREE.Vector3(-25.5, 3.25, 0.0));
+              filteredPts.push(new THREE.Vector3(-28.0, 0.35, 0.0));
               groundExitX = -28.5;
               groundExitZ = 0.0;
-            } else if (closestCore.isNorth) {
+            } else if (matchedStairCore.isNorth) {
               // North Scissor Stairs (ST-NM, ST-NW, ST-NE)
-              // Step into top landing
-              pts3D.push(new THREE.Vector3(cx, 12.25, cz - 2.1));
+              // Step into top landing from corridor
+              filteredPts.push(new THREE.Vector3(cx, 12.25, cz - 2.1));
               // Flight 1: Floor 2 -> intermediate landing (y: 12.25 -> 9.15)
-              pts3D.push(new THREE.Vector3(cx + 0.65, 11.2, cz - 1.2));
-              pts3D.push(new THREE.Vector3(cx + 0.65, 10.2, cz));
-              pts3D.push(new THREE.Vector3(cx + 0.65, 9.25, cz + 1.2));
+              filteredPts.push(new THREE.Vector3(cx + 0.65, 11.2, cz - 1.2));
+              filteredPts.push(new THREE.Vector3(cx + 0.65, 10.2, cz));
+              filteredPts.push(new THREE.Vector3(cx + 0.65, 9.25, cz + 1.2));
               // Intermediate landing
-              pts3D.push(new THREE.Vector3(cx, 9.15, cz + 2.1));
+              filteredPts.push(new THREE.Vector3(cx, 9.15, cz + 2.1));
               // Flight 2: Intermediate landing -> Floor 1 landing (y: 9.15 -> 6.25)
-              pts3D.push(new THREE.Vector3(cx - 0.65, 8.2, cz + 1.2));
-              pts3D.push(new THREE.Vector3(cx - 0.65, 7.2, cz));
-              pts3D.push(new THREE.Vector3(cx - 0.65, 6.25, cz - 1.2));
+              filteredPts.push(new THREE.Vector3(cx - 0.65, 8.2, cz + 1.2));
+              filteredPts.push(new THREE.Vector3(cx - 0.65, 7.2, cz));
+              filteredPts.push(new THREE.Vector3(cx - 0.65, 6.25, cz - 1.2));
               // Floor 1 landing
-              pts3D.push(new THREE.Vector3(cx, 6.15, cz - 2.1));
+              filteredPts.push(new THREE.Vector3(cx, 6.15, cz - 2.1));
               // Flight 3: Floor 1 -> intermediate landing (y: 6.15 -> 3.15)
-              pts3D.push(new THREE.Vector3(cx + 0.65, 5.2, cz - 1.2));
-              pts3D.push(new THREE.Vector3(cx + 0.65, 4.2, cz));
-              pts3D.push(new THREE.Vector3(cx + 0.65, 3.25, cz + 1.2));
+              filteredPts.push(new THREE.Vector3(cx + 0.65, 5.2, cz - 1.2));
+              filteredPts.push(new THREE.Vector3(cx + 0.65, 4.2, cz));
+              filteredPts.push(new THREE.Vector3(cx + 0.65, 3.25, cz + 1.2));
               // Intermediate landing
-              pts3D.push(new THREE.Vector3(cx, 3.15, cz + 2.1));
+              filteredPts.push(new THREE.Vector3(cx, 3.15, cz + 2.1));
               // Flight 4: Intermediate landing -> Ground Floor landing (y: 3.15 -> 0.35)
-              pts3D.push(new THREE.Vector3(cx - 0.65, 2.2, cz + 1.2));
-              pts3D.push(new THREE.Vector3(cx - 0.65, 1.2, cz));
-              pts3D.push(new THREE.Vector3(cx - 0.65, 0.35, cz - 1.2));
+              filteredPts.push(new THREE.Vector3(cx - 0.65, 2.2, cz + 1.2));
+              filteredPts.push(new THREE.Vector3(cx - 0.65, 1.2, cz));
+              filteredPts.push(new THREE.Vector3(cx - 0.65, 0.35, cz - 1.2));
               // Ground Floor landing
-              pts3D.push(new THREE.Vector3(cx, 0.35, cz - 2.1));
+              filteredPts.push(new THREE.Vector3(cx, 0.35, cz - 2.1));
               // Egress through ground floor exterior door to outside apron
-              pts3D.push(new THREE.Vector3(cx, 0.35, cz + 4.5));
+              filteredPts.push(new THREE.Vector3(cx, 0.35, cz + 4.5));
               groundExitX = cx;
               groundExitZ = cz + 5.5;
             } else {
               // South Scissor Stairs (ST-SM, ST-SE)
-              // Step into top landing
-              pts3D.push(new THREE.Vector3(cx, 12.25, cz + 2.1));
+              // Step into top landing from corridor
+              filteredPts.push(new THREE.Vector3(cx, 12.25, cz + 2.1));
               // Flight 1: Floor 2 -> intermediate landing (y: 12.25 -> 9.15)
-              pts3D.push(new THREE.Vector3(cx - 0.65, 11.2, cz + 1.2));
-              pts3D.push(new THREE.Vector3(cx - 0.65, 10.2, cz));
-              pts3D.push(new THREE.Vector3(cx - 0.65, 9.25, cz - 1.2));
+              filteredPts.push(new THREE.Vector3(cx - 0.65, 11.2, cz + 1.2));
+              filteredPts.push(new THREE.Vector3(cx - 0.65, 10.2, cz));
+              filteredPts.push(new THREE.Vector3(cx - 0.65, 9.25, cz - 1.2));
               // Intermediate landing
-              pts3D.push(new THREE.Vector3(cx, 9.15, cz - 2.1));
+              filteredPts.push(new THREE.Vector3(cx, 9.15, cz - 2.1));
               // Flight 2: Intermediate landing -> Floor 1 landing (y: 9.15 -> 6.25)
-              pts3D.push(new THREE.Vector3(cx + 0.65, 8.2, cz - 1.2));
-              pts3D.push(new THREE.Vector3(cx + 0.65, 7.2, cz));
-              pts3D.push(new THREE.Vector3(cx + 0.65, 6.25, cz + 1.2));
+              filteredPts.push(new THREE.Vector3(cx + 0.65, 8.2, cz - 1.2));
+              filteredPts.push(new THREE.Vector3(cx + 0.65, 7.2, cz));
+              filteredPts.push(new THREE.Vector3(cx + 0.65, 6.25, cz + 1.2));
               // Floor 1 landing
-              pts3D.push(new THREE.Vector3(cx, 6.15, cz + 2.1));
+              filteredPts.push(new THREE.Vector3(cx, 6.15, cz + 2.1));
               // Flight 3: Floor 1 -> intermediate landing (y: 6.15 -> 3.15)
-              pts3D.push(new THREE.Vector3(cx - 0.65, 5.2, cz + 1.2));
-              pts3D.push(new THREE.Vector3(cx - 0.65, 4.2, cz));
-              pts3D.push(new THREE.Vector3(cx - 0.65, 3.25, cz - 1.2));
+              filteredPts.push(new THREE.Vector3(cx - 0.65, 5.2, cz + 1.2));
+              filteredPts.push(new THREE.Vector3(cx - 0.65, 4.2, cz));
+              filteredPts.push(new THREE.Vector3(cx - 0.65, 3.25, cz - 1.2));
               // Intermediate landing
-              pts3D.push(new THREE.Vector3(cx, 3.15, cz - 2.1));
+              filteredPts.push(new THREE.Vector3(cx, 3.15, cz - 2.1));
               // Flight 4: Intermediate landing -> Ground Floor landing (y: 3.15 -> 0.35)
-              pts3D.push(new THREE.Vector3(cx + 0.65, 2.2, cz - 1.2));
-              pts3D.push(new THREE.Vector3(cx + 0.65, 1.2, cz));
-              pts3D.push(new THREE.Vector3(cx + 0.65, 0.35, cz + 1.2));
+              filteredPts.push(new THREE.Vector3(cx + 0.65, 2.2, cz - 1.2));
+              filteredPts.push(new THREE.Vector3(cx + 0.65, 1.2, cz));
+              filteredPts.push(new THREE.Vector3(cx + 0.65, 0.35, cz + 1.2));
               // Ground Floor landing
-              pts3D.push(new THREE.Vector3(cx, 0.35, cz + 2.1));
+              filteredPts.push(new THREE.Vector3(cx, 0.35, cz + 2.1));
               // Egress through ground floor exterior door to outside apron
-              pts3D.push(new THREE.Vector3(cx, 0.35, cz - 4.5));
+              filteredPts.push(new THREE.Vector3(cx, 0.35, cz - 4.5));
               groundExitX = cx;
               groundExitZ = cz - 5.5;
             }
@@ -907,11 +944,11 @@
           }
 
           // Build smooth 3D CatmullRom Curve
-          const curve = new THREE.CatmullRomCurve3(pts3D, false, 'catmullrom', 0.15);
+          const curve = new THREE.CatmullRomCurve3(filteredPts, false, 'catmullrom', 0.15);
 
           // 1. Core Glowing Tube
           const isGlowingGreen = isEmergency || isStairRoute;
-          const tubeGeo = new THREE.TubeGeometry(curve, Math.max(72, pts3D.length * 12), isGlowingGreen ? 0.26 : 0.18, 12, false);
+          const tubeGeo = new THREE.TubeGeometry(curve, Math.max(72, filteredPts.length * 12), isGlowingGreen ? 0.26 : 0.18, 12, false);
           const tubeMat = new THREE.MeshStandardMaterial({
             color: isGlowingGreen ? 0x00ff66 : 0x00d2ff,
             emissive: isGlowingGreen ? 0x00dd44 : 0x0077dd,
@@ -923,7 +960,7 @@
           routeLayerGroup.add(activeRouteMesh);
 
           // 2. Volumetric Glowing Aura Ribbon
-          const glowTubeGeo = new THREE.TubeGeometry(curve, Math.max(72, pts3D.length * 12), isGlowingGreen ? 0.58 : 0.42, 12, false);
+          const glowTubeGeo = new THREE.TubeGeometry(curve, Math.max(72, filteredPts.length * 12), isGlowingGreen ? 0.58 : 0.42, 12, false);
           const glowTubeMat = new THREE.MeshBasicMaterial({
             color: isGlowingGreen ? 0x22c55e : 0x0099ff,
             transparent: true,
@@ -935,7 +972,7 @@
           routeLayerGroup.add(activeRouteGlowMesh);
 
           // 3. Start Point Indicator
-          const startPt = pts3D[0];
+          const startPt = filteredPts[0];
           const startMarker = new THREE.Mesh(
             new THREE.SphereGeometry(0.38, 16, 16),
             new THREE.MeshBasicMaterial({ color: isGlowingGreen ? 0x00ff66 : 0x00e5ff })
@@ -1005,7 +1042,8 @@
             case 'SET_ROUTE':
               setRoute3D(msg.route || msg.payload, {
                 isEmergency: msg.isEmergency,
-                profile: msg.profile
+                profile: msg.profile,
+                destinationNode: msg.destinationNode
               });
               break;
             case 'CLEAR_ROUTE':

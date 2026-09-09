@@ -239,9 +239,17 @@ export const App: React.FC = () => {
     }
 
     if (evacRoute && evacRoute.status === "found") {
+      let exitDisplayName = "Ground Floor Fire Exit (Level 0 Assembly Area)";
+      const targetMatch = SAFE_STAIR_TARGETS.find((t) =>
+        evacRoute.segments.some((s) => s.fromNodeId.startsWith(t.id) || s.toNodeId.startsWith(t.id))
+      );
+      if (targetMatch) {
+        exitDisplayName = `${targetMatch.name} → Ground Fire Exit`;
+      }
+
       const exitPoi: POI = {
         id: "poi-evac-exit",
-        name: "Ground Floor Fire Exit (Level 0 Assembly Area)",
+        name: exitDisplayName,
         category: "Emergency Exit",
         nodeId: evacRoute.segments[evacRoute.segments.length - 1]?.toNodeId || "node-stairs-north",
         aliases: ["fire exit", "ground fire exit", "stairs", "emergency stairs"]
@@ -612,6 +620,11 @@ export const App: React.FC = () => {
 
   // Room selected from 3D/2D map click
   const handleSelectRoom = (room: ArchitecturalRoom) => {
+    if (isAlarmActive) {
+      // During active alarm, clicking a room simply focuses the camera without altering the life-safety evacuation route
+      mapHandleRef.current?.focusRoom(room.code);
+      return;
+    }
     handleSelectDestination({
       id: `poi-${room.code}`,
       name: room.name,
@@ -622,6 +635,9 @@ export const App: React.FC = () => {
   };
 
   const handleSelectNode = (nodeId: string, label: string) => {
+    if (isAlarmActive) {
+      return;
+    }
     handleSelectDestination({
       id: `poi-${nodeId}`,
       name: label,
@@ -631,9 +647,28 @@ export const App: React.FC = () => {
     });
   };
 
+  // Resolve actual egress stair name for emergency protocol
+  const getActiveExitName = (): string => {
+    if (activeRoute?.segments && activeRoute.segments.length > 0) {
+      for (const seg of activeRoute.segments) {
+        const match = SAFE_STAIR_TARGETS.find(
+          (t) => seg.toNodeId.startsWith(t.id) || seg.fromNodeId.startsWith(t.id)
+        );
+        if (match) {
+          return `${match.name} → Ground Fire Exit`;
+        }
+      }
+    }
+    if (selectedPOI && (selectedPOI.category === "Emergency Exit" || selectedPOI.category === "Stairs")) {
+      return selectedPOI.name;
+    }
+    return "Central North Stairs (ST-NM) → Ground Fire Exit";
+  };
+
   // Determine bottom sheet header content
   const renderBottomSheetHeader = () => {
     if (isAlarmActive) {
+      const exitName = getActiveExitName();
       return (
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -642,7 +677,7 @@ export const App: React.FC = () => {
               Evacuation Protocol Active
             </span>
           </div>
-          <span className="text-xs text-[#5F6368]">Nearest: Stair NE</span>
+          <span className="text-xs font-medium text-[#D93025]">Nearest: {exitName.split(" → ")[0]}</span>
         </div>
       );
     }
@@ -693,10 +728,11 @@ export const App: React.FC = () => {
     }
 
     if (isAlarmActive) {
+      const exitName = getActiveExitName();
       return (
         <EmergencySheetContent
-          avoidList={[`Room ${activeFireRoom || "219"} (Active Hazard)`, "Corridor B (Heavy Smoke)", "Passenger Lifts (Offline)"]}
-          nearestExitName={selectedPOI?.name || "Stairs SW / Fire Exit Ramp"}
+          avoidList={[`Room ${activeFireRoom || "208"} (Active Hazard)`, "Corridor (Smoke Spread)", "Passenger Lifts (Offline)"]}
+          nearestExitName={exitName}
           nearestExitMeta={`${Math.round(activeRoute?.totalDistanceMeters || 16)}m · ${Math.round(activeRoute?.estimatedTimeSeconds || 14)}s walking`}
           onStartEvacuation={() => handleEvacuate(activeFireRoom || undefined)}
           onSendSOS={handleSendSOS}
