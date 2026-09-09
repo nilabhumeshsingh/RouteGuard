@@ -26,8 +26,12 @@ import {
   speakInstruction
 } from "./services/routingService";
 import { fetchActiveHazard } from "./services/hazardService";
+import { AdminPanel } from "./components/admin/AdminPanel";
 
-export const App: React.FC = () => {
+// Set false when the real scanner must be required before sending SOS.
+export const SOS_SIMULATION_ENABLED = true;
+
+const RouteGuardApp: React.FC = () => {
   // Map Container Handle for Zoom & Recenter
   const mapHandleRef = useRef<CampusMapContainerHandle>(null);
 
@@ -49,6 +53,7 @@ export const App: React.FC = () => {
   const [positionSource, setPositionSource] = useState<PositioningSourceType>("BLE");
   const [signalAge, setSignalAge] = useState(1);
   const [apCount, setApCount] = useState(9);
+  const [latestAps, setLatestAps] = useState<Array<{ bssid: string; rssi: number; ssid?: string }>>([]);
 
   const [userPos, setUserPos] = useState<UserPositionState>({
     x: 472.5,
@@ -176,6 +181,13 @@ export const App: React.FC = () => {
         setSignalAge(Math.max(0, Math.round((data.ageMs || 0) / 1000)));
         setScannerLabel(`WIFI · ${pos.confidence ?? 1}`);
         if (data.apCount !== undefined) setApCount(data.apCount);
+        if (Array.isArray(data.aps)) {
+          setLatestAps(data.aps.map((ap: any) => ({
+            bssid: String(ap.bssid || "").toUpperCase(),
+            rssi: typeof ap.rssi === "number" ? ap.rssi : typeof ap.signal === "number" ? Math.round(ap.signal / 2 - 100) : -70,
+            ssid: ap.ssid
+          })).filter((ap: any) => ap.bssid));
+        }
         setIsScannerConnected(true);
       } catch {
         // Backend temporarily offline
@@ -601,9 +613,33 @@ export const App: React.FC = () => {
   };
 
   // SOS Trigger
-  const handleSendSOS = () => {
-    setIsSOSActive(true);
-    speakInstruction("Emergency SOS alert dispatched. Security team is on the way.");
+  const handleSendSOS = async () => {
+    const simulatedAps = [
+      { bssid: "SIM:AP:ROOM:204", rssi: -38, ssid: "RouteGuard-Sim" },
+      { bssid: "SIM:AP:HALL:NORTH", rssi: -52, ssid: "RouteGuard-Sim" },
+      { bssid: "SIM:AP:HALL:CENTRAL", rssi: -61, ssid: "RouteGuard-Sim" }
+    ];
+    const bssidReadings = latestAps.length > 0 ? latestAps : SOS_SIMULATION_ENABLED ? simulatedAps : [];
+
+    try {
+      const response = await fetch("/api/sos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: "web-user",
+          userName: "Web App User",
+          coordinates: { x: userPos.x, y: userPos.y, floorId: userPos.floorId, accuracyMeters: userPos.uncertaintyRadius },
+          bssidReadings,
+          simulation: latestAps.length === 0,
+          message: "Emergency SOS signal triggered from web app"
+        })
+      });
+      if (!response.ok) throw new Error("SOS request failed");
+      setIsSOSActive(true);
+      speakInstruction("Emergency SOS alert dispatched. Security team is on the way.");
+    } catch {
+      speakInstruction("SOS could not be dispatched. Check your connection.");
+    }
   };
 
   // Toggle Scanner Connection
@@ -1146,6 +1182,18 @@ export const App: React.FC = () => {
         </BottomSheet>
       </main>
 
+      <button
+        onClick={() => void handleSendSOS()}
+        disabled={isSOSActive}
+        aria-label="Send SOS emergency alert"
+        title="Send SOS emergency alert"
+        className={`fixed bottom-5 right-5 z-[60] flex h-16 w-16 items-center justify-center rounded-full border-4 border-white text-white shadow-2xl transition-transform ${
+          isSOSActive ? "bg-[#202124] text-[#34A853]" : "bg-[#D93025] hover:scale-105 hover:bg-[#B71C1C]"
+        }`}
+      >
+        <span className="material-symbols-outlined text-[30px]">sos</span>
+      </button>
+
       {/* Layers Configuration Modal */}
       <LayersModal
         isOpen={isLayersModalOpen}
@@ -1170,6 +1218,13 @@ export const App: React.FC = () => {
       />
     </div>
   );
+};
+
+export const App: React.FC = () => {
+  if (typeof window !== "undefined" && window.location.pathname === "/admin") {
+    return <AdminPanel />;
+  }
+  return <RouteGuardApp />;
 };
 
 export default App;

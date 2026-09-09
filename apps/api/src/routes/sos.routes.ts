@@ -2,6 +2,7 @@ import { Router, Request, Response } from "express";
 import { sharedSOSDispatcher } from "./safety.routes.js";
 import { calculateCampusRoute } from "../services/routing.service.js";
 import { SOSValidationError } from "../safety/sos-service.js";
+import { broadcastSOSTriggered } from "../realtime/socket.js";
 
 const router = Router();
 
@@ -20,7 +21,9 @@ router.post("/", (req: Request, res: Response) => {
       message = "Emergency SOS signal triggered",
       emergencyType = "general",
       batteryLevel,
-      triggerCampusAlarm = false
+      triggerCampusAlarm = false,
+      bssidReadings = [],
+      simulation = false
     } = req.body;
 
     const finalCoords = coordinates || {
@@ -38,6 +41,29 @@ router.post("/", (req: Request, res: Response) => {
       message,
       batteryLevel,
       triggerCampusAlarm
+    });
+
+    const normalizedBssids = Array.isArray(bssidReadings)
+      ? bssidReadings
+          .filter((reading: any) => reading && typeof reading.bssid === "string")
+          .map((reading: any) => ({
+            bssid: reading.bssid.toUpperCase(),
+            rssi: typeof reading.rssi === "number" ? reading.rssi : -70,
+            ssid: reading.ssid
+          }))
+      : [];
+
+    broadcastSOSTriggered({
+      id: alert.id,
+      userId: alert.userId,
+      userName: alert.userName,
+      coordinates: alert.coordinates,
+      bssidReadings: normalizedBssids,
+      strongestRssi: normalizedBssids.length
+        ? Math.max(...normalizedBssids.map((reading: any) => reading.rssi))
+        : undefined,
+      timestamp: alert.dispatchedAt,
+      message: simulation ? "Simulated SOS signal" : alert.message
     });
 
     // Compute immediate emergency evacuation route to the safest exit

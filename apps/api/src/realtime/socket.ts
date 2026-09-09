@@ -64,6 +64,17 @@ export interface ScannerUpdateEvent {
   aps: any[];
 }
 
+export interface SOSTriggeredEvent {
+  id: string;
+  userId: string;
+  userName?: string;
+  coordinates: { x: number; y: number; floorId: string; accuracyMeters?: number };
+  bssidReadings: Array<{ bssid: string; rssi: number; ssid?: string }>;
+  strongestRssi?: number;
+  timestamp: number;
+  message: string;
+}
+
 export function initSocketGateway(httpServer: HttpServer): SocketIOServer {
   const io = new SocketIOServer(httpServer, {
     cors: {
@@ -166,5 +177,10 @@ export function broadcastGeofenceAlert(
 export function broadcastScannerUpdate(event: ScannerUpdateEvent): void {
   if (!ioInstance) return;
   ioInstance.to("admin").emit("scanner.update", event);
+}
+
+export function broadcastSOSTriggered(event: SOSTriggeredEvent): void {
+  if (!ioInstance) return;
+  ioInstance.to("admin").emit("sos.triggered", event);
 }
 
