@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 import { HazardOverlay, PositionEstimate, RouteResult } from '@routeguard/shared';
+import { projectRouteToReferenceGuide } from '../services/routingService';
 
 export interface UserMarker {
   id: string;
@@ -113,10 +114,11 @@ export const Indoor3DAdapter = forwardRef<Indoor3DAdapterRef, Indoor3DAdapterPro
   useEffect(() => {
     if (ready) {
       if (props.route && props.route.pathPoints && props.route.pathPoints.length > 1) {
+        const guidePath = projectRouteToReferenceGuide(props.route.pathPoints);
         iframeRef.current?.contentWindow?.postMessage(
           {
             type: 'SET_ROUTE',
-            route: props.route.pathPoints,
+            route: guidePath,
             profile: props.route.profile,
             etaSeconds: props.route.estimatedTimeSeconds
           },
