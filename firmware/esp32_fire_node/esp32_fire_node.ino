@@ -32,6 +32,11 @@ const char* WIFI_PASSWORD   = "pokemon2";
 const char* VERCEL_URL      = "https://muj-wifi-bssid-mapper.vercel.app/api/fire";
 const char* DEVICE_ID       = "esp32-fire-node-01";
 
+// Continuous POST mode: scans and posts to Vercel on repeat
+const bool CONTINUOUS_POST           = true;
+const unsigned long POST_INTERVAL_MS = 3000;
+unsigned long lastPostTime           = 0;
+
 // ==============================================================================
 // WiFi Scan & Direct HTTP POST to Vercel
 // ==============================================================================
@@ -151,8 +156,16 @@ void loop() {
     if (digitalRead(BOOT_BUTTON_PIN) == LOW) {
       Serial.println("\n[BUTTON] BOOT button pressed!");
       scanAndPostToVercel();
-      delay(3000); // cooldown
+      lastPostTime = millis();
+      delay(2000); // cooldown
     }
   }
+
+  // Continuous background POST loop
+  if (CONTINUOUS_POST && (millis() - lastPostTime >= POST_INTERVAL_MS)) {
+    scanAndPostToVercel();
+    lastPostTime = millis();
+  }
+
   delay(100);
 }
