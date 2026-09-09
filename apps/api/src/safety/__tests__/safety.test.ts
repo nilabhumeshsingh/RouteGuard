@@ -6,6 +6,7 @@ import {
   LatchingAlarmError,
   SmokeSimulationEngine,
   defaultSmokeSimulation,
+  calculateGaussianPuffConcentration,
   SOSDispatcherService,
   SOSValidationError
 } from "../index.js";
@@ -393,5 +394,65 @@ describe("High Priority SOS Alert Dispatcher Service", () => {
     expect(alarmSM.getState()).toBe("ALARM_ACTIVE");
     expect(alarmSM.isLatched()).toBe(true);
     expect(alarmSM.getActiveAlarms()[0].severity).toBe("critical");
+  });
+});
+
+describe("Analytical Gaussian Puff Smoke Dispersion Model", () => {
+  const source = { x: 220, y: 180, z: 12.25 }; // Room 208 fire source
+
+  it("calculates puff advection and monotonic Gaussian dispersion expansion (σ)", () => {
+    const early = calculateGaussianPuffConcentration(source, source, 2.0);
+    const late = calculateGaussianPuffConcentration(source, source, 10.0);
+
+    // Puff center must advect forward over time
+    expect(late.puffCenter.x).toBeGreaterThan(early.puffCenter.x);
+    expect(late.puffCenter.z).toBeGreaterThan(early.puffCenter.z);
+
+    // Standard deviation σ must expand with diffusion (σ_late > σ_early)
+    expect(late.sigma.x).toBeGreaterThan(early.sigma.x);
+    expect(late.sigma.z).toBeGreaterThan(early.sigma.z);
+  });
+
+  it("demonstrates Gaussian spatial decay: concentration is maximal at puff center and decays exponentially with distance", () => {
+    const t = 5.0;
+    const centerRes = calculateGaussianPuffConcentration(
+      { x: source.x + 0.25 * t, y: source.y, z: source.z + 0.45 * t },
+      source,
+      t
+    );
+
+    const nearRes = calculateGaussianPuffConcentration(
+      { x: source.x + 0.25 * t + 1.0, y: source.y, z: source.z + 0.45 * t },
+      source,
+      t
+    );
+
+    const farRes = calculateGaussianPuffConcentration(
+      { x: source.x + 0.25 * t + 4.0, y: source.y, z: source.z + 0.45 * t },
+      source,
+      t
+    );
+
+    expect(centerRes.concentrationMgM3).toBeGreaterThan(nearRes.concentrationMgM3);
+    expect(nearRes.concentrationMgM3).toBeGreaterThan(farRes.concentrationMgM3);
+    expect(centerRes.isHazardous).toBe(true);
+    expect(centerRes.visibilityMeters).toBeLessThan(nearRes.visibilityMeters);
+  });
+
+  it("models concentration dilution over time due to volumetric Gaussian puff expansion", () => {
+    // Evaluating at puff center at 1s vs 10s: peak concentration dilutes as 1/σ³
+    const peak1s = calculateGaussianPuffConcentration(
+      { x: source.x + 0.25 * 1.0, y: source.y, z: source.z + 0.45 * 1.0 },
+      source,
+      1.0
+    );
+
+    const peak10s = calculateGaussianPuffConcentration(
+      { x: source.x + 0.25 * 10.0, y: source.y, z: source.z + 0.45 * 10.0 },
+      source,
+      10.0
+    );
+
+    expect(peak1s.concentrationMgM3).toBeGreaterThan(peak10s.concentrationMgM3);
   });
 });

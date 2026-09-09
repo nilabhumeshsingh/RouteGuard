@@ -383,6 +383,25 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
             </feMerge>
           </filter>
 
+          {/* Intense Radiant Red Fire Room Glow Filter */}
+          <filter id="fireRoomGlow" x="-80%" y="-80%" width="260%" height="260%">
+            <feGaussianBlur stdDeviation="6" result="blur1" />
+            <feGaussianBlur stdDeviation="14" result="blur2" />
+            <feMerge>
+              <feMergeNode in="blur2" />
+              <feMergeNode in="blur1" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+
+          {/* Analytical Gaussian Puff Smoke Dispersion Gradient */}
+          <radialGradient id="gaussianPuffGrad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#151b22" stopOpacity="0.92" />
+            <stop offset="38%" stopColor="#252c34" stopOpacity="0.65" />
+            <stop offset="70%" stopColor="#3d444d" stopOpacity="0.25" />
+            <stop offset="100%" stopColor="#555d68" stopOpacity="0.0" />
+          </radialGradient>
+
           {/* Intense Dark Blue Light Glow Filter */}
           <filter id="neonBlueGlow" x="-80%" y="-80%" width="260%" height="260%">
             <feGaussianBlur stdDeviation="5" result="blur1" />
@@ -857,9 +876,23 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
         {/* Hazard Overlays (Fire Compartment & Dynamic Smoke Plumes) */}
         {layers.hazards && (
           <g id="hazards-layer">
-            {/* Active Fire Compartment */}
+            {/* Active Fire Room — Glowing Fiery Red */}
             {activeFireHazard && (
               <g className="animate-fire pointer-events-none">
+                {/* Volumetric Radiant Red Room Aura */}
+                <rect
+                  x={fireBounds.x - 4}
+                  y={fireBounds.y - 4}
+                  width={fireBounds.width + 8}
+                  height={fireBounds.height + 8}
+                  rx="10"
+                  fill="none"
+                  stroke="#ff1a00"
+                  strokeWidth="3.5"
+                  opacity="0.85"
+                  filter="url(#fireRoomGlow)"
+                  className="animate-pulse"
+                />
                 <rect
                   x={fireBounds.x}
                   y={fireBounds.y}
@@ -867,13 +900,14 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
                   height={fireBounds.height}
                   rx="6"
                   fill="url(#fireCompartmentGrad)"
-                  stroke="#ff3b30"
+                  filter="url(#fireRoomGlow)"
+                  stroke="#ff2200"
                   strokeWidth="2.5"
                   strokeDasharray="6 3"
                 />
                 <g transform={`translate(${fireCx}, ${fireCy - 8})`}>
-                  <circle r="13" fill="#ff3b30" stroke="#ffffff" strokeWidth="2" filter="url(#pinShadow)" />
-                  <text textAnchor="middle" y="1" dominantBaseline="central" className="text-[12px]">
+                  <circle r="14" fill="#ff1a00" stroke="#ffffff" strokeWidth="2.5" filter="url(#fireRoomGlow)" />
+                  <text textAnchor="middle" y="1" dominantBaseline="central" className="text-[13px]">
                     🔥
                   </text>
                 </g>
@@ -881,44 +915,103 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
                   x={fireCx}
                   y={fireCy + 18}
                   textAnchor="middle"
-                  className="text-[8px] font-bold fill-[#ff453a] tracking-wide"
+                  className="text-[9px] font-extrabold fill-[#ff3b30] tracking-wide"
                 >
-                  {fireLabel}
+                  {fireLabel} · ACTIVE FIRE
                 </text>
               </g>
             )}
 
-            {/* Smoke Plumes Overlay */}
+            {/* Gaussian Puff Model Smoke Plumes Overlay */}
             {smokeMinutes > 0 && (
               <g id="smoke-simulation" className="pointer-events-none">
+                {/* 1σ Core Gaussian Puff Plume */}
                 <circle
                   cx={fireCx}
                   cy={fireCy}
                   r={smokeProps.r}
-                  fill="url(#smokePlumeGrad)"
+                  fill="url(#gaussianPuffGrad)"
                   opacity={smokeProps.opacity}
                   className="transition-all duration-700 ease-out"
                 />
+                {/* 2σ Dispersion Contour */}
+                <circle
+                  cx={fireCx}
+                  cy={fireCy}
+                  r={smokeProps.r * 1.35}
+                  fill="none"
+                  stroke="#9ca3af"
+                  strokeWidth="1.2"
+                  strokeDasharray="4 3"
+                  opacity="0.65"
+                  className="transition-all duration-700 ease-out"
+                />
+                {/* 3σ Dispersion Boundary */}
+                <circle
+                  cx={fireCx}
+                  cy={fireCy}
+                  r={smokeProps.r * 1.75}
+                  fill="none"
+                  stroke="#6b7280"
+                  strokeWidth="1.0"
+                  strokeDasharray="3 4"
+                  opacity="0.45"
+                  className="transition-all duration-700 ease-out"
+                />
+
                 {smokeMinutes >= 5 && (
-                  <circle
-                    cx={fireCx - (fireCx > 500 ? 60 : -60)}
-                    cy={fireCy}
-                    r={smokeProps.r * 0.75}
-                    fill="url(#smokePlumeGrad)"
-                    opacity={smokeProps.opacity * 0.8}
-                    className="transition-all duration-700 ease-out"
-                  />
+                  <g>
+                    <circle
+                      cx={fireCx - (fireCx > 500 ? 60 : -60)}
+                      cy={fireCy}
+                      r={smokeProps.r * 0.82}
+                      fill="url(#gaussianPuffGrad)"
+                      opacity={smokeProps.opacity * 0.85}
+                      className="transition-all duration-700 ease-out"
+                    />
+                    <circle
+                      cx={fireCx - (fireCx > 500 ? 60 : -60)}
+                      cy={fireCy}
+                      r={smokeProps.r * 1.15}
+                      fill="none"
+                      stroke="#9ca3af"
+                      strokeWidth="1.0"
+                      strokeDasharray="3 3"
+                      opacity="0.5"
+                    />
+                  </g>
                 )}
                 {smokeMinutes >= 10 && (
-                  <circle
-                    cx={fireCx - (fireCx > 500 ? 120 : -120)}
-                    cy={fireCy}
-                    r={smokeProps.r * 0.85}
-                    fill="url(#smokePlumeGrad)"
-                    opacity={smokeProps.opacity * 0.8}
-                    className="transition-all duration-700 ease-out"
-                  />
+                  <g>
+                    <circle
+                      cx={fireCx - (fireCx > 500 ? 120 : -120)}
+                      cy={fireCy}
+                      r={smokeProps.r * 0.9}
+                      fill="url(#gaussianPuffGrad)"
+                      opacity={smokeProps.opacity * 0.85}
+                      className="transition-all duration-700 ease-out"
+                    />
+                    <circle
+                      cx={fireCx - (fireCx > 500 ? 120 : -120)}
+                      cy={fireCy}
+                      r={smokeProps.r * 1.25}
+                      fill="none"
+                      stroke="#9ca3af"
+                      strokeWidth="1.0"
+                      strokeDasharray="3 3"
+                      opacity="0.5"
+                    />
+                  </g>
                 )}
+
+                <text
+                  x={fireCx}
+                  y={fireCy - smokeProps.r - 8}
+                  textAnchor="middle"
+                  className="text-[7.5px] font-bold fill-[#9ca3af] tracking-wider uppercase"
+                >
+                  Gaussian Puff Plume · {smokeMinutes}m Dispersion
+                </text>
               </g>
             )}
           </g>

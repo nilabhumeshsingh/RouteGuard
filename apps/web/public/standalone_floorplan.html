@@ -981,31 +981,234 @@
           routeLayerGroup.add(startMarker);
         }
 
-        // --- HAZARD HIGHLIGHTING IN 3D ---
-        const activeHazardMeshes = [];
-        let hazardPointLight = null;
+        // --- PROCEDURAL GAUSSIAN PUFF SMOKE & RADIANT RED FIRE ROOM ---
+        function createGaussianPuffTexture() {
+          const canvas = document.createElement('canvas');
+          canvas.width = 128;
+          canvas.height = 128;
+          const ctx = canvas.getContext('2d');
+          const imgData = ctx.createImageData(128, 128);
+          const data = imgData.data;
 
-        function highlightHazardRoom(rawRoomId) {
+          const cx = 64, cy = 64;
+          const sigma = 28.0;
+          const twoSigmaSq = 2.0 * sigma * sigma;
+
+          for (let y = 0; y < 128; y++) {
+            for (let x = 0; x < 128; x++) {
+              const dx = x - cx;
+              const dy = y - cy;
+              const rSq = dx * dx + dy * dy;
+              // Mathematically exact 2D Gaussian density: exp(-r^2 / 2σ^2)
+              const density = Math.exp(-rSq / twoSigmaSq);
+              const idx = (y * 128 + x) * 4;
+              data[idx] = 255;
+              data[idx + 1] = 255;
+              data[idx + 2] = 255;
+              data[idx + 3] = Math.floor(density * 255);
+            }
+          }
+          ctx.putImageData(imgData, 0, 0);
+          const texture = new THREE.CanvasTexture(canvas);
+          texture.generateMipmaps = true;
+          return texture;
+        }
+
+        const gaussianPuffTexture = createGaussianPuffTexture();
+
+        class GaussianPuffSmokeSystem {
+          constructor(scene) {
+            this.scene = scene;
+            this.active = false;
+            this.puffs = [];
+            this.group = new THREE.Group();
+            this.scene.add(this.group);
+            this.origin = new THREE.Vector3(0, 12.35, 0);
+            this.doorwayOffset = new THREE.Vector3(0, 0, -1);
+            this.maxPuffs = 40;
+            this.forecastMinutes = 2;
+            this.material = new THREE.SpriteMaterial({
+              map: gaussianPuffTexture,
+              transparent: true,
+              opacity: 0.65,
+              depthWrite: false,
+              blending: THREE.NormalBlending
+            });
+          }
+
+          start(origin, doorwayOffset, minutes = 2) {
+            this.clear();
+            this.origin.copy(origin);
+            this.doorwayOffset.copy(doorwayOffset || new THREE.Vector3(0, 0, -1));
+            this.forecastMinutes = minutes || 2;
+            this.active = true;
+
+            for (let i = 0; i < this.maxPuffs; i++) {
+              const puff = this.createPuff(i * (5.0 / this.maxPuffs));
+              this.puffs.push(puff);
+              this.group.add(puff.sprite);
+            }
+          }
+
+          createPuff(initialAge = 0) {
+            const sprite = new THREE.Sprite(this.material.clone());
+            sprite.scale.set(0.8, 0.8, 1.0);
+            return {
+              sprite,
+              age: initialAge,
+              lifetime: 4.5 + Math.random() * 2.2,
+              driftAngle: Math.random() * Math.PI * 2,
+              driftSpeed: 0.35 + Math.random() * 0.45,
+              buoyancy: 0.8 + Math.random() * 0.4,
+              swirlSeed: Math.random() * 100,
+              baseSigma: 0.65 + Math.random() * 0.25
+            };
+          }
+
+          update(dt, time) {
+            if (!this.active) return;
+            const horizonFactor = 1.0 + (this.forecastMinutes / 10.0) * 1.4;
+
+            for (let i = 0; i < this.puffs.length; i++) {
+              const p = this.puffs[i];
+              p.age += dt;
+
+              if (p.age >= p.lifetime) {
+                p.age = 0;
+                p.lifetime = 4.5 + Math.random() * 2.2;
+                p.driftAngle = Math.random() * Math.PI * 2;
+                p.swirlSeed = Math.random() * 100;
+              }
+
+              const progress = p.age / p.lifetime;
+
+              // 1. Thermal Buoyancy: Rises vertically from floor 12.25 to ceiling layer (13.5 - 18.0)
+              const y = this.origin.y + (p.age * p.buoyancy);
+
+              // 2. Convective Advection & Corridor Drift
+              const corridorDrift = Math.min(p.age * 0.7 * horizonFactor, 4.5);
+              const swirlX = Math.sin(time * 1.6 + p.swirlSeed) * 0.4 * (1 + progress);
+              const swirlZ = Math.cos(time * 1.4 + p.swirlSeed * 0.8) * 0.4 * (1 + progress);
+
+              const radialDrift = Math.pow(progress, 0.65) * (0.8 + p.driftSpeed * 1.2) * horizonFactor;
+              const x = this.origin.x + Math.cos(p.driftAngle) * radialDrift + this.doorwayOffset.x * corridorDrift + swirlX;
+              const z = this.origin.z + Math.sin(p.driftAngle) * radialDrift + this.doorwayOffset.z * corridorDrift + swirlZ;
+
+              p.sprite.position.set(x, y, z);
+
+              // 3. Gaussian Dispersion: σ(t) expands over time: σ(t) = σ0 * (1 + β * t)^0.6
+              const sigma = (p.baseSigma + Math.pow(progress, 0.6) * 2.8) * horizonFactor;
+              p.sprite.scale.set(sigma * 2.2, sigma * 2.2, 1.0);
+
+              // 4. Gaussian Dilution / Opacity Decay: C ∝ 1 / σ²
+              const gaussianDecay = (p.baseSigma * p.baseSigma) / (sigma * sigma);
+              const lifetimeFade = Math.sin(progress * Math.PI);
+              const targetOpacity = Math.min(0.78, 1.8 * gaussianDecay * lifetimeFade);
+              p.sprite.material.opacity = targetOpacity;
+
+              // 5. Fire Ember to Soot Color Shift
+              if (progress < 0.16) {
+                const emberLerp = progress / 0.16;
+                p.sprite.material.color.setRGB(
+                  1.0 - emberLerp * 0.75,
+                  0.32 - emberLerp * 0.12,
+                  0.05
+                );
+              } else if (progress < 0.45) {
+                p.sprite.material.color.setRGB(0.22, 0.20, 0.19);
+              } else {
+                const haze = 0.22 + (progress - 0.45) * 0.20;
+                p.sprite.material.color.setRGB(haze, haze, haze);
+              }
+            }
+          }
+
+          setForecastMinutes(minutes) {
+            this.forecastMinutes = minutes || 2;
+          }
+
+          clear() {
+            this.active = false;
+            while (this.group.children.length > 0) {
+              const child = this.group.children[0];
+              this.group.remove(child);
+              if (child.material) child.material.dispose();
+            }
+            this.puffs = [];
+          }
+        }
+
+        const activeHazardMeshes = [];
+        let fireVolumeMesh = null;
+        let fireWireframeMesh = null;
+        let hazardPointLight = null;
+        let gaussianPuffSmoke = null;
+        let currentSmokeMinutes = 2;
+
+        function highlightHazardRoom(rawRoomId, forecastMinutes = 2) {
           clearHazardRooms();
           const targetCode = String(rawRoomId).replace(/^(room-|ZONE_FLOOR2_)/i, '').trim();
+
           floorMeshes.forEach(mesh => {
             if (mesh.userData && (mesh.userData.id === targetCode || mesh.userData.id === 'room-' + targetCode)) {
+              // 1. Emissive Fiery Red Floor
               const origMat = mesh.material;
               mesh.userData._originalMaterial = origMat;
               mesh.material = new THREE.MeshStandardMaterial({
-                color: 0xff2200,
+                color: 0xff1100,
                 emissive: 0xff0000,
-                emissiveIntensity: 1.2,
-                roughness: 0.3
+                emissiveIntensity: 2.2,
+                roughness: 0.2,
+                metalness: 0.1
               });
               activeHazardMeshes.push(mesh);
 
-              // Add flickering fire PointLight
-              if (!hazardPointLight) {
-                hazardPointLight = new THREE.PointLight(0xff3300, 5.0, 20, 1.2);
-                hazardPointLight.position.set((mesh.userData.x0 + mesh.userData.x1) / 2, 13.5, (mesh.userData.z0 + mesh.userData.z1) / 2);
-                scene.add(hazardPointLight);
+              const cx = (mesh.userData.x0 + mesh.userData.x1) / 2;
+              const cz = (mesh.userData.z0 + mesh.userData.z1) / 2;
+              const rw = Math.abs(mesh.userData.x1 - mesh.userData.x0);
+              const rd = Math.abs(mesh.userData.z1 - mesh.userData.z0);
+              const rh = 2.4; // Ceiling clearance
+
+              // 2. Volumetric Glowing Red Fire Box (fills the room interior with vibrant red glow)
+              const fireVolGeo = new THREE.BoxGeometry(rw, rh, rd);
+              const fireVolMat = new THREE.MeshBasicMaterial({
+                color: 0xff1a00,
+                transparent: true,
+                opacity: 0.36,
+                blending: THREE.AdditiveBlending,
+                side: THREE.DoubleSide,
+                depthWrite: false
+              });
+              fireVolumeMesh = new THREE.Mesh(fireVolGeo, fireVolMat);
+              fireVolumeMesh.position.set(cx, 12.25 + rh / 2, cz);
+              scene.add(fireVolumeMesh);
+
+              // 3. Fiery Red Room Perimeter Outline
+              const wireGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(rw, 0.15, rd));
+              const wireMat = new THREE.LineBasicMaterial({
+                color: 0xff2200,
+                linewidth: 2.5
+              });
+              fireWireframeMesh = new THREE.LineSegments(wireGeo, wireMat);
+              fireWireframeMesh.position.set(cx, 12.35, cz);
+              scene.add(fireWireframeMesh);
+
+              // 4. Dynamic Flickering Fire PointLight
+              hazardPointLight = new THREE.PointLight(0xff3300, 6.5, 24, 1.2);
+              hazardPointLight.position.set(cx, 13.5, cz);
+              scene.add(hazardPointLight);
+
+              // 5. Gaussian Puff Smoke Dispersion System
+              if (!gaussianPuffSmoke) {
+                gaussianPuffSmoke = new GaussianPuffSmokeSystem(scene);
               }
+              // Doorway offset: if north room (cz > 0), doorway leads south (towards z=3.25 corridor)
+              const doorwayZ = cz > 0 ? -1.0 : 1.0;
+              gaussianPuffSmoke.start(
+                new THREE.Vector3(cx, 12.35, cz),
+                new THREE.Vector3(0, 0, doorwayZ),
+                forecastMinutes
+              );
             }
           });
         }
@@ -1018,10 +1221,29 @@
             }
           });
           activeHazardMeshes.length = 0;
+
+          if (fireVolumeMesh) {
+            scene.remove(fireVolumeMesh);
+            if (fireVolumeMesh.geometry) fireVolumeMesh.geometry.dispose();
+            if (fireVolumeMesh.material) fireVolumeMesh.material.dispose();
+            fireVolumeMesh = null;
+          }
+
+          if (fireWireframeMesh) {
+            scene.remove(fireWireframeMesh);
+            if (fireWireframeMesh.geometry) fireWireframeMesh.geometry.dispose();
+            if (fireWireframeMesh.material) fireWireframeMesh.material.dispose();
+            fireWireframeMesh = null;
+          }
+
           if (hazardPointLight) {
             scene.remove(hazardPointLight);
             hazardPointLight.dispose();
             hazardPointLight = null;
+          }
+
+          if (gaussianPuffSmoke) {
+            gaussianPuffSmoke.clear();
           }
         }
 
@@ -1050,10 +1272,19 @@
               clearRoute3D();
               break;
             case 'SET_HAZARD':
-              highlightHazardRoom(msg.hazard?.roomId || '208');
+              highlightHazardRoom(msg.hazard?.roomId || '208', currentSmokeMinutes);
               break;
             case 'CLEAR_HAZARD':
               clearHazardRooms();
+              break;
+            case 'SET_SMOKE_FORECAST':
+              currentSmokeMinutes = msg.forecast?.minutes || 2;
+              if (gaussianPuffSmoke && gaussianPuffSmoke.active) {
+                gaussianPuffSmoke.setForecastMinutes(currentSmokeMinutes);
+              }
+              if (msg.forecast?.roomId && activeHazardMeshes.length === 0) {
+                highlightHazardRoom(msg.forecast.roomId, currentSmokeMinutes);
+              }
               break;
             case 'ZOOM_IN':
               zoomCamera(0.8);
@@ -1168,10 +1399,28 @@
               : 0.4 + Math.sin(t * 3) * 0.18;
           }
 
-          // Fire Hazard Light Flicker
-          if (hazardPointLight) {
-            const t = performance.now() * 0.01;
-            hazardPointLight.intensity = 4.5 + Math.sin(t * 8) * 1.8 + Math.cos(t * 13) * 1.2;
+          // Dynamic Fire Room Pulsing Glow & Light Flicker
+          if (activeHazardMeshes.length > 0) {
+            const t = performance.now() * 0.005;
+            const flicker = 2.0 + Math.sin(t * 8) * 0.6 + Math.cos(t * 13) * 0.35;
+            activeHazardMeshes.forEach(m => {
+              if (m.material && m.material.emissiveIntensity !== undefined) {
+                m.material.emissiveIntensity = flicker;
+              }
+            });
+            if (fireVolumeMesh && fireVolumeMesh.material) {
+              fireVolumeMesh.material.opacity = 0.30 + Math.sin(t * 6) * 0.12;
+            }
+            if (hazardPointLight) {
+              hazardPointLight.intensity = 5.5 + Math.sin(t * 10) * 2.0 + Math.cos(t * 17) * 1.2;
+            }
+          }
+
+          // Animate Gaussian Puff Smoke Plume
+          if (gaussianPuffSmoke && gaussianPuffSmoke.active) {
+            const nowSec = performance.now() * 0.001;
+            const dt = 0.016;
+            gaussianPuffSmoke.update(dt, nowSec);
           }
           controls.update();
           renderer.render(scene, camera);

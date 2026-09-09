@@ -464,3 +464,98 @@ export class SmokeSimulationEngine {
  * Singleton helper for quick forecast queries
  */
 export const defaultSmokeSimulation = new SmokeSimulationEngine();
+
+/**
+ * Analytical Gaussian Puff Model for Fire Smoke & Effluent Dispersion
+ *
+ * Models an atmospheric/indoor smoke puff released at source (x0, y0, z0) at t=0,
+ * calculating the physical smoke concentration C(x, y, z, t) at any observer position:
+ *
+ * C(x,y,z,t) = [ Q / ((2π)^(3/2) * σx * σy * σz) ] * exp( -((x - xp)^2 / (2σx^2) + (y - yp)^2 / (2σy^2) + (z - zp)^2 / (2σz^2)) )
+ *
+ * Where:
+ * - xp, yp, zp is the advected puff center (x0 + ux*t, y0 + uy*t, z0 + uz*t)
+ * - σx, σy, σz are Gaussian standard deviation dispersion parameters expanding with diffusion: σ = σ0 * (1 + 2*D*t)^0.5
+ * - Q is total combustion particulate mass release (mg)
+ */
+export interface GaussianPuffParams {
+  emissionMassQ?: number; // Total smoke mass in milligrams (default: 50,000 mg = 50g)
+  initialSigma0?: number; // Initial puff radius in meters (default: 0.8m)
+  diffusivityD?: number;  // Atmospheric / eddy diffusion coefficient (default: 0.35 m²/s)
+  advectionVelocityX?: number; // Corridor draught velocity X (m/s)
+  advectionVelocityY?: number; // Corridor draught velocity Y (m/s)
+  thermalBuoyancyZ?: number;   // Thermal plume rising velocity (m/s)
+}
+
+export interface GaussianPuffResult {
+  concentrationMgM3: number; // Particulate concentration in mg/m³
+  toxicityIndex: number;     // Normalized toxicity score (0 to 1)
+  visibilityMeters: number;  // Optical visibility according to Jin's formula: V = K / C
+  sigma: { x: number; y: number; z: number };
+  puffCenter: { x: number; y: number; z: number };
+  isHazardous: boolean;
+}
+
+export function calculateGaussianPuffConcentration(
+  observer: { x: number; y: number; z?: number },
+  source: { x: number; y: number; z?: number },
+  elapsedSeconds: number,
+  params: GaussianPuffParams = {}
+): GaussianPuffResult {
+  const t = Math.max(0.1, elapsedSeconds);
+  const Q = params.emissionMassQ ?? 50000; // mg
+  const sigma0 = params.initialSigma0 ?? 0.8; // meters
+  const D = params.diffusivityD ?? 0.35; // m²/s
+  const ux = params.advectionVelocityX ?? 0.25; // m/s
+  const uy = params.advectionVelocityY ?? 0.0;
+  const uz = params.thermalBuoyancyZ ?? 0.45; // m/s thermal buoyancy
+
+  // 1. Puff center advection
+  const puffX = source.x + ux * t;
+  const puffY = source.y + uy * t;
+  const puffZ = (source.z ?? 12.25) + uz * t;
+
+  // 2. Gaussian dispersion standard deviation: σ(t) = σ0 * sqrt(1 + 2*D*t / σ0^2)
+  const sigmaX = sigma0 * Math.sqrt(1 + (2 * D * t) / (sigma0 * sigma0));
+  const sigmaY = sigmaX; // Isotropic horizontal dispersion
+  const sigmaZ = sigma0 * Math.sqrt(1 + (D * t) / (sigma0 * sigma0)); // Anisotropic vertical dispersion
+
+  // 3. Gaussian 3D exponential density
+  const obsZ = observer.z ?? (source.z ?? 12.25);
+  const dx = observer.x - puffX;
+  const dy = observer.y - puffY;
+  const dz = obsZ - puffZ;
+
+  const exponent = -0.5 * (
+    (dx * dx) / (sigmaX * sigmaX) +
+    (dy * dy) / (sigmaY * sigmaY) +
+    (dz * dz) / (sigmaZ * sigmaZ)
+  );
+
+  const normalization = (2 * Math.PI) ** 1.5 * sigmaX * sigmaY * sigmaZ;
+  const concentration = (Q / normalization) * Math.exp(Math.max(-20, exponent));
+
+  // 4. Optical visibility & toxicity (Jin's law for irritating fire smoke: V ≈ 2.5 / ExtinctionCoeff)
+  // Extinction coefficient K_ext ≈ 0.008 * C_smoke
+  const extinctionCoeff = Math.max(0.01, concentration * 0.008);
+  const visibilityMeters = Math.min(30.0, Math.max(0.3, 2.5 / extinctionCoeff));
+  const toxicityIndex = Math.min(1.0, concentration / 250.0);
+  const isHazardous = concentration > 25.0 || visibilityMeters < 3.0;
+
+  return {
+    concentrationMgM3: Math.round(concentration * 100) / 100,
+    toxicityIndex: Math.round(toxicityIndex * 100) / 100,
+    visibilityMeters: Math.round(visibilityMeters * 10) / 10,
+    sigma: {
+      x: Math.round(sigmaX * 100) / 100,
+      y: Math.round(sigmaY * 100) / 100,
+      z: Math.round(sigmaZ * 100) / 100
+    },
+    puffCenter: {
+      x: Math.round(puffX * 100) / 100,
+      y: Math.round(puffY * 100) / 100,
+      z: Math.round(puffZ * 100) / 100
+    },
+    isHazardous
+  };
+}
