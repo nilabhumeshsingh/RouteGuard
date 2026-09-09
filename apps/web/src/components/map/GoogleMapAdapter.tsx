@@ -691,7 +691,7 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
           zIndex: 50
         });
 
-        // 4. ⚫ DARKER RED TO BLACK ZONE: Deserted West Balcony & Rear Alleys (<15% Footfall · Avoid at Night)
+        // 4. ⚫ BLACK ZONE: Deserted West Balcony & Rear Alleys (<15% Footfall · Null or Very Very Less · Avoid at Night)
         const blackBalconyCoords = [
           indoorToLatLng(50, 140),
           indoorToLatLng(165, 140),
@@ -703,8 +703,8 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
           strokeColor: "#000000",
           strokeOpacity: 0.95,
           strokeWeight: 2.5,
-          fillColor: "#7F1D1D",
-          fillOpacity: 0.65,
+          fillColor: "#000000",
+          fillOpacity: 0.85,
           map: mapInstanceRef.current,
           zIndex: 65
         });
@@ -878,19 +878,19 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
                 <div className="space-y-1 text-[10px]">
                   <div className="flex items-center gap-1.5">
                     <span className="w-3 h-3 rounded bg-[#22C55E] shrink-0 border border-[#16A34A]" />
-                    <span className="text-[#15803D] font-semibold">Green: High (85%+) · Safe</span>
+                    <span className="text-[#15803D] font-semibold">Green: High Footfall (Safest)</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="w-3 h-3 rounded bg-[#F97316] shrink-0 border border-[#EA580C]" />
-                    <span className="text-[#C2410C] font-semibold">Orange: Moderate (50-80%)</span>
+                    <span className="text-[#C2410C] font-semibold">Orange: Little Low / Moderate</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="w-3 h-3 rounded bg-[#EF4444] shrink-0 border border-[#DC2626]" />
-                    <span className="text-[#B91C1C] font-semibold">Lighter Red: Low (20-45%)</span>
+                    <span className="text-[#B91C1C] font-semibold">Red: Very Low Footfall</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded bg-[#7F1D1D] shrink-0 border border-[#000000]" />
-                    <span className="text-[#7F1D1D] font-semibold">Dark Red/Black: &lt;15% (Avoid)</span>
+                    <span className="w-3 h-3 rounded bg-[#000000] shrink-0 border border-[#333333]" />
+                    <span className="text-[#111827] font-semibold">Black: Null / Very Very Less</span>
                   </div>
                 </div>
               </div>

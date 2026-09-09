@@ -445,7 +445,7 @@ export function getRoomFootfall(roomId: string): FootfallRating {
     };
   }
 
-  // 2. Deserted / Dangerous at Night (<15%): Darker Red to Deep Black
+  // 2. Deserted / Dangerous at Night (<15%): Pure Black (Null or very very less footfall)
   if (
     [
       "balcony",
@@ -469,12 +469,12 @@ export function getRoomFootfall(roomId: string): FootfallRating {
     return {
       tier: "deserted",
       percentage: pct,
-      color: "#7F1D1D",
-      fillColor: "#110204",
-      strokeColor: "#7F1D1D",
-      label: "Deserted (<15%)",
+      color: "#000000",
+      fillColor: "#000000",
+      strokeColor: "#000000",
+      label: "Black: Null / Very Very Less (<15%)",
       badge: `${pct}%`,
-      description: "Dark, isolated exterior zone. Strictly avoided by night routing"
+      description: "Dark, deserted zone with null or minimal footfall. Strictly avoided by night routing"
     };
   }
 
@@ -507,20 +507,20 @@ export function getRoomFootfall(roomId: string): FootfallRating {
       color: "#EF4444",
       fillColor: "#2a080c",
       strokeColor: "#EF4444",
-      label: "Low Footfall (20%-45%)",
+      label: "Red: Very Low Footfall (20%-45%)",
       badge: `${pct}%`,
       description: "Infrequent evening footfall, peripheral office and restroom wing"
     };
   }
 
-  // 4. Moderate Footfall (50%-80%): Orange
+  // 4. Moderate Footfall (50%-80%): Orange (Little Low)
   return {
     tier: "moderate",
     percentage: 65,
     color: "#F97316",
     fillColor: "#2b1303",
     strokeColor: "#F97316",
-    label: "Moderate Footfall (50%-80%)",
+    label: "Orange: Little Low / Moderate Footfall (50%-80%)",
     badge: "65%",
     description: "Standard academic wing corridor with regular class transit"
   };

@@ -430,10 +430,10 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
             <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#000000" floodOpacity="0.5" />
           </filter>
 
-          {/* Deserted / Danger night safety hatch pattern (<15% Footfall) */}
+          {/* Deserted / Danger night safety hatch pattern (<15% Footfall · Null or Very Less) */}
           <pattern id="desertedHatch" width="10" height="10" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
-            <rect width="10" height="10" fill="#130204" />
-            <line x1="0" y1="0" x2="0" y2="10" stroke="#7F1D1D" strokeWidth="2.8" strokeOpacity="0.85" />
+            <rect width="10" height="10" fill="#000000" />
+            <line x1="0" y1="0" x2="0" y2="10" stroke="#111827" strokeWidth="2.8" strokeOpacity="0.85" />
             <line x1="0" y1="0" x2="10" y2="0" stroke="#000000" strokeWidth="1.5" strokeOpacity="0.95" />
           </pattern>
         </defs>
@@ -459,14 +459,14 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
           {/* Semicircular Balcony Projection (West Facade) */}
           <path
             d="M 165 152.5 A 90 90 0 0 0 165 332.5 Z"
-            fill={isNightSafety ? "url(#desertedHatch)" : "#122435"}
-            stroke={isNightSafety ? "#7F1D1D" : "#79d189"}
+            fill={isNightSafety ? "#000000" : "#122435"}
+            stroke={isNightSafety ? "#000000" : "#79d189"}
             strokeWidth={isNightSafety ? "2.5" : "2"}
           />
           <path
             d="M 165 162.5 A 80 80 0 0 0 165 322.5 Z"
             fill="none"
-            stroke={isNightSafety ? "#450A0A" : "#79d189"}
+            stroke={isNightSafety ? "#111827" : "#79d189"}
             strokeWidth="1.2"
             strokeDasharray="4 4"
             opacity="0.6"
@@ -476,36 +476,36 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
         {/* Corridors Network (Color-Coded by Footfall when Night Safety Active) */}
         <g id="corridors" className="opacity-95">
           {isNightSafety ? (
-            /* Full-Map Footfall Color-Coded Corridors: Green -> Orange -> Lighter Red -> Dark Red/Black */
+            /* Full-Map Footfall Color-Coded Corridors: Green -> Orange -> Red -> Black */
             <g id="night-footfall-corridors">
               {/* --- NORTH CORRIDOR SEGMENTS --- */}
-              {/* North West: Deserted / Dead-end (<15%) -> Dark Red/Black */}
-              <rect x="165" y="182.5" width="105" height="22.5" fill="url(#desertedHatch)" stroke="#7F1D1D" strokeWidth="1.5" />
-              {/* North Mid-West: Moderate Footfall (50-80%) -> Orange */}
+              {/* North West: Deserted / Dead-end (<15%) -> Black (Null / Very Very Less) */}
+              <rect x="165" y="182.5" width="105" height="22.5" fill="#000000" stroke="#000000" strokeWidth="1.5" />
+              {/* North Mid-West: Moderate Footfall (50-80%) -> Orange (Little Low) */}
               <rect x="270" y="182.5" width="160" height="22.5" fill="#2b1303" stroke="#F97316" strokeWidth="1.2" />
               {/* North Central Concourse: High Footfall (85%+) -> Green */}
               <rect x="430" y="182.5" width="220" height="22.5" fill="#052e16" stroke="#22C55E" strokeWidth="2" />
-              {/* North Mid-East: Moderate Footfall (50-80%) -> Orange */}
+              {/* North Mid-East: Moderate Footfall (50-80%) -> Orange (Little Low) */}
               <rect x="650" y="182.5" width="130" height="22.5" fill="#2b1303" stroke="#F97316" strokeWidth="1.2" />
-              {/* North Far-East: Low Footfall (20-45%) -> Lighter Red */}
+              {/* North Far-East: Low Footfall (20-45%) -> Red (Very Low) */}
               <rect x="780" y="182.5" width="105" height="22.5" fill="#2a080c" stroke="#EF4444" strokeWidth="1.2" />
 
               {/* --- SOUTH CORRIDOR SEGMENTS --- */}
-              {/* South West: Deserted / Dead-end (<15%) -> Dark Red/Black */}
-              <rect x="165" y="280" width="105" height="22.5" fill="url(#desertedHatch)" stroke="#7F1D1D" strokeWidth="1.5" />
-              {/* South Mid-West: Moderate Footfall (50-80%) -> Orange */}
+              {/* South West: Deserted / Dead-end (<15%) -> Black (Null / Very Very Less) */}
+              <rect x="165" y="280" width="105" height="22.5" fill="#000000" stroke="#000000" strokeWidth="1.5" />
+              {/* South Mid-West: Moderate Footfall (50-80%) -> Orange (Little Low) */}
               <rect x="270" y="280" width="160" height="22.5" fill="#2b1303" stroke="#F97316" strokeWidth="1.2" />
               {/* South Central Concourse: High Footfall (85%+) -> Green */}
               <rect x="430" y="280" width="220" height="22.5" fill="#052e16" stroke="#22C55E" strokeWidth="2" />
-              {/* South Mid-East: Moderate Footfall (50-80%) -> Orange */}
+              {/* South Mid-East: Moderate Footfall (50-80%) -> Orange (Little Low) */}
               <rect x="650" y="280" width="130" height="22.5" fill="#2b1303" stroke="#F97316" strokeWidth="1.2" />
-              {/* South Far-East: Low Footfall (20-45%) -> Lighter Red */}
+              {/* South Far-East: Low Footfall (20-45%) -> Red (Very Low) */}
               <rect x="780" y="280" width="105" height="22.5" fill="#2a080c" stroke="#EF4444" strokeWidth="1.2" />
 
               {/* --- VERTICAL CONNECTORS --- */}
-              {/* West Atrium Connector: Deserted (<15%) -> Dark Red/Black */}
-              <rect x="165" y="182.5" width="52.5" height="120" fill="url(#desertedHatch)" stroke="#7F1D1D" strokeWidth="1.5" />
-              <text x="191" y="242" textAnchor="middle" dominantBaseline="central" className="text-[7.5px] font-bold fill-[#FCA5A5] pointer-events-none">
+              {/* West Atrium Connector: Deserted (<15%) -> Black (Null / Very Very Less) */}
+              <rect x="165" y="182.5" width="52.5" height="120" fill="#000000" stroke="#000000" strokeWidth="1.5" />
+              <text x="191" y="242" textAnchor="middle" dominantBaseline="central" className="text-[7.5px] font-bold fill-[#9CA3AF] pointer-events-none">
                 AVOID
               </text>
 
@@ -515,7 +515,7 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
                 SAFE CORE
               </text>
 
-              {/* East Vertical Connector: Low Footfall (20-45%) -> Lighter Red */}
+              {/* East Vertical Connector: Low Footfall (20-45%) -> Red (Very Low) */}
               <rect x="840" y="182.5" width="45" height="120" fill="#2a080c" stroke="#EF4444" strokeWidth="1.2" />
 
               {/* Centerline Guideways */}
@@ -620,8 +620,8 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
                   >
                     <path
                       d="M 165 152.5 A 90 90 0 0 0 165 332.5 Z"
-                      fill={isNightSafety ? "url(#desertedHatch)" : "#122822"}
-                      stroke={isNightSafety ? "#7F1D1D" : "#79d189"}
+                      fill={isNightSafety ? "#000000" : "#122822"}
+                      stroke={isNightSafety ? "#000000" : "#79d189"}
                       strokeWidth={isNightSafety ? "3" : "2"}
                     />
                     {layers.labels && (
@@ -631,7 +631,7 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
                           y={234}
                           textAnchor="middle"
                           dominantBaseline="central"
-                          className={`text-[11px] font-bold ${isNightSafety ? "fill-[#FCA5A5]" : "fill-[#79d189]"}`}
+                          className={`text-[11px] font-bold ${isNightSafety ? "fill-[#9CA3AF]" : "fill-[#79d189]"}`}
                           style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
                         >
                           {isNightSafety ? "Balcony (Avoid)" : "Balcony"}
@@ -641,9 +641,9 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
                           y={250}
                           textAnchor="middle"
                           dominantBaseline="central"
-                          className={`text-[8px] font-semibold ${isNightSafety ? "fill-[#EF4444]" : "fill-[#a3c4b0]"}`}
+                          className={`text-[8px] font-semibold ${isNightSafety ? "fill-[#6B7280]" : "fill-[#a3c4b0]"}`}
                         >
-                          {isNightSafety ? "⚫ 6% Footfall · Deserted" : "Outdoor Terrace"}
+                          {isNightSafety ? "⚫ Null Footfall (<15%)" : "Outdoor Terrace"}
                         </text>
                       </g>
                     )}
@@ -1222,19 +1222,19 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
             </div>
             <div className="flex items-center gap-2">
               <span className="w-3.5 h-3.5 rounded bg-[#f97316] shrink-0 border border-[#ea580c]" />
-              <span className="text-[#fed7aa] font-semibold">Orange: Moderate (50-80%) · Active Wing</span>
+              <span className="text-[#fed7aa] font-semibold">Orange: Little Low / Moderate (50-80%)</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="w-3.5 h-3.5 rounded bg-[#ef4444] shrink-0 border border-[#dc2626]" />
-              <span className="text-[#fca5a5] font-semibold">Lighter Red: Low (20-45%) · Caution</span>
+              <span className="text-[#fca5a5] font-semibold">Red: Very Low Footfall (20-45%)</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-3.5 h-3.5 rounded bg-[#7f1d1d] shrink-0 border border-[#110204]" />
-              <span className="text-[#fecaca] font-semibold">Dark Red/Black: Deserted (&lt;15%) · Avoid</span>
+              <span className="w-3.5 h-3.5 rounded bg-[#000000] shrink-0 border border-[#374151]" />
+              <span className="text-[#e5e7eb] font-semibold">Black: Null / Very Very Less (&lt;15%) · Avoid</span>
             </div>
           </div>
           <div className="mt-2 pt-1.5 border-t border-[#1f374e] text-[9px] text-[#8ea7b8] leading-tight">
-            Full floor mapped. Safe Night routing automatically prioritizes green concourses and avoids dark red/black areas.
+            Full floor mapped. Safe Night routing automatically prioritizes green concourses and avoids black null-footfall areas.
           </div>
         </div>
       )}
