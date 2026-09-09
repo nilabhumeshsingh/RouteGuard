@@ -519,7 +519,13 @@
         if (vectors.length < 2) return;
 
         const isEmergency = profile === 'emergency' || activeCurrentMode === 'emergency';
-        const curve = new THREE.CatmullRomCurve3(vectors);
+
+        // Keep every navigation turn exact. A smoothed spline can arc through
+        // the central lightwells even when the reference route uses safe corners.
+        const curve = new THREE.CurvePath();
+        for (let i = 1; i < vectors.length; i++) {
+          curve.add(new THREE.LineCurve3(vectors[i - 1], vectors[i]));
+        }
         const tubeGeo = new THREE.TubeGeometry(curve, Math.max(32, vectors.length * 16), isEmergency ? 0.22 : 0.15, 8, false);
         const tubeMat = new THREE.MeshStandardMaterial({
           color: isEmergency ? 0x34c759 : 0x4fd1c2,
