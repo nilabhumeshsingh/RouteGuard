@@ -24,6 +24,7 @@ import {
   RouteComparison,
   speakInstruction
 } from "./services/routingService";
+import { fetchActiveHazard } from "./services/hazardService";
 
 export const App: React.FC = () => {
   // Map Container Handle for Zoom & Recenter
@@ -187,7 +188,7 @@ export const App: React.FC = () => {
   }, []);
 
   // Evacuate dynamically from user's current location to nearest safe stairs/exit
-  const handleEvacuate = useCallback((fireRoomId?: string) => {
+  const handleEvacuate = useCallback(async (fireRoomId?: string) => {
     setIsAlarmActive(true);
     const fireCode = (fireRoomId || "219").replace(/^(room\s*|node-)/i, "").trim();
     setActiveFireRoom(fireCode);
@@ -201,30 +202,45 @@ export const App: React.FC = () => {
       }
     }
 
-    // Build blocked nodes for hazardous zones
-    // CRITICAL: The occupant's current room and immediate exit door must NOT be blocked for evacuation!
-    const blockedNodes = new Set<string>();
-    if (currentUserNode !== `node-${fireCode}`) {
-      blockedNodes.add(`node-${fireCode}`);
+    let activeHazard: Awaited<ReturnType<typeof fetchActiveHazard>> | null = null;
+    try {
+      const hazard = await fetchActiveHazard();
+      if (hazard.active && (!hazard.roomId || hazard.roomId === fireCode)) {
+        activeHazard = hazard;
+      }
+    } catch {
+      // Preserve the existing local evacuation fallback when the API is unavailable.
     }
 
-    if (fireCode === "208") {
-      if (currentUserNode !== "node-207") blockedNodes.add("node-207");
-      if (currentUserNode !== "node-208") blockedNodes.add("c-208");
-      blockedNodes.add("node-wash-girls-208");
-      blockedNodes.add("c-lift");
-    } else if (fireCode === "219") {
-      blockedNodes.add("node-219a");
-      blockedNodes.add("node-219c");
-      if (currentUserNode !== "node-219") {
-        blockedNodes.add("c-219");
+    // Prefer backend hazard data; retain the existing local rules as a compatibility fallback.
+    const blockedNodes = new Set<string>();
+    const blockedEdges = new Set<string>(activeHazard?.blockedEdgeIds || []);
+
+    if (activeHazard) {
+      activeHazard.blockedNodeIds.forEach((nodeId) => blockedNodes.add(nodeId));
+    } else {
+      if (currentUserNode !== `node-${fireCode}`) {
+        blockedNodes.add(`node-${fireCode}`);
+      }
+
+      if (fireCode === "208") {
+        if (currentUserNode !== "node-207") blockedNodes.add("node-207");
+        if (currentUserNode !== "node-208") blockedNodes.add("c-208");
+        blockedNodes.add("node-wash-girls-208");
+        blockedNodes.add("c-lift");
+      } else if (fireCode === "219") {
+        blockedNodes.add("node-219a");
+        blockedNodes.add("node-219c");
+        if (currentUserNode !== "node-219") {
+          blockedNodes.add("c-219");
+        }
       }
     }
 
     // Ensure currentUserNode is never blocked
     blockedNodes.delete(currentUserNode);
 
-    let evacRoute = calculateEvacuationRoute(currentUserNode, blockedNodes, isNightSafetyActive);
+    let evacRoute = calculateEvacuationRoute(currentUserNode, blockedNodes, isNightSafetyActive, blockedEdges);
 
     // If strict blockage prevented finding an egress route, unblock corridors to find life-safety path to stairs
     if (!evacRoute || evacRoute.status !== "found" || !evacRoute.pathPoints || evacRoute.pathPoints.length < 2) {
@@ -232,7 +248,7 @@ export const App: React.FC = () => {
       if (currentUserNode !== `node-${fireCode}`) {
         fallbackBlocked.add(`node-${fireCode}`);
       }
-      evacRoute = calculateEvacuationRoute(currentUserNode, fallbackBlocked, isNightSafetyActive);
+      evacRoute = calculateEvacuationRoute(currentUserNode, fallbackBlocked, isNightSafetyActive, blockedEdges);
     }
 
     // Fail-safe: if still unavailable, compute guaranteed life-safety path to nearest stairs

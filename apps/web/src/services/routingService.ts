@@ -350,12 +350,13 @@ export function findSafestStairRoute(
   startNodeId: string,
   options: {
     blockedNodes?: Set<string>;
+    blockedEdges?: Set<string>;
     isNightSafety?: boolean;
     isStepFree?: boolean;
     isEmergency?: boolean;
   } = {}
 ): RouteResult {
-  const { blockedNodes, isNightSafety = false, isStepFree = false, isEmergency = false } = options;
+  const { blockedNodes, blockedEdges, isNightSafety = false, isStepFree = false, isEmergency = false } = options;
 
   // Build effective blocked set
   const effectiveBlocked = new Set<string>(blockedNodes || []);
@@ -385,12 +386,14 @@ export function findSafestStairRoute(
     const route = isStepFree
       ? findStepFreeRoute(campusGraph, startNodeId, target.id, {
           blockedNodes: effectiveBlocked,
+          blockedEdges,
           timeOfDay: isNightSafety ? "night" : "day"
         })
       : findPath(campusGraph, startNodeId, target.id, {
           profile: isEmergency ? "emergency" : "recommended",
           timeOfDay: isNightSafety ? "night" : "day",
-          blockedNodes: effectiveBlocked
+            blockedNodes: effectiveBlocked,
+            blockedEdges
         });
 
     if (route.status === "found" && route.pathPoints && route.pathPoints.length >= 2) {
@@ -435,6 +438,7 @@ export function findSafestStairRoute(
   if (isNightSafety) {
     return findSafestStairRoute(startNodeId, {
       blockedNodes,
+      blockedEdges,
       isNightSafety: false,
       isStepFree,
       isEmergency
@@ -529,10 +533,12 @@ export function calculateRouteTradeOffs(
 export function calculateEvacuationRoute(
   currentNodeId: string,
   blockedNodes?: Set<string>,
-  isNightSafety: boolean = false
+  isNightSafety: boolean = false,
+  blockedEdges?: Set<string>
 ): RouteResult {
   return findSafestStairRoute(currentNodeId, {
     blockedNodes,
+    blockedEdges,
     isNightSafety,
     isEmergency: true
   });
