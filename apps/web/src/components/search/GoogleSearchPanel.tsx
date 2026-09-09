@@ -18,6 +18,8 @@ export const GoogleSearchPanel: React.FC<GoogleSearchPanelProps> = ({
 }) => {
   if (!isOpen) return null;
 
+  const hasCategoryFilter = categoryFilter !== "All";
+
   const recentPOIs: POI[] = [
     {
       id: "poi-204",
@@ -73,7 +75,11 @@ export const GoogleSearchPanel: React.FC<GoogleSearchPanelProps> = ({
     <div className="absolute top-[60px] md:top-[64px] left-0 right-0 md:left-0 md:w-[460px] bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.18)] border border-[#DADCE0] p-3.5 z-40 max-h-[75vh] flex flex-col select-none overflow-hidden animate-in fade-in zoom-in-95 duration-150">
       <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#E8EAED]">
         <span className="text-xs font-semibold text-[#5F6368] uppercase tracking-wider">
-          {query ? `Search Results (${filteredRooms.length})` : "Recent Destinations & Spaces"}
+          {query
+            ? `Search Results (${filteredRooms.length})`
+            : hasCategoryFilter
+            ? `${categoryFilter} (${filteredRooms.length})`
+            : "Recent Destinations & Spaces"}
         </span>
         <button
           onClick={onClose}
@@ -84,7 +90,7 @@ export const GoogleSearchPanel: React.FC<GoogleSearchPanelProps> = ({
       </div>
 
       <div className="flex-1 overflow-y-auto space-y-1 scrollbar-thin">
-        {!query && (
+        {!query && !hasCategoryFilter && (
           <div className="mb-3">
             <div className="text-[11px] font-medium text-[#5F6368] px-2 mb-1">Recent Searches</div>
             {recentPOIs.map((poi) => (
