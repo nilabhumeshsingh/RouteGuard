@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { PositionEstimateSchema } from "./position.js";
+import { HazardOverlaySchema } from "./map.js";
 
 export const ChildProfileSchema = z.object({
   id: z.string(),
@@ -37,3 +38,16 @@ export const GeofenceSchema = z.object({
   minDwellSeconds: z.number().nonnegative().default(0)
 });
 export type Geofence = z.infer<typeof GeofenceSchema>;
+
+export const ActiveHazardStateSchema = z.object({
+  active: z.boolean(),
+  alarmId: z.string().optional(),
+  roomId: z.string().optional(),
+  label: z.string().optional(),
+  blockedNodeIds: z.array(z.string()).default([]),
+  blockedEdgeIds: z.array(z.string()).default([]),
+  hazardOverlays: z.array(HazardOverlaySchema).default([]),
+  recommendedExit: z.string().optional(),
+  generatedAt: z.number().int().nonnegative()
+});
+export type ActiveHazardState = z.infer<typeof ActiveHazardStateSchema>;
