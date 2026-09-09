@@ -223,6 +223,28 @@ describe("CampusSafe Core Express REST Routes", () => {
       expect(res10.body.blockedNodeIds).toContain("c-lift");
     });
 
+    it("returns the shared active hazard state for navigation clients", async () => {
+      const triggerRes = await request(app)
+        .post("/api/safety/alarm/trigger")
+        .send({ zoneId: "zone-208", message: "Fire detected in Room 208", kind: "fire", severity: "critical" });
+      expect(triggerRes.status).toBe(201);
+
+      const hazardRes = await request(app).get("/api/safety/hazards/active");
+      expect(hazardRes.status).toBe(200);
+      expect(hazardRes.body.active).toBe(true);
+      expect(hazardRes.body.roomId).toBe("208");
+      expect(hazardRes.body.blockedNodeIds).toContain("node-208");
+      expect(hazardRes.body.blockedEdgeIds.length).toBeGreaterThan(0);
+      expect(hazardRes.body.hazardOverlays.length).toBeGreaterThan(0);
+
+      await request(app)
+        .post("/api/safety/alarm/authorize-clear")
+        .send({ credentials: { officerId: "officer-hazard-test" } });
+      await request(app)
+        .post("/api/safety/alarm/confirm-clear")
+        .send({ officerId: "officer-hazard-test" });
+    });
+
     it("dispatches high priority SOS alert and transitions through lifecycle", async () => {
       const sosRes = await request(app)
         .post("/api/safety/sos/dispatch")
