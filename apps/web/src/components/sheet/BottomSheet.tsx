@@ -53,7 +53,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
 
   return (
     <div
-      className={`fixed inset-x-0 bottom-0 z-30 md:left-20 md:max-w-[440px] bg-white rounded-t-[16px] shadow-[0_-1px_3px_rgba(0,0,0,0.1)] transition-all duration-300 ease-[cubic-bezier(0.2,0,0,1)] flex flex-col ${heightClasses[snapPoint]}`}
+      className={`absolute inset-x-0 bottom-0 z-30 md:inset-x-auto md:left-4 md:bottom-4 md:w-[440px] md:max-w-[calc(100%-2rem)] bg-white rounded-t-[16px] md:rounded-[16px] shadow-[0_4px_24px_rgba(0,0,0,0.15)] border-t md:border border-[#E8EAED] transition-all duration-300 ease-[cubic-bezier(0.2,0,0,1)] flex flex-col ${heightClasses[snapPoint]}`}
     >
       {/* Drag Handle Container (36px wide, 4px tall, #DADCE0) */}
       <div

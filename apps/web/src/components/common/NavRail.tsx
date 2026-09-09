@@ -42,7 +42,7 @@ export const NavRail: React.FC<NavRailProps> = ({
 
   return (
     <aside
-      className={`hidden md:flex flex-col justify-between absolute left-0 top-0 bottom-0 z-30 transition-all duration-300 ease-[cubic-bezier(0.2,0,0,1)] ${
+      className={`hidden md:flex flex-col justify-between relative h-full shrink-0 z-30 transition-all duration-300 ease-[cubic-bezier(0.2,0,0,1)] ${
         expanded ? "w-[260px]" : "w-[64px]"
       } ${
         isDarkMode
@@ -121,11 +121,11 @@ export const NavRail: React.FC<NavRailProps> = ({
       {/* Bottom Section */}
       <div className="w-full p-2 flex flex-col items-center border-t border-[#E8EAED]">
         <button
-          onClick={handleLogoClick}
+          onClick={onTriggerJudgeMenu}
           className={`w-full flex items-center transition-colors rounded-full ${
             expanded ? "px-3 py-2.5 gap-4" : "h-11 justify-center"
           } text-[#5F6368] hover:bg-[#F1F3F4] hover:text-[#202124]`}
-          title="Judge Evaluation Panel (3-click trigger)"
+          title="Judge Evaluation Panel"
         >
           <span className="material-symbols-outlined text-[22px]">tune</span>
           {expanded && <span className="text-sm truncate">Judge Controls</span>}

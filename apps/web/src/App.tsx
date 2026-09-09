@@ -853,7 +853,7 @@ export const App: React.FC = () => {
       />
 
       {/* 3. Main Full-Bleed Map Canvas Area */}
-      <main className="relative flex-1 h-full w-full overflow-hidden">
+      <main className="relative flex-1 min-w-0 h-full w-full overflow-hidden">
         {/* Full-Bleed 3D / 2D Map Container */}
         <CampusMapContainer
           ref={mapHandleRef}
@@ -867,8 +867,17 @@ export const App: React.FC = () => {
           hazardOverlays={hazardOverlays}
           smokeMinutes={smokeMinutes}
           guardianState={guardianState}
-          onSelectNode={handleSelectNode}
-          onSelectRoom={handleSelectRoom}
+          onSelectNode={(nodeId, label) => {
+            setIsSearchPanelOpen(false);
+            handleSelectNode(nodeId, label);
+          }}
+          onSelectRoom={(room) => {
+            setIsSearchPanelOpen(false);
+            handleSelectRoom(room);
+          }}
+          onMapClick={() => {
+            setIsSearchPanelOpen(false);
+          }}
           viewMode={viewMode}
           onSwitchViewMode={setViewMode}
           isNightSafety={isNightSafetyActive}
@@ -922,152 +931,160 @@ export const App: React.FC = () => {
 
         {/* Floating Top Controls (Search Bar, Category Chips, Status Bar, Quick Toggles) */}
         {!isAlarmActive && (
-          <div className="absolute top-3 left-4 right-4 md:left-20 md:right-auto md:w-[500px] z-30 flex flex-col gap-2 pointer-events-auto">
+          <div className="absolute top-3 left-4 right-4 md:right-auto md:w-[460px] z-30 flex flex-col gap-2 pointer-events-auto">
             {/* Floating Google Pill Search Bar */}
             <GoogleSearchBar
               value={searchQuery}
               onChange={setSearchQuery}
               onFocus={() => setIsSearchPanelOpen(true)}
+              onClear={() => {
+                setSearchQuery("");
+                setSelectedCategory("All");
+              }}
               isScannerConnected={isScannerConnected}
               scannerLabel={scannerLabel}
               onToggleScanner={handleToggleScanner}
             />
 
-            {/* Category Filter Chips */}
-            <CategoryFilterChips
-              selectedCategory={selectedCategory}
-              onSelectCategory={handleCategorySelect}
-            />
-
-            {/* Action Toolbar (Mobile Mode Switcher, Positioning, Women's Night Safe, Google Maps Toggles) */}
-            <div className="flex items-center gap-2 flex-wrap select-none">
-              {/* Mobile View Mode Pill */}
-              <div className="flex md:hidden items-center gap-0.5 bg-white/95 backdrop-blur-md rounded-full p-1 shadow-sm border border-[#DADCE0] text-xs font-semibold">
-                <button
-                  onClick={() => setViewMode("3D")}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
-                    viewMode === "3D" ? "bg-[#1A73E8] text-white shadow-xs" : "text-[#5F6368]"
-                  }`}
-                >
-                  3D
-                </button>
-                <button
-                  onClick={() => setViewMode("2D")}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
-                    viewMode === "2D" ? "bg-[#1A73E8] text-white shadow-xs" : "text-[#5F6368]"
-                  }`}
-                >
-                  2D
-                </button>
-                <button
-                  onClick={() => setViewMode("Google")}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
-                    viewMode === "Google" ? "bg-[#34A853] text-white shadow-xs" : "text-[#1A73E8] bg-[#E8F0FE]"
-                  }`}
-                >
-                  Maps
-                </button>
-              </div>
-
-              {/* Positioning Status Bar */}
-              <div className="w-fit">
-                <PositioningStatusBar
-                  source={positionSource}
-                  confidence="94% (±2.2m)"
-                  ageSeconds={signalAge}
-                  batteryPercent={92}
-                  apCount={apCount}
-                  onSelectSource={(s) => setPositionSource(s)}
-                  onRecenter={handleRecenter}
+            {/* Expandable Search Results / Destinations Panel */}
+            {isSearchPanelOpen ? (
+              <GoogleSearchPanel
+                isOpen={isSearchPanelOpen}
+                query={searchQuery}
+                onClose={() => setIsSearchPanelOpen(false)}
+                onSelectPOI={handleSelectDestination}
+                categoryFilter={selectedCategory}
+              />
+            ) : (
+              <>
+                {/* Category Filter Chips */}
+                <CategoryFilterChips
+                  selectedCategory={selectedCategory}
+                  onSelectCategory={handleCategorySelect}
                 />
-              </div>
 
-              {/* Women's Safe Night Path Mode Button */}
-              <button
-                onClick={handleToggleNightSafety}
-                className={`h-8 px-3 rounded-full flex items-center gap-1.5 text-xs font-semibold shadow-sm border transition-all cursor-pointer ${
-                  isNightSafetyActive
-                    ? "bg-[#FEF3C7] text-[#92400E] border-[#F59E0B] ring-2 ring-[#F59E0B]/30 font-bold"
-                    : "bg-white/95 text-[#5F6368] border-[#DADCE0] hover:bg-[#F8F9FA] hover:text-[#202124]"
-                }`}
-                title="Women's Night Safety: Avoids deserted corridors, low-footfall areas, and isolated stairs"
-              >
-                <span className={`material-symbols-outlined text-[16px] ${isNightSafetyActive ? "text-[#D97706]" : "text-[#5F6368]"}`}>
-                  shield
-                </span>
-                <span>{isNightSafetyActive ? "Safe Night (Active)" : "Safe Night Path"}</span>
-              </button>
-
-              {/* Safest Stairs Quick Button */}
-              <button
-                onClick={handleNavigateToSafestStairs}
-                className="h-8 px-3 rounded-full flex items-center gap-1.5 text-xs font-semibold bg-white/95 text-[#15803d] border border-[#bbf7d0] hover:bg-[#f0fdf4] hover:border-[#86efac] shadow-sm transition-all cursor-pointer active:scale-95"
-                title="Safest Stairs: Route strictly via corridors to nearest safe monitored stairs"
-              >
-                <span className="material-symbols-outlined text-[16px] text-[#16a34a]">
-                  stairs
-                </span>
-                <span>Safest Stairs</span>
-              </button>
-
-              {/* Contextual Google Maps Controls (Clean & Unobstructed) */}
-              {viewMode === "Google" && (
-                <>
-                  {/* Toggle Default View vs Satellite */}
-                  <button
-                    onClick={() =>
-                      setGoogleMapType((prev) =>
-                        prev === "satellite" || prev === "hybrid" ? "roadmap" : "satellite"
-                      )
-                    }
-                    className="h-8 px-3 rounded-full flex items-center gap-1.5 text-xs font-semibold bg-white/95 backdrop-blur-md shadow-sm border border-[#DADCE0] text-[#1A73E8] hover:bg-[#F8F9FA] active:scale-95 transition-all cursor-pointer"
-                    title={
-                      googleMapType === "satellite" || googleMapType === "hybrid"
-                        ? "Switch to Default View (Vector Map)"
-                        : "Switch to Satellite Mode (Aerial Photos)"
-                    }
-                  >
-                    <span className="material-symbols-outlined text-[16px]">
-                      {googleMapType === "satellite" || googleMapType === "hybrid" ? "map" : "satellite_alt"}
-                    </span>
-                    <span>
-                      {googleMapType === "satellite" || googleMapType === "hybrid"
-                        ? "Default View"
-                        : "Satellite Mode"}
-                    </span>
-                  </button>
-
-                  {/* Toggle Live Traffic Layer */}
-                  <button
-                    onClick={() => setIsTrafficActive((prev) => !prev)}
-                    className={`h-8 px-3 rounded-full flex items-center gap-1.5 text-xs font-semibold shadow-sm border transition-all cursor-pointer ${
-                      isTrafficActive
-                        ? "bg-[#E6F4EA] text-[#137333] border-[#34A853]/40 font-bold"
-                        : "bg-white/95 text-[#5F6368] border-[#DADCE0] hover:bg-[#F8F9FA]"
-                    }`}
-                    title="Toggle Google Maps Live Traffic layer"
-                  >
-                    <span
-                      className={`material-symbols-outlined text-[16px] ${
-                        isTrafficActive ? "text-[#137333]" : "text-[#5F6368]"
+                {/* Action Toolbar (Mobile Mode Switcher, Positioning, Women's Night Safe, Google Maps Toggles) */}
+                <div className="flex items-center gap-2 flex-wrap select-none">
+                  {/* Mobile View Mode Pill */}
+                  <div className="flex md:hidden items-center gap-0.5 bg-white/95 backdrop-blur-md rounded-full p-1 shadow-sm border border-[#DADCE0] text-xs font-semibold">
+                    <button
+                      onClick={() => setViewMode("3D")}
+                      className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
+                        viewMode === "3D" ? "bg-[#1A73E8] text-white shadow-xs" : "text-[#5F6368]"
                       }`}
                     >
-                      traffic
-                    </span>
-                    <span>Traffic: {isTrafficActive ? "ON" : "OFF"}</span>
-                  </button>
-                </>
-              )}
-            </div>
+                      3D
+                    </button>
+                    <button
+                      onClick={() => setViewMode("2D")}
+                      className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
+                        viewMode === "2D" ? "bg-[#1A73E8] text-white shadow-xs" : "text-[#5F6368]"
+                      }`}
+                    >
+                      2D
+                    </button>
+                    <button
+                      onClick={() => setViewMode("Google")}
+                      className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
+                        viewMode === "Google" ? "bg-[#34A853] text-white shadow-xs" : "text-[#1A73E8] bg-[#E8F0FE]"
+                      }`}
+                    >
+                      Maps
+                    </button>
+                  </div>
 
-            {/* Expandable Search Drawer Overlay */}
-            <GoogleSearchPanel
-              isOpen={isSearchPanelOpen}
-              query={searchQuery}
-              onClose={() => setIsSearchPanelOpen(false)}
-              onSelectPOI={handleSelectDestination}
-              categoryFilter={selectedCategory}
-            />
+                  {/* Positioning Status Bar */}
+                  <div className="w-fit">
+                    <PositioningStatusBar
+                      source={positionSource}
+                      confidence="94% (±2.2m)"
+                      ageSeconds={signalAge}
+                      batteryPercent={92}
+                      apCount={apCount}
+                      onSelectSource={(s) => setPositionSource(s)}
+                      onRecenter={handleRecenter}
+                    />
+                  </div>
+
+                  {/* Women's Safe Night Path Mode Button */}
+                  <button
+                    onClick={handleToggleNightSafety}
+                    className={`h-8 px-3 rounded-full flex items-center gap-1.5 text-xs font-semibold shadow-sm border transition-all cursor-pointer ${
+                      isNightSafetyActive
+                        ? "bg-[#FEF3C7] text-[#92400E] border-[#F59E0B] ring-2 ring-[#F59E0B]/30 font-bold"
+                        : "bg-white/95 text-[#5F6368] border-[#DADCE0] hover:bg-[#F8F9FA] hover:text-[#202124]"
+                    }`}
+                    title="Women's Night Safety: Avoids deserted corridors, low-footfall areas, and isolated stairs"
+                  >
+                    <span className={`material-symbols-outlined text-[16px] ${isNightSafetyActive ? "text-[#D97706]" : "text-[#5F6368]"}`}>
+                      shield
+                    </span>
+                    <span>{isNightSafetyActive ? "Safe Night (Active)" : "Safe Night Path"}</span>
+                  </button>
+
+                  {/* Safest Stairs Quick Button */}
+                  <button
+                    onClick={handleNavigateToSafestStairs}
+                    className="h-8 px-3 rounded-full flex items-center gap-1.5 text-xs font-semibold bg-white/95 text-[#15803d] border border-[#bbf7d0] hover:bg-[#f0fdf4] hover:border-[#86efac] shadow-sm transition-all cursor-pointer active:scale-95"
+                    title="Safest Stairs: Route strictly via corridors to nearest safe monitored stairs"
+                  >
+                    <span className="material-symbols-outlined text-[16px] text-[#16a34a]">
+                      stairs
+                    </span>
+                    <span>Safest Stairs</span>
+                  </button>
+
+                  {/* Contextual Google Maps Controls (Clean & Unobstructed) */}
+                  {viewMode === "Google" && (
+                    <>
+                      {/* Toggle Default View vs Satellite */}
+                      <button
+                        onClick={() =>
+                          setGoogleMapType((prev) =>
+                            prev === "satellite" || prev === "hybrid" ? "roadmap" : "satellite"
+                          )
+                        }
+                        className="h-8 px-3 rounded-full flex items-center gap-1.5 text-xs font-semibold bg-white/95 backdrop-blur-md shadow-sm border border-[#DADCE0] text-[#1A73E8] hover:bg-[#F8F9FA] active:scale-95 transition-all cursor-pointer"
+                        title={
+                          googleMapType === "satellite" || googleMapType === "hybrid"
+                            ? "Switch to Default View (Vector Map)"
+                            : "Switch to Satellite Mode (Aerial Photos)"
+                        }
+                      >
+                        <span className="material-symbols-outlined text-[16px]">
+                          {googleMapType === "satellite" || googleMapType === "hybrid" ? "map" : "satellite_alt"}
+                        </span>
+                        <span>
+                          {googleMapType === "satellite" || googleMapType === "hybrid"
+                            ? "Default View"
+                            : "Satellite Mode"}
+                        </span>
+                      </button>
+
+                      {/* Toggle Live Traffic Layer */}
+                      <button
+                        onClick={() => setIsTrafficActive((prev) => !prev)}
+                        className={`h-8 px-3 rounded-full flex items-center gap-1.5 text-xs font-semibold shadow-sm border transition-all cursor-pointer ${
+                          isTrafficActive
+                            ? "bg-[#E6F4EA] text-[#137333] border-[#34A853]/40 font-bold"
+                            : "bg-white/95 text-[#5F6368] border-[#DADCE0] hover:bg-[#F8F9FA]"
+                        }`}
+                        title="Toggle Google Maps Live Traffic layer"
+                      >
+                        <span
+                          className={`material-symbols-outlined text-[16px] ${
+                            isTrafficActive ? "text-[#137333]" : "text-[#5F6368]"
+                          }`}
+                        >
+                          traffic
+                        </span>
+                        <span>Traffic: {isTrafficActive ? "ON" : "OFF"}</span>
+                      </button>
+                    </>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         )}
 

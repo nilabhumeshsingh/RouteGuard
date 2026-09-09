@@ -70,10 +70,10 @@ export const GoogleSearchPanel: React.FC<GoogleSearchPanelProps> = ({
   });
 
   return (
-    <div className="absolute top-[60px] md:top-[64px] left-0 right-0 md:left-0 md:w-[460px] bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.18)] border border-[#DADCE0] p-3.5 z-40 max-h-[75vh] flex flex-col select-none overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <div className="w-full bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.18)] border border-[#DADCE0] p-3.5 z-40 max-h-[75vh] flex flex-col select-none overflow-hidden animate-in fade-in zoom-in-95 duration-150">
       <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#E8EAED]">
         <span className="text-xs font-semibold text-[#5F6368] uppercase tracking-wider">
-          {query ? `Search Results (${filteredRooms.length})` : "Recent Destinations & Spaces"}
+          {query ? `Search Results (${filteredRooms.length})` : categoryFilter && categoryFilter !== "All" ? `${categoryFilter} (${filteredRooms.length})` : "Recent Destinations & Spaces"}
         </span>
         <button
           onClick={onClose}

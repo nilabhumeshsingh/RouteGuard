@@ -30,8 +30,8 @@ export const GoogleMapControls: React.FC<GoogleMapControlsProps> = ({
 
   return (
     <>
-      {/* Bottom-Left: Layers Button & Scale Bar */}
-      <div className="absolute left-4 bottom-24 md:bottom-6 z-20 flex flex-col gap-2.5 items-start select-none">
+      {/* Bottom-Left: Layers Button & Scale Bar (Offset past 440px BottomSheet on desktop) */}
+      <div className="absolute left-4 md:left-[468px] bottom-24 md:bottom-4 z-20 flex flex-col gap-2.5 items-start select-none transition-all duration-300">
         {/* Layers Button (40x40 white square, 8px radius) */}
         <button
           onClick={onToggleLayers}
