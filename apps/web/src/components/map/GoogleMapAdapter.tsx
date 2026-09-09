@@ -8,23 +8,62 @@ const GOOGLE_MAPS_API_KEY: string =
   ((import.meta as any).env?.VITE_GOOGLE_MAPS_API_KEY as string) ||
   "AIzaSyCncccRP4QMuK4Fjm4APryWE497RjFOS40";
 
-// Academic Block 1 (AB1) Reference Coordinates at Manipal University Jaipur
-export const MUJ_AB1_CENTER = { lat: 26.84384, lng: 75.56593 };
+// Real MUJ AB3 building corners — from Google Maps (NW, NE, SE, SW order)
+export const BUILDING_CORNERS_GEO: [number, number][] = [
+  [26.84492, 75.56474],  // NW corner
+  [26.84382, 75.56522],  // NE corner
+  [26.84366, 75.56478],  // SE corner
+  [26.84476, 75.56427]   // SW corner
+];
 
-// Bounds for Indoor -> GPS projection (Floor 2 AB1 Wing)
-const CAMPUS_BOUNDS = {
-  northWest: { lat: 26.84435, lng: 75.56530 },
-  southEast: { lat: 26.84335, lng: 75.56655 }
+// Geographic centroid = building center (local origin 0,0 in floorplan)
+export const BUILDING_ANCHOR = {
+  lat: (26.84492 + 26.84382 + 26.84366 + 26.84476) / 4,  // 26.84429
+  lng: (75.56474 + 75.56522 + 75.56478 + 75.56427) / 4   // 75.56500
 };
 
+export const MUJ_AB3_CENTER = BUILDING_ANCHOR;
+export const MUJ_AB1_CENTER = BUILDING_ANCHOR;
+
 /**
- * Converts local SVG floor plan coordinates (x, y) into GPS Lat/Lng on AB1.
+ * Converts local SVG floor plan coordinates or local meters (x, y) into GPS Lat/Lng on AB3.
+ * The anchor (local origin 0,0 = building center) maps to the geographic centroid of the 4 corners.
  */
 export function indoorToLatLng(x: number, y: number): { lat: number; lng: number } {
-  const normX = Math.max(0, Math.min(1, x / 850));
-  const normY = Math.max(0, Math.min(1, y / 650));
-  const lat = CAMPUS_BOUNDS.northWest.lat - normY * (CAMPUS_BOUNDS.northWest.lat - CAMPUS_BOUNDS.southEast.lat);
-  const lng = CAMPUS_BOUNDS.northWest.lng + normX * (CAMPUS_BOUNDS.southEast.lng - CAMPUS_BOUNDS.northWest.lng);
+  const nw = BUILDING_CORNERS_GEO[0];
+  const ne = BUILDING_CORNERS_GEO[1];
+  const se = BUILDING_CORNERS_GEO[2];
+  const sw = BUILDING_CORNERS_GEO[3];
+
+  let t_x: number;
+  let t_y: number;
+
+  if (Math.abs(x) <= 80 && Math.abs(y) <= 80) {
+    // Local coordinates in meters relative to building center (0,0)
+    t_x = 0.5 + x / 130;
+    t_y = 0.5 + y / 50;
+  } else {
+    // SVG floorplan coordinates (0..850, 0..650)
+    t_x = x / 850;
+    t_y = y / 650;
+  }
+
+  const clampedX = Math.max(0, Math.min(1, t_x));
+  const clampedY = Math.max(0, Math.min(1, t_y));
+
+  // Bilinear interpolation across real-world building polygon
+  const lat =
+    (1 - clampedX) * (1 - clampedY) * nw[0] +
+    clampedX * (1 - clampedY) * ne[0] +
+    clampedX * clampedY * se[0] +
+    (1 - clampedX) * clampedY * sw[0];
+
+  const lng =
+    (1 - clampedX) * (1 - clampedY) * nw[1] +
+    clampedX * (1 - clampedY) * ne[1] +
+    clampedX * clampedY * se[1] +
+    (1 - clampedX) * clampedY * sw[1];
+
   return { lat, lng };
 }
 
@@ -200,21 +239,16 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
         mapInstanceRef.current = map;
         infoWindowRef.current = new google.maps.InfoWindow();
 
-        // Academic Block 1 Boundary Polygon
-        const campusPolygonCoords = [
-          indoorToLatLng(0, 0),
-          indoorToLatLng(850, 0),
-          indoorToLatLng(850, 650),
-          indoorToLatLng(0, 650)
-        ];
+        // Academic Block 3 Boundary Polygon (from real-world Google Maps coordinates)
+        const campusPolygonCoords = BUILDING_CORNERS_GEO.map(([lat, lng]) => ({ lat, lng }));
 
         new google.maps.Polygon({
           paths: campusPolygonCoords,
           strokeColor: "#1A73E8",
-          strokeOpacity: 0.8,
-          strokeWeight: 2,
+          strokeOpacity: 0.9,
+          strokeWeight: 2.5,
           fillColor: "#1A73E8",
-          fillOpacity: 0.10,
+          fillOpacity: 0.15,
           map: map
         });
 
