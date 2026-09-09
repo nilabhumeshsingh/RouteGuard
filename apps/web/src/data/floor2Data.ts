@@ -395,8 +395,11 @@ export const RAW_POIS: POI[] = [
   { id: "poi-wash-se", name: "Male Washroom SE", category: "Restroom", nodeId: "wash-se", aliases: ["washroom", "men", "male restroom se"] },
 
   // Exits & Balcony
-  { id: "poi-exit-west", name: "Fire Exit West (Ramp)", category: "Emergency Exit", nodeId: "exit-west", aliases: ["exit", "west exit", "ramp", "fire exit west"] },
-  { id: "poi-exit-east", name: "Fire Exit East", category: "Emergency Exit", nodeId: "exit-east", aliases: ["east exit", "fire exit east", "stair ne"] },
+  { id: "poi-stairs-safest", name: "Safest Central Stairs (ST-NM)", category: "Stairs", nodeId: "node-stairs-north", aliases: ["stairs", "safest stairs", "safe stairs", "staircase", "central stairs", "st-nm", "nearest stairs"] },
+  { id: "poi-stairs-south", name: "Central South Stairs (ST-SM)", category: "Stairs", nodeId: "node-stairs-south", aliases: ["south stairs", "central south stairs", "stairs sm", "st-sm", "safe stairs"] },
+  { id: "poi-exit-west", name: "Fire Exit West (Ramp)", category: "Emergency Exit", nodeId: "exit-west", aliases: ["exit", "west exit", "ramp", "fire exit west", "accessible exit", "safe ramp"] },
+  { id: "poi-exit-east", name: "Fire Exit East", category: "Emergency Exit", nodeId: "exit-east", aliases: ["east exit", "fire exit east", "stair ne", "east stairs"] },
+  { id: "poi-stair-se", name: "Stairs SE (ST-SE)", category: "Stairs", nodeId: "node-stairs-se", aliases: ["stairs se", "southeast stairs", "st-se"] },
   { id: "poi-balcony", name: "Circular Balcony", category: "Outdoor Terrace", nodeId: "c-balcony-circ", aliases: ["balcony", "terrace", "circular balcony"] }
 ];
 

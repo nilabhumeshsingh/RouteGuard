@@ -19,6 +19,8 @@ import { ARCHITECTURAL_ROOMS, ArchitecturalRoom, POI } from "./data/floor2Data";
 import {
   calculateRouteTradeOffs,
   calculateEvacuationRoute,
+  findSafestStairRoute,
+  SAFE_STAIR_TARGETS,
   RouteComparison,
   speakInstruction
 } from "./services/routingService";
@@ -298,9 +300,11 @@ export const App: React.FC = () => {
 
     const lastSeg = evacRoute.segments[evacRoute.segments.length - 1];
     const destinationNode = lastSeg?.toNodeId || "exit-west";
+    const targetObj = SAFE_STAIR_TARGETS.find((s) => s.id === destinationNode);
+
     const exitPoi: POI = {
       id: "poi-evac-exit",
-      name: destinationNode === "exit-east" ? "Stairs & Fire Exit NE" : "Stairs & Fire Exit Ramp SW",
+      name: targetObj ? targetObj.name : destinationNode === "exit-east" ? "Stairs & Fire Exit NE" : "Stairs & Fire Exit Ramp SW",
       category: "Emergency Exit",
       nodeId: destinationNode,
       aliases: ["fire exit", "stairs", "emergency stairs"]
@@ -313,9 +317,46 @@ export const App: React.FC = () => {
     setSnapPoint("half");
 
     speakInstruction(
-      `Emergency evacuation active! Fire detected in Room ${fireCode}. Proceed directly to nearest stairs.`
+      evacRoute.tradeOffExplanation ||
+      `Emergency evacuation active! Fire detected in Room ${fireCode}. Proceed directly to ${exitPoi.name}.`
     );
   }, [userPos.nearestPlaceName, isNightSafetyActive]);
+
+  // One-tap navigation to safest stairs through corridors
+  const handleNavigateToSafestStairs = useCallback(() => {
+    let currentUserNode = "node-204";
+    if (userPos.nearestPlaceName) {
+      const match = userPos.nearestPlaceName.match(/\b(20[1-9]|21[0-9]|220)\b/);
+      if (match) {
+        currentUserNode = `node-${match[1]}`;
+      }
+    }
+
+    const stairRoute = findSafestStairRoute(currentUserNode, {
+      isNightSafety: isNightSafetyActive,
+      isStepFree: activeProfile === "step-free"
+    });
+
+    if (stairRoute && stairRoute.status === "found") {
+      const lastSeg = stairRoute.segments[stairRoute.segments.length - 1];
+      const destinationNode = lastSeg?.toNodeId || "node-stairs-north";
+      const targetObj = SAFE_STAIR_TARGETS.find((s) => s.id === destinationNode);
+
+      const stairPoi: POI = {
+        id: "poi-target-stairs",
+        name: targetObj ? targetObj.name : "Safest Central Stairs (ST-NM)",
+        category: "Stairs",
+        nodeId: destinationNode,
+        aliases: ["stairs", "safe stairs", "nearest stairs"]
+      };
+
+      setSelectedPOI(stairPoi);
+      setActiveRoute(stairRoute);
+      setIsNavigating(false);
+      setSnapPoint("half");
+      speakInstruction(stairRoute.tradeOffExplanation || "Routing to the safest stairs via central concourse.");
+    }
+  }, [userPos.nearestPlaceName, isNightSafetyActive, activeProfile]);
 
   // Dismiss Alarm
   const handleDismissAlarm = () => {
@@ -726,6 +767,30 @@ export const App: React.FC = () => {
     // Default Peek Content: Quick search shortcuts & recent destinations
     return (
       <div className="space-y-3 pt-2 select-none">
+        {/* Quick Action: Safest Stairs through corridors */}
+        <button
+          onClick={handleNavigateToSafestStairs}
+          className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-[#052e16] to-[#14532d] border border-[#22c55e]/50 hover:border-[#22c55e] text-white flex items-center justify-between transition-all shadow-sm group cursor-pointer"
+        >
+          <div className="flex items-center gap-2.5">
+            <span className="material-symbols-outlined text-[22px] text-[#4ade80] group-hover:scale-110 transition-transform">
+              stairs
+            </span>
+            <div className="text-left">
+              <div className="text-xs font-bold flex items-center gap-1.5">
+                Navigate to Safest Stairs
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#22c55e]/20 text-[#4ade80] border border-[#22c55e]/40">
+                  95% CORE
+                </span>
+              </div>
+              <div className="text-[10.5px] text-zinc-300">Strict corridor route to monitored Central ST-NM / ST-SM</div>
+            </div>
+          </div>
+          <span className="material-symbols-outlined text-[18px] text-[#4ade80] group-hover:translate-x-0.5 transition-transform">
+            arrow_forward
+          </span>
+        </button>
+
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold text-[#5F6368] uppercase tracking-wider">Suggested Places</span>
           <button
@@ -741,16 +806,20 @@ export const App: React.FC = () => {
             { id: "poi-204", name: "Room 204", desc: "Lecture Hall · North", icon: "school" },
             { id: "poi-219", name: "Room 219", desc: "AI & Robotics Lab", icon: "precision_manufacturing" },
             { id: "poi-wash-nw", name: "Washroom NW", desc: "Male Restroom", icon: "wc" },
-            { id: "poi-stair-nw", name: "Stair & Lift NW", desc: "Main Egress Core", icon: "stairs" }
+            { id: "poi-stairs-safest", name: "Safest Stairs", desc: "Central Concourse · 95%", icon: "stairs" }
           ].map((item) => (
             <button
               key={item.id}
               onClick={() => {
+                if (item.id === "poi-stairs-safest") {
+                  handleNavigateToSafestStairs();
+                  return;
+                }
                 const room = ARCHITECTURAL_ROOMS.find((r) => item.id.includes(r.code) || item.id.includes(r.id));
                 if (room) handleSelectRoom(room);
                 else handleSelectNode(item.id, item.name);
               }}
-              className="p-2.5 rounded-xl border border-[#DADCE0] bg-[#F8F9FA] hover:bg-[#F1F3F4] text-left transition-all group"
+              className="p-2.5 rounded-xl border border-[#DADCE0] bg-[#F8F9FA] hover:bg-[#F1F3F4] text-left transition-all group cursor-pointer"
             >
               <div className="flex items-center gap-2 mb-1">
                 <span className="material-symbols-outlined text-[18px] text-[#1A73E8]">{item.icon}</span>
@@ -802,7 +871,7 @@ export const App: React.FC = () => {
           routePoints={activeRoute?.pathPoints}
           activeRoute={activeRoute}
           routeIsStepFree={activeProfile === "step-free"}
-          isEmergencyRoute={isAlarmActive}
+          isEmergencyRoute={isAlarmActive || !!activeRoute?.isEmergencyExit || selectedPOI?.category === "Stairs" || selectedPOI?.category === "Emergency Exit"}
           hazardOverlays={hazardOverlays}
           smokeMinutes={smokeMinutes}
           guardianState={guardianState}
@@ -935,6 +1004,18 @@ export const App: React.FC = () => {
                   shield
                 </span>
                 <span>{isNightSafetyActive ? "Safe Night (Active)" : "Safe Night Path"}</span>
+              </button>
+
+              {/* Safest Stairs Quick Button */}
+              <button
+                onClick={handleNavigateToSafestStairs}
+                className="h-8 px-3 rounded-full flex items-center gap-1.5 text-xs font-semibold bg-white/95 text-[#15803d] border border-[#bbf7d0] hover:bg-[#f0fdf4] hover:border-[#86efac] shadow-sm transition-all cursor-pointer active:scale-95"
+                title="Safest Stairs: Route strictly via corridors to nearest safe monitored stairs"
+              >
+                <span className="material-symbols-outlined text-[16px] text-[#16a34a]">
+                  stairs
+                </span>
+                <span>Safest Stairs</span>
               </button>
 
               {/* Contextual Google Maps Controls (Clean & Unobstructed) */}
