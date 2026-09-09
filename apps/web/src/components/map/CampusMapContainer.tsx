@@ -2,7 +2,7 @@ import React, { useState, forwardRef, useImperativeHandle, useRef } from "react"
 import { Indoor3DAdapter, Indoor3DAdapterRef, UserMarker } from "../../maps/Indoor3DAdapter";
 import { Indoor2DMap } from "./Indoor2DAdapter";
 import { GoogleMapAdapter, GoogleMapAdapterRef } from "./GoogleMapAdapter";
-import { FloorId, MapLayerConfig, UserPositionState, GuardianState, MapViewMode } from "../../types";
+import { FloorId, MapLayerConfig, UserPositionState, GuardianState, MapViewMode, ParentalModeState } from "../../types";
 import { HazardOverlay, PositionEstimate, RoutePoint, RouteResult } from "@routeguard/shared";
 import { ARCHITECTURAL_ROOMS, ArchitecturalRoom } from "../../data/floor2Data";
 
@@ -17,6 +17,7 @@ export interface CampusMapContainerProps {
   hazardOverlays?: HazardOverlay[];
   smokeMinutes?: number;
   guardianState?: GuardianState | null;
+  parentalState?: ParentalModeState | null;
   onSelectNode?: (nodeId: string, label: string) => void;
   onSelectRoom?: (room: ArchitecturalRoom) => void;
   onMapClick?: (pos: { x: number; y: number }) => void;
@@ -51,6 +52,7 @@ export const CampusMapContainer = forwardRef<CampusMapContainerHandle, CampusMap
       hazardOverlays = [],
       smokeMinutes = 0,
       guardianState,
+      parentalState,
       onSelectNode,
       onSelectRoom,
       onMapClick,
@@ -185,6 +187,7 @@ export const CampusMapContainer = forwardRef<CampusMapContainerHandle, CampusMap
             onToggleTraffic={onToggleTraffic}
             hazardOverlays={hazardOverlays}
             guardianState={guardianState}
+            parentalState={parentalState}
             onSelectRoom={onSelectRoom}
             onSelectNode={onSelectNode}
             onSwitchViewMode={onSwitchViewMode}
@@ -232,6 +235,7 @@ export const CampusMapContainer = forwardRef<CampusMapContainerHandle, CampusMap
           hazardOverlays={hazardOverlays}
           smokeMinutes={smokeMinutes}
           guardianState={guardianState}
+          parentalState={parentalState}
           onSelectNode={onSelectNode}
           onSelectRoom={onSelectRoom}
         />

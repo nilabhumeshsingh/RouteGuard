@@ -13,9 +13,16 @@ import { EmergencyBanner } from "./components/emergency/EmergencyBanner";
 import { EmergencySheetContent } from "./components/emergency/EmergencySheetContent";
 import { JudgeParameterMenu, ScenarioParams } from "./components/demo/JudgeParameterMenu";
 import { CampusMapContainer, CampusMapContainerHandle } from "./components/map/CampusMapContainer";
-import { FloorId, MapLayerConfig, UserPositionState, GuardianState, MapViewMode } from "./types";
+import { FloorId, MapLayerConfig, UserPositionState, GuardianState, MapViewMode, ParentalModeState, GeofenceZoneConfig } from "./types";
 import { HazardOverlay, MobilityProfile, PositionEstimate, RouteResult } from "@routeguard/shared";
 import { ARCHITECTURAL_ROOMS, ArchitecturalRoom, POI } from "./data/floor2Data";
+import { ParentalGeofenceModal, PREDEFINED_GEOFENCE_ZONES } from "./components/guardian/ParentalGeofenceModal";
+import {
+  sendGeofenceAlertNotification,
+  playWarningChime,
+  triggerHapticPulse,
+  requestNotificationPermission
+} from "./services/webNotificationService";
 import {
   calculateRouteTradeOffs,
   calculateEvacuationRoute,
@@ -108,6 +115,130 @@ export const App: React.FC = () => {
     inSafeZone: true,
     geofenceWarning: null
   });
+
+  // Parental Geofence State
+  const [isParentalModalOpen, setIsParentalModalOpen] = useState(false);
+  const [parentalState, setParentalState] = useState<ParentalModeState>({
+    isActive: false,
+    selectedZone: PREDEFINED_GEOFENCE_ZONES[0],
+    alertOnExit: true,
+    webNotificationsEnabled: true,
+    soundEnabled: true,
+    isBreached: false,
+    lastBreachTimestamp: null,
+    breachMessage: null
+  });
+
+  // Parental Geofence Real-time Monitoring & Web Notification Dispatcher
+  useEffect(() => {
+    if (!parentalState.isActive || !guardianState.isPaired || !guardianState.childPosition) {
+      return;
+    }
+
+    const { x, y } = guardianState.childPosition;
+    const { center, svgRadius, name } = parentalState.selectedZone;
+    const dist = Math.hypot(x - center.x, y - center.y);
+    const isOutside = dist > svgRadius;
+
+    if (isOutside && !parentalState.isBreached) {
+      const message = `${guardianState.childName} has left ${name}! Current position: ${guardianState.childPosition.placeName}.`;
+      setParentalState((prev) => ({
+        ...prev,
+        isBreached: true,
+        lastBreachTimestamp: Date.now(),
+        breachMessage: message
+      }));
+      setGuardianState((prev) => ({
+        ...prev,
+        inSafeZone: false,
+        geofenceWarning: message
+      }));
+
+      // Push real browser Web Notification
+      sendGeofenceAlertNotification(
+        guardianState.childName,
+        name,
+        guardianState.childPosition.placeName
+      );
+
+      // Synthesize audible warning chime & vibration
+      playWarningChime();
+      triggerHapticPulse();
+    } else if (!isOutside && parentalState.isBreached) {
+      // Child returned inside boundary
+      setParentalState((prev) => ({
+        ...prev,
+        isBreached: false,
+        breachMessage: null
+      }));
+      setGuardianState((prev) => ({
+        ...prev,
+        inSafeZone: true,
+        geofenceWarning: null
+      }));
+    }
+  }, [
+    parentalState.isActive,
+    parentalState.selectedZone,
+    parentalState.isBreached,
+    guardianState.childPosition,
+    guardianState.childName,
+    guardianState.isPaired
+  ]);
+
+  const handleToggleParentalMode = useCallback((active: boolean) => {
+    if (active) {
+      requestNotificationPermission();
+    }
+    setParentalState((prev) => ({
+      ...prev,
+      isActive: active,
+      isBreached: active ? prev.isBreached : false
+    }));
+  }, []);
+
+  const handleSimulateChildBreach = useCallback(() => {
+    setGuardianState((prev) => ({
+      ...prev,
+      childPosition: {
+        x: 120,
+        y: 240,
+        floorId: "floor-2",
+        placeName: "West Balcony (Deserted Terrace)"
+      }
+    }));
+  }, []);
+
+  const handleSimulateChildReturn = useCallback(() => {
+    const center = parentalState.selectedZone.center;
+    setGuardianState((prev) => ({
+      ...prev,
+      childPosition: {
+        x: center.x,
+        y: center.y,
+        floorId: "floor-2",
+        placeName: parentalState.selectedZone.name
+      }
+    }));
+    setParentalState((prev) => ({
+      ...prev,
+      isBreached: false,
+      breachMessage: null
+    }));
+  }, [parentalState.selectedZone]);
+
+  const handleLocateChild = useCallback(() => {
+    if (guardianState.childPosition) {
+      setUserPos((prev) => ({
+        ...prev,
+        x: guardianState.childPosition.x,
+        y: guardianState.childPosition.y,
+        nearestPlaceName: guardianState.childPosition.placeName
+      }));
+      mapHandleRef.current?.resetView();
+    }
+    setIsParentalModalOpen(false);
+  }, [guardianState.childPosition]);
 
   // Hazard Overlays
   const [hazardOverlays, setHazardOverlays] = useState<HazardOverlay[]>([]);
@@ -840,6 +971,11 @@ export const App: React.FC = () => {
         onOpenSaved={() => setIsSearchPanelOpen(true)}
         onTriggerJudgeMenu={() => setIsJudgeMenuOpen(true)}
         onAskRouteGuard={() => setIsSearchPanelOpen(true)}
+        isParentalModeActive={parentalState.isActive}
+        onToggleParentalMode={handleToggleParentalMode}
+        onOpenParentalConfig={() => setIsParentalModalOpen(true)}
+        childName={guardianState.childName}
+        isBreached={parentalState.isBreached}
         isDarkMode={isDarkMode}
       />
 
@@ -851,6 +987,47 @@ export const App: React.FC = () => {
         onEvacuate={handleEvacuate}
         onDismissAlarm={handleDismissAlarm}
       />
+
+      {/* 2b. High-Priority Parental Geofence Breach Banner */}
+      {parentalState.isActive && parentalState.isBreached && (
+        <div className="absolute top-2 left-4 right-4 md:left-[80px] z-50 p-3 bg-red-600 text-white rounded-2xl shadow-2xl flex items-center justify-between border-2 border-red-300 animate-in slide-in-from-top duration-300">
+          <div className="flex items-center gap-3">
+            <span className="material-symbols-outlined text-2xl text-yellow-300 animate-bounce">
+              notification_important
+            </span>
+            <div>
+              <div className="font-extrabold text-sm tracking-tight flex items-center gap-2">
+                <span>🚨 GEOFENCE BREACH: Child has left safe zone!</span>
+              </div>
+              <div className="text-xs text-red-100 mt-0.5">
+                {guardianState.childName} has exited {parentalState.selectedZone.name}. Current location: {guardianState.childPosition.placeName}.
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={handleLocateChild}
+              className="px-3 py-1.5 bg-white text-red-700 rounded-full font-bold text-xs hover:bg-red-50 transition-all shadow-sm active:scale-95"
+            >
+              Locate Child
+            </button>
+            <button
+              onClick={() => setIsParentalModalOpen(true)}
+              className="px-3 py-1.5 bg-red-800/80 text-white rounded-full font-medium text-xs hover:bg-red-800 transition-all"
+            >
+              Controls
+            </button>
+            <button
+              onClick={() => setParentalState((prev) => ({ ...prev, isBreached: false }))}
+              className="p-1 hover:bg-white/20 rounded-full transition-colors ml-1"
+              title="Dismiss warning"
+            >
+              <span className="material-symbols-outlined text-sm">close</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 3. Main Full-Bleed Map Canvas Area */}
       <main className="relative flex-1 min-w-0 h-full w-full overflow-hidden">
@@ -867,6 +1044,7 @@ export const App: React.FC = () => {
           hazardOverlays={hazardOverlays}
           smokeMinutes={smokeMinutes}
           guardianState={guardianState}
+          parentalState={parentalState}
           onSelectNode={(nodeId, label) => {
             setIsSearchPanelOpen(false);
             handleSelectNode(nodeId, label);
@@ -1034,6 +1212,38 @@ export const App: React.FC = () => {
                     <span>Safest Stairs</span>
                   </button>
 
+                  {/* Parental Geofence Mode Button */}
+                  <button
+                    onClick={() => handleToggleParentalMode(!parentalState.isActive)}
+                    className={`h-8 px-3 rounded-full flex items-center gap-1.5 text-xs font-semibold shadow-sm border transition-all cursor-pointer ${
+                      parentalState.isActive
+                        ? parentalState.isBreached
+                          ? "bg-[#FEF2F2] text-[#991B1B] border-[#EF4444] ring-2 ring-[#EF4444]/30 font-bold"
+                          : "bg-[#ECFDF5] text-[#065F46] border-[#10B981] ring-2 ring-[#10B981]/30 font-bold"
+                        : "bg-white/95 text-[#5F6368] border-[#DADCE0] hover:bg-[#F8F9FA] hover:text-[#202124]"
+                    }`}
+                    title="Parental Geofence Mode: Tracks child boundary and pushes web alerts upon exit"
+                  >
+                    <span
+                      className={`material-symbols-outlined text-[16px] ${
+                        parentalState.isActive
+                          ? parentalState.isBreached
+                            ? "text-[#EF4444] animate-bounce"
+                            : "text-[#10B981]"
+                          : "text-[#5F6368]"
+                      }`}
+                    >
+                      supervised_user_circle
+                    </span>
+                    <span>
+                      {parentalState.isActive
+                        ? parentalState.isBreached
+                          ? "Geofence Breached!"
+                          : "Parental Mode (Active)"
+                        : "Parental Mode"}
+                    </span>
+                  </button>
+
                   {/* Contextual Google Maps Controls (Clean & Unobstructed) */}
                   {viewMode === "Google" && (
                     <>
@@ -1130,6 +1340,19 @@ export const App: React.FC = () => {
         scenarioTimeLeft={scenarioTimeLeft}
         evacuationProgress={evacuationProgress}
         onStopScenario={handleStopScenario}
+      />
+
+      {/* Parental Geofence Control Modal */}
+      <ParentalGeofenceModal
+        isOpen={isParentalModalOpen}
+        onClose={() => setIsParentalModalOpen(false)}
+        guardianState={guardianState}
+        parentalState={parentalState}
+        onToggleParentalMode={handleToggleParentalMode}
+        onUpdateZone={(zone) => setParentalState((prev) => ({ ...prev, selectedZone: zone }))}
+        onSimulateChildBreach={handleSimulateChildBreach}
+        onSimulateChildReturn={handleSimulateChildReturn}
+        onLocateChild={handleLocateChild}
       />
     </div>
   );

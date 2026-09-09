@@ -8,7 +8,7 @@ import {
   getRoomFootfall,
   FootfallRating
 } from "../../data/floor2Data";
-import { MapLayerConfig, UserPositionState, FloorId, GuardianState } from "../../types";
+import { MapLayerConfig, UserPositionState, FloorId, GuardianState, ParentalModeState } from "../../types";
 
 export interface Indoor2DMapProps {
   currentFloor: FloorId;
@@ -21,6 +21,7 @@ export interface Indoor2DMapProps {
   hazardOverlays?: HazardOverlay[];
   smokeMinutes?: number;
   guardianState?: GuardianState | null;
+  parentalState?: ParentalModeState | null;
   onSelectNode?: (nodeId: string, label: string) => void;
   onSelectRoom?: (room: ArchitecturalRoom) => void;
 }
@@ -85,6 +86,7 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
   hazardOverlays = [],
   smokeMinutes = 0,
   guardianState,
+  parentalState,
   onSelectNode,
   onSelectRoom
 }) => {
@@ -1109,6 +1111,60 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
           </g>
         )}
 
+        {/* Parental Mode Geofence Boundary Overlay */}
+        {parentalState?.isActive && parentalState.selectedZone && (
+          <g id="parental-geofence-boundary" className="pointer-events-none">
+            {/* Pulsing outer aura */}
+            <circle
+              cx={parentalState.selectedZone.center.x}
+              cy={parentalState.selectedZone.center.y}
+              r={parentalState.selectedZone.svgRadius}
+              fill={parentalState.isBreached ? "#EF4444" : "#10B981"}
+              fillOpacity={parentalState.isBreached ? 0.22 : 0.12}
+              stroke={parentalState.isBreached ? "#EF4444" : "#10B981"}
+              strokeWidth={parentalState.isBreached ? 3 : 2}
+              strokeDasharray={parentalState.isBreached ? "6 4" : "8 5"}
+              className={parentalState.isBreached ? "animate-pulse" : ""}
+            />
+            {/* Center Anchor Pin */}
+            <circle
+              cx={parentalState.selectedZone.center.x}
+              cy={parentalState.selectedZone.center.y}
+              r={4}
+              fill={parentalState.isBreached ? "#EF4444" : "#10B981"}
+              stroke="#ffffff"
+              strokeWidth={1.5}
+            />
+            {/* Geofence Name Badge */}
+            <g
+              transform={`translate(${parentalState.selectedZone.center.x}, ${
+                parentalState.selectedZone.center.y - parentalState.selectedZone.svgRadius - 10
+              })`}
+            >
+              <rect
+                x="-65"
+                y="-10"
+                width="130"
+                height="20"
+                rx="10"
+                fill={parentalState.isBreached ? "#450A0A" : "#064E3B"}
+                stroke={parentalState.isBreached ? "#EF4444" : "#10B981"}
+                strokeWidth={1.5}
+              />
+              <text
+                textAnchor="middle"
+                y="3"
+                className={`text-[8.5px] font-bold ${
+                  parentalState.isBreached ? "fill-[#FCA5A5]" : "fill-[#6EE7B7]"
+                }`}
+                style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
+              >
+                {parentalState.isBreached ? "🚨 GEOFENCE BREACH" : `🛡️ GEOFENCE (${parentalState.selectedZone.radiusMeters}m)`}
+              </text>
+            </g>
+          </g>
+        )}
+
         {/* Guardian Ward Position Marker */}
         {guardianState?.isPaired && guardianState.childPosition && (
           <g
@@ -1116,11 +1172,35 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
             transform={`translate(${guardianState.childPosition.x}, ${guardianState.childPosition.y})`}
             className="pointer-events-none"
           >
-            <circle r="18" fill="#f0a24a" fillOpacity="0.2" className="animate-pulse" />
-            <circle r="8" fill="#f0a24a" stroke="#ffffff" strokeWidth="2" filter="url(#pinShadow)" />
-            <rect x="-24" y="-22" width="48" height="15" rx="7.5" fill="#081018" stroke="#f0a24a" strokeWidth="1" />
-            <text textAnchor="middle" y="-12" className="text-[8px] font-bold fill-[#f0a24a]">
-              {guardianState.childName}
+            <circle
+              r={parentalState?.isBreached ? 24 : 18}
+              fill={parentalState?.isBreached ? "#EF4444" : "#f0a24a"}
+              fillOpacity={parentalState?.isBreached ? 0.35 : 0.2}
+              className="animate-pulse"
+            />
+            <circle
+              r={8}
+              fill={parentalState?.isBreached ? "#DC2626" : "#f0a24a"}
+              stroke="#ffffff"
+              strokeWidth={2}
+              filter="url(#pinShadow)"
+            />
+            <rect
+              x="-30"
+              y="-24"
+              width="60"
+              height="16"
+              rx="8"
+              fill={parentalState?.isBreached ? "#7F1D1D" : "#081018"}
+              stroke={parentalState?.isBreached ? "#EF4444" : "#f0a24a"}
+              strokeWidth={1.2}
+            />
+            <text
+              textAnchor="middle"
+              y="-13"
+              className={`text-[8px] font-bold ${parentalState?.isBreached ? "fill-[#FCA5A5]" : "fill-[#f0a24a]"}`}
+            >
+              {parentalState?.isBreached ? `⚠️ ${guardianState.childName}!` : guardianState.childName}
             </text>
           </g>
         )}

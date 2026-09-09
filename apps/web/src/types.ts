@@ -46,3 +46,23 @@ export interface GuardianState {
   inSafeZone: boolean;
   geofenceWarning: string | null;
 }
+
+export interface GeofenceZoneConfig {
+  id: string;
+  name: string;
+  floorId: FloorId;
+  center: { x: number; y: number };
+  radiusMeters: number;
+  svgRadius: number;
+}
+
+export interface ParentalModeState {
+  isActive: boolean;
+  selectedZone: GeofenceZoneConfig;
+  alertOnExit: boolean;
+  webNotificationsEnabled: boolean;
+  soundEnabled: boolean;
+  isBreached: boolean;
+  lastBreachTimestamp: number | null;
+  breachMessage: string | null;
+}

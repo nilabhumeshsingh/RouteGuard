@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle } from "react";
-import { FloorId, UserPositionState, GuardianState } from "../../types";
+import { FloorId, UserPositionState, GuardianState, ParentalModeState } from "../../types";
 import { HazardOverlay, RoutePoint, RouteResult } from "@routeguard/shared";
 import { ARCHITECTURAL_ROOMS, ArchitecturalRoom } from "../../data/floor2Data";
 
@@ -80,6 +80,7 @@ export interface GoogleMapAdapterProps {
   onToggleTraffic?: (active: boolean) => void;
   hazardOverlays?: HazardOverlay[];
   guardianState?: GuardianState | null;
+  parentalState?: ParentalModeState | null;
   onSelectRoom?: (room: ArchitecturalRoom) => void;
   onSelectNode?: (nodeId: string, label: string) => void;
   onSwitchViewMode?: (mode: "3D" | "2D" | "Google") => void;
@@ -107,6 +108,7 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
       onToggleTraffic,
       hazardOverlays = [],
       guardianState,
+      parentalState,
       onSelectRoom,
       onSelectNode,
       onSwitchViewMode
@@ -136,6 +138,7 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
     const userMarkerRef = useRef<any>(null);
     const userCircleRef = useRef<any>(null);
     const childMarkerRef = useRef<any>(null);
+    const geofenceCircleRef = useRef<any>(null);
     const routePolylineRef = useRef<any>(null);
     const routeGlowLineRef = useRef<any>(null);
     const routeDestinationMarkerRef = useRef<any>(null);
@@ -435,29 +438,82 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
       // Guardian Child Marker (if paired)
       if (guardianState?.isPaired && guardianState.childPosition) {
         const childLatLng = indoorToLatLng(guardianState.childPosition.x, guardianState.childPosition.y);
+        const isBreached = !!parentalState?.isBreached;
+        const markerIcon = {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: isBreached ? 11 : 8,
+          fillColor: isBreached ? "#EF4444" : "#FF9500",
+          fillOpacity: 1,
+          strokeColor: "#FFFFFF",
+          strokeWeight: isBreached ? 3 : 2
+        };
+
         if (!childMarkerRef.current) {
           childMarkerRef.current = new google.maps.Marker({
             position: childLatLng,
             map: mapInstanceRef.current,
-            title: `Child: ${guardianState.childName}`,
-            icon: {
-              path: google.maps.SymbolPath.CIRCLE,
-              scale: 8,
-              fillColor: "#FF9500",
-              fillOpacity: 1,
-              strokeColor: "#FFFFFF",
-              strokeWeight: 2
-            },
+            title: isBreached
+              ? `🚨 GEOFENCE BREACH: ${guardianState.childName}`
+              : `Child: ${guardianState.childName}`,
+            icon: markerIcon,
             zIndex: 998
           });
         } else {
           childMarkerRef.current.setPosition(childLatLng);
+          childMarkerRef.current.setIcon(markerIcon);
+          childMarkerRef.current.setTitle(
+            isBreached
+              ? `🚨 GEOFENCE BREACH: ${guardianState.childName}`
+              : `Child: ${guardianState.childName}`
+          );
         }
       } else if (childMarkerRef.current) {
         childMarkerRef.current.setMap(null);
         childMarkerRef.current = null;
       }
-    }, [isLoaded, userPosition, guardianState]);
+    }, [isLoaded, userPosition, guardianState, parentalState]);
+
+    // 5b. Parental Mode Geofence Circle Overlay
+    useEffect(() => {
+      if (!isLoaded || !mapInstanceRef.current) return;
+      const google = (window as any).google;
+
+      if (parentalState?.isActive && parentalState.selectedZone) {
+        const centerLatLng = indoorToLatLng(
+          parentalState.selectedZone.center.x,
+          parentalState.selectedZone.center.y
+        );
+        const radiusMeters = parentalState.selectedZone.radiusMeters;
+        const isBreached = !!parentalState.isBreached;
+
+        if (!geofenceCircleRef.current) {
+          geofenceCircleRef.current = new google.maps.Circle({
+            map: mapInstanceRef.current,
+            center: centerLatLng,
+            radius: radiusMeters,
+            fillColor: isBreached ? "#EF4444" : "#10B981",
+            fillOpacity: isBreached ? 0.28 : 0.16,
+            strokeColor: isBreached ? "#DC2626" : "#059669",
+            strokeOpacity: 0.9,
+            strokeWeight: isBreached ? 3 : 2,
+            zIndex: 110
+          });
+        } else {
+          geofenceCircleRef.current.setCenter(centerLatLng);
+          geofenceCircleRef.current.setRadius(radiusMeters);
+          geofenceCircleRef.current.setOptions({
+            fillColor: isBreached ? "#EF4444" : "#10B981",
+            fillOpacity: isBreached ? 0.28 : 0.16,
+            strokeColor: isBreached ? "#DC2626" : "#059669",
+            strokeWeight: isBreached ? 3 : 2
+          });
+          geofenceCircleRef.current.setMap(mapInstanceRef.current);
+        }
+      } else if (geofenceCircleRef.current) {
+        geofenceCircleRef.current.setMap(null);
+        geofenceCircleRef.current = null;
+      }
+    }, [isLoaded, parentalState]);
 
     // 6. Update Navigation / Emergency / Night Safety Polyline
     useEffect(() => {

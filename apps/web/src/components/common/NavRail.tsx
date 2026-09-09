@@ -6,6 +6,11 @@ interface NavRailProps {
   onOpenSaved: () => void;
   onTriggerJudgeMenu: () => void;
   onAskRouteGuard: () => void;
+  isParentalModeActive?: boolean;
+  onToggleParentalMode?: (active: boolean) => void;
+  onOpenParentalConfig?: () => void;
+  childName?: string;
+  isBreached?: boolean;
   isDarkMode?: boolean;
 }
 
@@ -15,6 +20,11 @@ export const NavRail: React.FC<NavRailProps> = ({
   onOpenSaved,
   onTriggerJudgeMenu,
   onAskRouteGuard,
+  isParentalModeActive = false,
+  onToggleParentalMode,
+  onOpenParentalConfig,
+  childName = "Alex",
+  isBreached = false,
   isDarkMode = false
 }) => {
   const [expanded, setExpanded] = useState(false);
@@ -115,6 +125,102 @@ export const NavRail: React.FC<NavRailProps> = ({
               </button>
             );
           })}
+
+          {/* Parental Mode One-Tap Toggle Item in Three Bars Menu */}
+          <div
+            onClick={onOpenParentalConfig}
+            className={`w-full relative flex items-center transition-all rounded-2xl cursor-pointer ${
+              expanded
+                ? "px-3 py-2.5 justify-between gap-2 border " +
+                  (isParentalModeActive
+                    ? isBreached
+                      ? "bg-[#FEF2F2] border-[#EF4444]/40 text-[#991B1B]"
+                      : "bg-[#ECFDF5] border-[#10B981]/40 text-[#065F46]"
+                    : "bg-[#F8F9FA] border-[#E8EAED] text-[#5F6368] hover:bg-[#F1F3F4]")
+                : "h-11 justify-center rounded-full " +
+                  (isParentalModeActive
+                    ? isBreached
+                      ? "bg-[#FEE2E2] text-[#DC2626]"
+                      : "bg-[#D1FAE5] text-[#059669]"
+                    : "text-[#5F6368] hover:bg-[#F1F3F4]")
+            }`}
+            title={
+              expanded
+                ? "Parental Mode Geofence: Tap switch to toggle, or click card to configure"
+                : `Parental Mode: ${isParentalModeActive ? "Active" : "Off"} (Tap to toggle)`
+            }
+          >
+            {expanded ? (
+              <>
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className={`material-symbols-outlined text-[22px] ${
+                    isParentalModeActive
+                      ? isBreached ? "text-[#EF4444] animate-bounce" : "text-[#10B981]"
+                      : "text-[#5F6368]"
+                  }`}>
+                    supervised_user_circle
+                  </span>
+                  <div className="min-w-0 flex-1 text-left">
+                    <div className="text-xs font-bold truncate flex items-center gap-1.5">
+                      <span>Parental Mode</span>
+                      {isParentalModeActive && (
+                        <span className={`w-2 h-2 rounded-full ${isBreached ? "bg-[#EF4444] animate-ping" : "bg-[#10B981] animate-pulse"}`} />
+                      )}
+                    </div>
+                    <div className="text-[10px] text-[#64748b] truncate">
+                      {childName} • {isBreached ? "Breached!" : isParentalModeActive ? "Geofenced" : "Off"}
+                    </div>
+                  </div>
+                </div>
+
+                {/* One-Tap Toggle Switch inside Three Bars Menu */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleParentalMode?.(!isParentalModeActive);
+                  }}
+                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    isParentalModeActive
+                      ? isBreached
+                        ? "bg-[#EF4444]"
+                        : "bg-[#10B981]"
+                      : "bg-[#CBD5E1]"
+                  }`}
+                  title={isParentalModeActive ? "Disable Parental Mode" : "Enable Parental Mode"}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                      isParentalModeActive ? "translate-x-4" : "translate-x-0"
+                    }`}
+                  />
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleParentalMode?.(!isParentalModeActive);
+                }}
+                className="relative w-full h-full flex items-center justify-center"
+                title={`Parental Mode: ${isParentalModeActive ? "ON" : "OFF"} (Click to toggle)`}
+              >
+                <span className={`material-symbols-outlined text-[22px] ${
+                  isParentalModeActive
+                    ? isBreached ? "text-[#EF4444] animate-pulse" : "text-[#10B981]"
+                    : "text-[#5F6368]"
+                }`}>
+                  supervised_user_circle
+                </span>
+                {isParentalModeActive && (
+                  <span className={`absolute top-2 right-2 w-2 h-2 rounded-full ${
+                    isBreached ? "bg-[#EF4444] animate-ping" : "bg-[#10B981]"
+                  }`} />
+                )}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
