@@ -340,6 +340,11 @@ export const App: React.FC = () => {
 
   // One-tap navigation to safest stairs through corridors
   const handleNavigateToSafestStairs = useCallback(() => {
+    if (isAlarmActive) {
+      void handleEvacuate(activeFireRoom || undefined);
+      return;
+    }
+
     let currentUserNode = "node-204";
     if (userPos.nearestPlaceName) {
       const match = userPos.nearestPlaceName.match(/\b(20[1-9]|21[0-9]|220)\b/);
@@ -372,7 +377,7 @@ export const App: React.FC = () => {
       setSnapPoint("half");
       speakInstruction(stairRoute.tradeOffExplanation || "Routing to the safest stairs via central concourse.");
     }
-  }, [userPos.nearestPlaceName, isNightSafetyActive, activeProfile]);
+  }, [activeFireRoom, activeProfile, handleEvacuate, isAlarmActive, isNightSafetyActive, userPos.nearestPlaceName]);
 
   // Dismiss Alarm
   const handleDismissAlarm = () => {
@@ -486,6 +491,11 @@ export const App: React.FC = () => {
   // Select destination and calculate route preview
   const handleSelectDestination = useCallback(
     (poi: POI) => {
+      if (isAlarmActive) {
+        void handleEvacuate(activeFireRoom || undefined);
+        return;
+      }
+
       setSelectedPOI(poi);
       setIsSearchPanelOpen(false);
 
@@ -508,7 +518,7 @@ export const App: React.FC = () => {
       const roomId = poi.id.replace("poi-", "");
       mapHandleRef.current?.focusRoom(roomId);
     },
-    [isAlarmActive, isNightSafetyActive]
+    [activeFireRoom, handleEvacuate, isAlarmActive, isNightSafetyActive]
   );
 
   // Women's Night Safety Mode Toggle Handler
@@ -549,6 +559,11 @@ export const App: React.FC = () => {
 
   // Profile selection (Recommended / Shortest / Step-free)
   const handleSelectProfile = (profile: MobilityProfile) => {
+    if (isAlarmActive) {
+      void handleEvacuate(activeFireRoom || undefined);
+      return;
+    }
+
     if (!routeComparison) return;
     setActiveProfile(profile);
     if (profile === "step-free") setActiveRoute(routeComparison.stepFree);
@@ -558,6 +573,11 @@ export const App: React.FC = () => {
 
   // Start Navigation
   const handleStartNavigation = () => {
+    if (isAlarmActive) {
+      void handleEvacuate(activeFireRoom || undefined);
+      return;
+    }
+
     setIsNavigating(true);
     setSnapPoint("half");
     speakInstruction(
@@ -567,6 +587,11 @@ export const App: React.FC = () => {
 
   // End Navigation
   const handleEndNavigation = () => {
+    if (isAlarmActive) {
+      void handleEvacuate(activeFireRoom || undefined);
+      return;
+    }
+
     setIsNavigating(false);
     setSelectedPOI(null);
     setRouteComparison(null);
