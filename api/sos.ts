@@ -1,6 +1,7 @@
 import { MongoClient } from "mongodb";
 
 let cachedClient: MongoClient | null = null;
+const memoryAlerts: any[] = ((globalThis as any).__routeguardSosAlerts ||= []);
 
 async function getDb() {
   const uri = process.env.MONGODB_URI;
@@ -22,8 +23,6 @@ export default async function handler(req: any, res: any) {
   if (req.method === "OPTIONS") return res.status(200).end();
 
   const db = await getDb();
-  if (!db) return res.status(503).json({ error: "SOS storage unavailable" });
-
   if (req.method === "POST") {
     const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body || {};
     const coordinates = body.coordinates || { x: body.x ?? 300, y: body.y ?? 280, floorId: body.floorId || "floor-2" };
@@ -40,12 +39,15 @@ export default async function handler(req: any, res: any) {
       status: "DISPATCHED",
       timestamp: Date.now()
     };
-    await db.collection("sos_alerts").insertOne(alert);
+    if (db) await db.collection("sos_alerts").insertOne(alert);
+    else memoryAlerts.unshift(alert);
     return res.status(201).json({ success: true, alert });
   }
 
   if (req.method === "GET") {
-    const alerts = await db.collection("sos_alerts").find({ status: "DISPATCHED" }).sort({ timestamp: -1 }).limit(20).toArray();
+    const alerts = db
+      ? await db.collection("sos_alerts").find({ status: "DISPATCHED" }).sort({ timestamp: -1 }).limit(20).toArray()
+      : memoryAlerts.filter((alert) => alert.status === "DISPATCHED").slice(0, 20);
     return res.status(200).json({ alerts });
   }
 
