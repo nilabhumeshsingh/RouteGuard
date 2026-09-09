@@ -368,11 +368,11 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
           title: `You are near ${userPosition.nearestPlaceName}`,
           icon: {
             path: google.maps.SymbolPath.CIRCLE,
-            scale: 7,
-            fillColor: "#1A73E8",
+            scale: 8,
+            fillColor: "#00d2ff",
             fillOpacity: 1,
             strokeColor: "#FFFFFF",
-            strokeWeight: 3
+            strokeWeight: 2.5
           },
           zIndex: 999
         });
@@ -383,18 +383,18 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
 
       if (!userCircleRef.current) {
         userCircleRef.current = new google.maps.Circle({
-          strokeColor: "#1A73E8",
-          strokeOpacity: 0.4,
-          strokeWeight: 1,
-          fillColor: "#1A73E8",
-          fillOpacity: 0.15,
+          strokeColor: "#00f0ff",
+          strokeOpacity: 0.8,
+          strokeWeight: 2,
+          fillColor: "#00d2ff",
+          fillOpacity: 0.22,
           map: mapInstanceRef.current,
           center: userLatLng,
-          radius: Math.max(3, userPosition.uncertaintyRadius || 4)
+          radius: Math.max(4, userPosition.uncertaintyRadius || 5)
         });
       } else {
         userCircleRef.current.setCenter(userLatLng);
-        userCircleRef.current.setRadius(Math.max(3, userPosition.uncertaintyRadius || 4));
+        userCircleRef.current.setRadius(Math.max(4, userPosition.uncertaintyRadius || 5));
       }
 
       // Guardian Child Marker (if paired)
