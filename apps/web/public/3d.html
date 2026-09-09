@@ -623,7 +623,13 @@
 
         function updatePositionMarker(pos) {
           if (!pos || typeof pos.x !== 'number' || typeof pos.y !== 'number') return;
-          userBeaconGroup.position.set(pos.x, 12.0, pos.y);
+          let px = pos.x;
+          let pz = pos.y;
+          if (Math.abs(pos.x) > 50 || Math.abs(pos.y) > 50) {
+            px = (pos.x - 480) / 15;
+            pz = (242.5 - pos.y) / 15;
+          }
+          userBeaconGroup.position.set(px, 12.0, pz);
           userBeaconGroup.visible = true;
         }
 
@@ -754,12 +760,20 @@
           return grp;
         }
 
+        const STAIR_CORES_3D = [
+          { id: 'stair-nw', name: 'Stairs NW', x: -19.25, z: 7.75, isNorth: true, isRamp: false },
+          { id: 'stair-sw', name: 'Stairs SW / Ramp', x: -19.25, z: -7.75, isNorth: false, isRamp: true },
+          { id: 'stair-nm', name: 'Stairs Mid-N', x: 5.75, z: 7.75, isNorth: true, isRamp: false },
+          { id: 'stair-sm', name: 'Stairs Mid-S', x: 5.75, z: -7.75, isNorth: false, isRamp: false },
+          { id: 'stair-ne', name: 'Stairs NE', x: 25.5, z: 7.75, isNorth: true, isRamp: false },
+          { id: 'stair-se', name: 'Stairs SE', x: 25.5, z: -7.75, isNorth: false, isRamp: false }
+        ];
+
         function setRoute3D(routePoints, options = {}) {
           clearRoute3D();
           if (!routePoints || routePoints.length < 2) return;
 
           const isEmergency = !!(options.isEmergency || options.profile === 'emergency');
-          isEmergencyRouteActive = isEmergency;
 
           // Convert points to 3D coordinates
           const pts3D = [];
@@ -775,44 +789,116 @@
             pts3D.push(new THREE.Vector3(x3d, 12.25, z3d));
           }
 
-          // If Emergency route, lead DOWN the stairs to Ground Floor (Level 0)
-          if (isEmergency) {
-            const lastCorridorPt = pts3D[pts3D.length - 1];
-            const lx = lastCorridorPt.x;
-            const lz = lastCorridorPt.z;
+          // Snap start point directly to the active user beacon so path originates from the user
+          if (userBeaconGroup && userBeaconGroup.visible && pts3D.length > 0) {
+            const bx = userBeaconGroup.position.x;
+            const bz = userBeaconGroup.position.z;
+            const distToBeacon = Math.hypot(pts3D[0].x - bx, pts3D[0].z - bz);
+            if (distToBeacon < 15.0 && distToBeacon > 0.4) {
+              pts3D.unshift(new THREE.Vector3(bx, 12.25, bz));
+            }
+          }
 
-            let groundExitX = lx;
-            let groundExitZ = lz;
+          // Identify closest stair core to the route destination
+          const lastCorridorPt = pts3D[pts3D.length - 1];
+          let closestCore = null;
+          let minCoreDist = Infinity;
 
-            if (lz > 3.0) {
-              // North Stairs (ST-NM, ST-NE, ST-NW)
-              pts3D.push(new THREE.Vector3(lx + 0.6, 9.2, lz));
-              pts3D.push(new THREE.Vector3(lx, 6.25, lz));
-              pts3D.push(new THREE.Vector3(lx + 0.6, 3.2, lz));
-              pts3D.push(new THREE.Vector3(lx, 0.35, lz));
-              // Egress to exterior ground North apron
-              groundExitX = lx;
-              groundExitZ = Math.min(14.5, lz + 3.5);
-              pts3D.push(new THREE.Vector3(groundExitX, 0.35, groundExitZ));
-            } else if (lx < -15.0) {
-              // West Ramp (ST-SW)
-              pts3D.push(new THREE.Vector3(lx - 2.0, 9.2, lz));
-              pts3D.push(new THREE.Vector3(lx - 4.0, 6.25, lz));
-              pts3D.push(new THREE.Vector3(lx - 6.0, 3.2, lz));
-              pts3D.push(new THREE.Vector3(lx - 8.0, 0.35, lz));
+          for (const core of STAIR_CORES_3D) {
+            const d = Math.hypot(lastCorridorPt.x - core.x, lastCorridorPt.z - core.z);
+            if (d < minCoreDist) {
+              minCoreDist = d;
+              closestCore = core;
+            }
+          }
+
+          const isStairRoute = isEmergency ||
+            (options.destinationNode && /(stair|exit|ramp)/i.test(options.destinationNode)) ||
+            minCoreDist < 12.0;
+
+          isEmergencyRouteActive = isEmergency || isStairRoute;
+
+          let groundExitX = lastCorridorPt.x;
+          let groundExitZ = lastCorridorPt.z;
+
+          // FOLLOW THE STAIRS DOWN TO GROUND FLOOR:
+          if (isStairRoute && closestCore) {
+            const cx = closestCore.x;
+            const cz = closestCore.z;
+
+            if (closestCore.isRamp) {
+              // West Egress Ramp (ST-SW) - follows the gentle ramp slope down to Ground Floor
+              pts3D.push(new THREE.Vector3(-19.25, 12.25, -7.75));
+              pts3D.push(new THREE.Vector3(-21.5, 9.25, -5.0));
+              pts3D.push(new THREE.Vector3(-23.5, 6.25, -2.5));
+              pts3D.push(new THREE.Vector3(-25.5, 3.25, 0.0));
+              pts3D.push(new THREE.Vector3(-28.0, 0.35, 0.0));
               groundExitX = -28.5;
               groundExitZ = 0.0;
-              pts3D.push(new THREE.Vector3(groundExitX, 0.35, groundExitZ));
+            } else if (closestCore.isNorth) {
+              // North Scissor Stairs (ST-NM, ST-NW, ST-NE)
+              // Step into top landing
+              pts3D.push(new THREE.Vector3(cx, 12.25, cz - 2.1));
+              // Flight 1: Floor 2 -> intermediate landing (y: 12.25 -> 9.15)
+              pts3D.push(new THREE.Vector3(cx + 0.65, 11.2, cz - 1.2));
+              pts3D.push(new THREE.Vector3(cx + 0.65, 10.2, cz));
+              pts3D.push(new THREE.Vector3(cx + 0.65, 9.25, cz + 1.2));
+              // Intermediate landing
+              pts3D.push(new THREE.Vector3(cx, 9.15, cz + 2.1));
+              // Flight 2: Intermediate landing -> Floor 1 landing (y: 9.15 -> 6.25)
+              pts3D.push(new THREE.Vector3(cx - 0.65, 8.2, cz + 1.2));
+              pts3D.push(new THREE.Vector3(cx - 0.65, 7.2, cz));
+              pts3D.push(new THREE.Vector3(cx - 0.65, 6.25, cz - 1.2));
+              // Floor 1 landing
+              pts3D.push(new THREE.Vector3(cx, 6.15, cz - 2.1));
+              // Flight 3: Floor 1 -> intermediate landing (y: 6.15 -> 3.15)
+              pts3D.push(new THREE.Vector3(cx + 0.65, 5.2, cz - 1.2));
+              pts3D.push(new THREE.Vector3(cx + 0.65, 4.2, cz));
+              pts3D.push(new THREE.Vector3(cx + 0.65, 3.25, cz + 1.2));
+              // Intermediate landing
+              pts3D.push(new THREE.Vector3(cx, 3.15, cz + 2.1));
+              // Flight 4: Intermediate landing -> Ground Floor landing (y: 3.15 -> 0.35)
+              pts3D.push(new THREE.Vector3(cx - 0.65, 2.2, cz + 1.2));
+              pts3D.push(new THREE.Vector3(cx - 0.65, 1.2, cz));
+              pts3D.push(new THREE.Vector3(cx - 0.65, 0.35, cz - 1.2));
+              // Ground Floor landing
+              pts3D.push(new THREE.Vector3(cx, 0.35, cz - 2.1));
+              // Egress through ground floor exterior door to outside apron
+              pts3D.push(new THREE.Vector3(cx, 0.35, cz + 4.5));
+              groundExitX = cx;
+              groundExitZ = cz + 5.5;
             } else {
-              // South Stairs (ST-SM, ST-SE)
-              pts3D.push(new THREE.Vector3(lx + 0.6, 9.2, lz));
-              pts3D.push(new THREE.Vector3(lx, 6.25, lz));
-              pts3D.push(new THREE.Vector3(lx + 0.6, 3.2, lz));
-              pts3D.push(new THREE.Vector3(lx, 0.35, lz));
-              // Egress to exterior ground South apron
-              groundExitX = lx;
-              groundExitZ = Math.max(-14.5, lz - 3.5);
-              pts3D.push(new THREE.Vector3(groundExitX, 0.35, groundExitZ));
+              // South Scissor Stairs (ST-SM, ST-SE)
+              // Step into top landing
+              pts3D.push(new THREE.Vector3(cx, 12.25, cz + 2.1));
+              // Flight 1: Floor 2 -> intermediate landing (y: 12.25 -> 9.15)
+              pts3D.push(new THREE.Vector3(cx - 0.65, 11.2, cz + 1.2));
+              pts3D.push(new THREE.Vector3(cx - 0.65, 10.2, cz));
+              pts3D.push(new THREE.Vector3(cx - 0.65, 9.25, cz - 1.2));
+              // Intermediate landing
+              pts3D.push(new THREE.Vector3(cx, 9.15, cz - 2.1));
+              // Flight 2: Intermediate landing -> Floor 1 landing (y: 9.15 -> 6.25)
+              pts3D.push(new THREE.Vector3(cx + 0.65, 8.2, cz - 1.2));
+              pts3D.push(new THREE.Vector3(cx + 0.65, 7.2, cz));
+              pts3D.push(new THREE.Vector3(cx + 0.65, 6.25, cz + 1.2));
+              // Floor 1 landing
+              pts3D.push(new THREE.Vector3(cx, 6.15, cz + 2.1));
+              // Flight 3: Floor 1 -> intermediate landing (y: 6.15 -> 3.15)
+              pts3D.push(new THREE.Vector3(cx - 0.65, 5.2, cz + 1.2));
+              pts3D.push(new THREE.Vector3(cx - 0.65, 4.2, cz));
+              pts3D.push(new THREE.Vector3(cx - 0.65, 3.25, cz - 1.2));
+              // Intermediate landing
+              pts3D.push(new THREE.Vector3(cx, 3.15, cz - 2.1));
+              // Flight 4: Intermediate landing -> Ground Floor landing (y: 3.15 -> 0.35)
+              pts3D.push(new THREE.Vector3(cx + 0.65, 2.2, cz - 1.2));
+              pts3D.push(new THREE.Vector3(cx + 0.65, 1.2, cz));
+              pts3D.push(new THREE.Vector3(cx + 0.65, 0.35, cz + 1.2));
+              // Ground Floor landing
+              pts3D.push(new THREE.Vector3(cx, 0.35, cz + 2.1));
+              // Egress through ground floor exterior door to outside apron
+              pts3D.push(new THREE.Vector3(cx, 0.35, cz - 4.5));
+              groundExitX = cx;
+              groundExitZ = cz - 5.5;
             }
 
             // Place radiant Ground Floor Fire Exit Beacon
@@ -824,23 +910,24 @@
           const curve = new THREE.CatmullRomCurve3(pts3D, false, 'catmullrom', 0.15);
 
           // 1. Core Glowing Tube
-          const tubeGeo = new THREE.TubeGeometry(curve, Math.max(64, pts3D.length * 16), isEmergency ? 0.26 : 0.18, 12, false);
+          const isGlowingGreen = isEmergency || isStairRoute;
+          const tubeGeo = new THREE.TubeGeometry(curve, Math.max(72, pts3D.length * 12), isGlowingGreen ? 0.26 : 0.18, 12, false);
           const tubeMat = new THREE.MeshStandardMaterial({
-            color: isEmergency ? 0x00ff66 : 0x00d2ff,
-            emissive: isEmergency ? 0x00dd44 : 0x0077dd,
-            emissiveIntensity: 1.5,
+            color: isGlowingGreen ? 0x00ff66 : 0x00d2ff,
+            emissive: isGlowingGreen ? 0x00dd44 : 0x0077dd,
+            emissiveIntensity: 1.6,
             roughness: 0.15,
             metalness: 0.2
           });
           activeRouteMesh = new THREE.Mesh(tubeGeo, tubeMat);
           routeLayerGroup.add(activeRouteMesh);
 
-          // 2. Volumetric Glowing Ribbon/Aura Tube
-          const glowTubeGeo = new THREE.TubeGeometry(curve, Math.max(64, pts3D.length * 16), isEmergency ? 0.55 : 0.42, 12, false);
+          // 2. Volumetric Glowing Aura Ribbon
+          const glowTubeGeo = new THREE.TubeGeometry(curve, Math.max(72, pts3D.length * 12), isGlowingGreen ? 0.58 : 0.42, 12, false);
           const glowTubeMat = new THREE.MeshBasicMaterial({
-            color: isEmergency ? 0x22c55e : 0x0099ff,
+            color: isGlowingGreen ? 0x22c55e : 0x0099ff,
             transparent: true,
-            opacity: 0.5,
+            opacity: 0.55,
             blending: THREE.AdditiveBlending,
             side: THREE.BackSide
           });
@@ -850,8 +937,8 @@
           // 3. Start Point Indicator
           const startPt = pts3D[0];
           const startMarker = new THREE.Mesh(
-            new THREE.SphereGeometry(0.35, 16, 16),
-            new THREE.MeshBasicMaterial({ color: isEmergency ? 0x00ff66 : 0x00e5ff })
+            new THREE.SphereGeometry(0.38, 16, 16),
+            new THREE.MeshBasicMaterial({ color: isGlowingGreen ? 0x00ff66 : 0x00e5ff })
           );
           startMarker.position.copy(startPt);
           routeLayerGroup.add(startMarker);

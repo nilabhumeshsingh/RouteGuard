@@ -260,41 +260,41 @@ export const App: React.FC = () => {
     }
   }, [userPos, isNightSafetyActive]);
 
-  // One-tap navigation to safest stairs through corridors
+  // One-tap navigation to safest stairs through corridors and down to ground exits
   const handleNavigateToSafestStairs = useCallback(() => {
-    let currentUserNode = "node-204";
-    if (userPos.nearestPlaceName) {
-      const match = userPos.nearestPlaceName.match(/\b(20[1-9]|21[0-9]|220)\b/);
-      if (match) {
-        currentUserNode = `node-${match[1]}`;
-      }
-    }
+    const currentUserNode = resolveNearestGraphNode(userPos);
 
     const stairRoute = findSafestStairRoute(currentUserNode, {
       isNightSafety: isNightSafetyActive,
-      isStepFree: activeProfile === "step-free"
+      isStepFree: activeProfile === "step-free",
+      isEmergency: true
     });
 
     if (stairRoute && stairRoute.status === "found") {
       const lastSeg = stairRoute.segments[stairRoute.segments.length - 1];
       const destinationNode = lastSeg?.toNodeId || "node-stairs-north";
-      const targetObj = SAFE_STAIR_TARGETS.find((s) => s.id === destinationNode);
+      const targetObj = SAFE_STAIR_TARGETS.find(
+        (s) => s.id === destinationNode || s.id === destinationNode.replace(/-ground-(exit|stairs)/, "")
+      );
 
       const stairPoi: POI = {
         id: "poi-target-stairs",
-        name: targetObj ? targetObj.name : "Safest Central Stairs (ST-NM)",
+        name: targetObj ? `${targetObj.name} (Ground Exit)` : "Safest Stairs & Ground Exit",
         category: "Stairs",
         nodeId: destinationNode,
-        aliases: ["stairs", "safe stairs", "nearest stairs"]
+        aliases: ["stairs", "safe stairs", "nearest stairs", "ground exit"]
       };
 
       setSelectedPOI(stairPoi);
+      setActiveProfile("emergency");
       setActiveRoute(stairRoute);
-      setIsNavigating(false);
+      setIsNavigating(true);
       setSnapPoint("half");
-      speakInstruction(stairRoute.tradeOffExplanation || "Routing to the safest stairs via central concourse.");
+      speakInstruction(
+        stairRoute.tradeOffExplanation || "Follow the glowing route down the stairs to the Ground Floor exit."
+      );
     }
-  }, [userPos.nearestPlaceName, isNightSafetyActive, activeProfile]);
+  }, [userPos, isNightSafetyActive, activeProfile]);
 
   // Dismiss Alarm
   const handleDismissAlarm = () => {
@@ -411,7 +411,7 @@ export const App: React.FC = () => {
       setSelectedPOI(poi);
       setIsSearchPanelOpen(false);
 
-      const startNode = "node-204";
+      const startNode = resolveNearestGraphNode(userPos);
       const endNode = poi.nodeId;
       const blocked = isAlarmActive
         ? activeFireRoom === "219"
@@ -419,18 +419,27 @@ export const App: React.FC = () => {
           : new Set(["node-207", "node-208", "c-208", "c-lift"])
         : undefined;
 
-      const comparison = calculateRouteTradeOffs(startNode, endNode, blocked, isNightSafetyActive);
+      const isStairPoi = poi.category === "Stairs" || poi.category === "Emergency Exit" || /stair|exit/i.test(poi.name);
+      const comparison = isStairPoi
+        ? {
+            recommended: findSafestStairRoute(startNode, { isNightSafety: isNightSafetyActive, isEmergency: true, blockedNodes: blocked }),
+            stepFree: findSafestStairRoute(startNode, { isStepFree: true, isEmergency: true, blockedNodes: blocked }),
+            shortest: findSafestStairRoute(startNode, { blockedNodes: blocked, isEmergency: true }),
+            explanation: "Safest route following corridors and stairs down to Ground Floor."
+          }
+        : calculateRouteTradeOffs(startNode, endNode, blocked, isNightSafetyActive);
+
       setRouteComparison(comparison);
-      setActiveProfile("recommended");
+      setActiveProfile(isStairPoi ? "emergency" : "recommended");
       setActiveRoute(comparison.recommended);
-      setIsNavigating(false);
+      setIsNavigating(isStairPoi);
       setSnapPoint("half");
 
       // Focus room in 3D camera
       const roomId = poi.id.replace("poi-", "");
       mapHandleRef.current?.focusRoom(roomId);
     },
-    [isAlarmActive, isNightSafetyActive]
+    [userPos, isAlarmActive, activeFireRoom, isNightSafetyActive]
   );
 
   // Women's Night Safety Mode Toggle Handler
@@ -440,7 +449,7 @@ export const App: React.FC = () => {
 
     // Recalculate route if destination is currently selected
     if (selectedPOI) {
-      const startNode = "node-204";
+      const startNode = resolveNearestGraphNode(userPos);
       const endNode = selectedPOI.nodeId;
       const blocked = isAlarmActive
         ? activeFireRoom === "219"
@@ -448,7 +457,16 @@ export const App: React.FC = () => {
           : new Set(["node-207", "node-208", "c-208", "c-lift"])
         : undefined;
 
-      const comparison = calculateRouteTradeOffs(startNode, endNode, blocked, next);
+      const isStairPoi = selectedPOI.category === "Stairs" || selectedPOI.category === "Emergency Exit" || /stair|exit/i.test(selectedPOI.name);
+      const comparison = isStairPoi
+        ? {
+            recommended: findSafestStairRoute(startNode, { isNightSafety: next, isEmergency: true, blockedNodes: blocked }),
+            stepFree: findSafestStairRoute(startNode, { isStepFree: true, isEmergency: true, blockedNodes: blocked }),
+            shortest: findSafestStairRoute(startNode, { blockedNodes: blocked, isEmergency: true }),
+            explanation: "Safest route following corridors and stairs down to Ground Floor."
+          }
+        : calculateRouteTradeOffs(startNode, endNode, blocked, next);
+
       setRouteComparison(comparison);
       setActiveRoute(comparison.recommended);
     }
