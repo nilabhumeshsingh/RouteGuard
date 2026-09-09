@@ -257,12 +257,24 @@ function buildArchitecturalCampusGraph(): CampusGraph {
   addCorridor("c-214", "c-wash-se", 3.5, "moderate", "low");
   addCorridor("c-wash-se", "c-se", 3.0, "moderate", "low");
 
-  // 3. --- VERTICAL CONCOURSE CONNECTORS ---
+  // 3. --- VERTICAL CONCOURSE & TRANSVERSE CROSSWAY CONNECTORS ---
   // West Atrium Connector: connects North & South Corridors in front of Balcony (x = 191.25)
   addCorridor("c-nw", "c-west", 6.5, "moderate", "low");
 
+  // West-Central Transverse Crossway (Surveyed "BETWEEN 211-210" at x = 371.25):
+  // Directly connects North Corridor (outside Room 202) and South Corridor (outside Room 219)
+  addCorridor("c-202", "c-219", 6.5, "well_lit", "low");
+
+  // Mid-West Transverse Crossway (Surveyed "BETWEEN 210-212" at x = 506.25):
+  // Directly connects North Corridor (outside Room 204) and South Corridor (outside Room 217)
+  addCorridor("c-204", "c-217", 6.5, "well_lit", "low");
+
   // Central Monitored Spine: primary monitored concourse with 95% footfall (x = 566.25)
   addCorridor("c-lift", "c-sm", 6.5, "well_lit", "moderate");
+
+  // Mid-East Transverse Crossway (Surveyed "BETWEEN 209-213" at x = 693.75):
+  // Directly connects North Corridor (outside Room 206) and South Corridor (outside Room 215)
+  addCorridor("c-206", "c-215", 6.5, "well_lit", "low");
 
   // East Fire Exit Connector: connects North & South Corridors at East Wing (x = 862.5)
   addCorridor("c-ne", "c-se", 6.5, "well_lit", "low");
@@ -299,14 +311,23 @@ function buildArchitecturalCampusGraph(): CampusGraph {
   addDoor("c-wash-se", "wash-se", 4.0);
 
   // 7. --- CENTRAL ISLAND ROOM DOORWAYS ---
-  // Rooms on Central Island connect strictly to their primary entrance doorway.
-  // Corridors & Concourse connectors (c-lift <-> c-sm) must be used for transit between wings.
+  // Central Island rooms feature dual-sided access to both North and South corridors.
+  // North doorways:
   addDoor("c-201", "node-211", 3.5);
   addDoor("c-203", "node-210", 3.5);
   addDoor("c-lift", "node-212", 3.5);
   addDoor("c-205", "node-209", 3.5);
-  addDoor("c-214", "node-213", 3.5);
+  addDoor("c-207", "node-213", 3.5);
   addDoor("c-208", "node-208", 3.5);
+
+  // South doorways:
+  addDoor("c-220", "node-211", 3.5);
+  addDoor("c-218", "node-210", 3.5);
+  addDoor("c-217", "node-212", 3.5);
+  addDoor("c-sm", "node-212", 3.5);
+  addDoor("c-216", "node-209", 3.5);
+  addDoor("c-214", "node-213", 3.5);
+  addDoor("c-214", "node-208", 3.5);
 
   // 8. --- STAIRS & EXITS CONNECTIONS ---
   // Central North Stairs ST-NM (Central Concourse Core, 95% footfall)

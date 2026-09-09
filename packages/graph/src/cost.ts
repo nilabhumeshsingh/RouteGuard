@@ -63,5 +63,10 @@ export function computeEdgeCost(edge: GraphEdge, context: CostContext): number {
     penalty += 100;
   }
 
+  // Door transit penalty: discourage cutting through private rooms as corridor shortcuts
+  if (edge.type === "door") {
+    penalty += 12;
+  }
+
   return baseDistance + penalty;
 }

@@ -27,10 +27,10 @@ describe("Corridor-Strict Pathfinding & Safest Stair Egress", () => {
     expect(endPoint.y).toBeCloseTo(351.25);
 
     // Verify all intermediate corridor waypoints lie strictly on the corridor grid:
-    // North corridor y = 193.75, South corridor y = 291.25, or Vertical connectors x in {191.25, 566.25, 862.5}
+    // North corridor y = 193.75, South corridor y = 291.25, or Vertical/Transverse connectors x in {191.25, 371.25, 506.25, 566.25, 693.75, 862.5}
     const CORRIDOR_Y_NORTH = 193.75;
     const CORRIDOR_Y_SOUTH = 291.25;
-    const VALID_X_CONNECTORS = [191.25, 566.25, 862.5];
+    const VALID_X_CONNECTORS = [191.25, 371.25, 506.25, 566.25, 693.75, 862.5];
 
     for (let i = 1; i < points.length - 1; i++) {
       const pt = points[i];
@@ -40,6 +40,25 @@ describe("Corridor-Strict Pathfinding & Safest Stair Egress", () => {
 
       expect(isOnNorthCorridor || isOnSouthCorridor || isOnVerticalConnector).toBe(true);
     }
+  });
+
+  it("takes the direct transverse crossway from Room 219 to Room 203 instead of looping through central concourse", () => {
+    const route = calculateRouteTradeOffs("node-219", "node-203");
+    expect(route.recommended.status).toBe("found");
+    // Direct path via c-219 -> c-202 crossway is ~19m, avoiding 36m roundabout loop
+    expect(route.recommended.totalDistanceMeters).toBeLessThan(25);
+    const traversed = route.recommended.segments.map((s) => `${s.fromNodeId}->${s.toNodeId}`);
+    expect(traversed).toContain("c-219->c-202");
+    expect(traversed).not.toContain("c-sm->c-lift");
+  });
+
+  it("allows direct entry into Room 212 from South corridor without North concourse loop", () => {
+    const route = calculateRouteTradeOffs("node-219", "node-212");
+    expect(route.recommended.status).toBe("found");
+    // Direct access via South corridor is 16.5m, not 27m concourse detour
+    expect(route.recommended.totalDistanceMeters).toBeLessThan(20);
+    const traversed = route.recommended.segments.map((s) => `${s.fromNodeId}->${s.toNodeId}`);
+    expect(traversed).not.toContain("c-sm->c-lift");
   });
 
   it("selects Central Monitored Stairs (ST-NM) as the safest stairs from Room 204", () => {
