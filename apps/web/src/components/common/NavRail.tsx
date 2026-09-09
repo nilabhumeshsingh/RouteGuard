@@ -5,7 +5,8 @@ interface NavRailProps {
   onOpenRecents: () => void;
   onOpenSaved: () => void;
   onTriggerJudgeMenu: () => void;
-  onAskRouteGuard: () => void;
+  onAskRouteGuard?: () => void;
+  onAskRaah?: () => void;
   isParentalModeActive?: boolean;
   onToggleParentalMode?: (active: boolean) => void;
   onOpenParentalConfig?: () => void;
@@ -20,6 +21,7 @@ export const NavRail: React.FC<NavRailProps> = ({
   onOpenSaved,
   onTriggerJudgeMenu,
   onAskRouteGuard,
+  onAskRaah,
   isParentalModeActive = false,
   onToggleParentalMode,
   onOpenParentalConfig,
@@ -30,6 +32,8 @@ export const NavRail: React.FC<NavRailProps> = ({
   const [expanded, setExpanded] = useState(false);
   const [activeItem, setActiveItem] = useState<string>("explore");
   const [clickCount, setClickCount] = useState(0);
+
+  const handleAsk = onAskRaah || onAskRouteGuard || (() => {});
 
   const handleLogoClick = () => {
     const nextCount = clickCount + 1;
@@ -77,7 +81,7 @@ export const NavRail: React.FC<NavRailProps> = ({
               className="ml-2 flex items-center gap-1.5 cursor-pointer select-none overflow-hidden"
               title="Click 3 times for Judge Scenario Panel"
             >
-              <span className="font-semibold text-sm tracking-tight text-[#1A73E8]">RouteGuard</span>
+              <span className="font-semibold text-sm tracking-tight text-[#1A73E8]">Raah</span>
               <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#E8F0FE] text-[#1967D2]">
                 MUJ
               </span>
@@ -85,19 +89,19 @@ export const NavRail: React.FC<NavRailProps> = ({
           )}
         </div>
 
-        {/* Prominent Ask RouteGuard Action Button */}
+        {/* Prominent Ask Raah Action Button */}
         <div className="w-full px-2 mb-4 flex justify-center">
           <button
-            onClick={onAskRouteGuard}
+            onClick={handleAsk}
             className={`flex items-center transition-all duration-200 ${
               expanded
                 ? "w-full px-3 py-2.5 rounded-full bg-[#1A73E8] hover:bg-[#1557B0] text-white shadow-md gap-3"
                 : "w-11 h-11 rounded-full bg-[#1A73E8] hover:bg-[#1557B0] text-white justify-center shadow-md"
             }`}
-            title="Ask RouteGuard indoor AI"
+            title="Ask Raah indoor AI"
           >
             <span className="material-symbols-outlined text-[22px]">assistant_navigation</span>
-            {expanded && <span className="text-sm font-medium whitespace-nowrap">Ask RouteGuard</span>}
+            {expanded && <span className="text-sm font-medium whitespace-nowrap">Ask Raah</span>}
           </button>
         </div>
 

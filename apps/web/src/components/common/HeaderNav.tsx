@@ -29,8 +29,8 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
           <Shield className="w-4 h-4" />
         </div>
         <div className="flex items-baseline gap-1.5">
-          <span className="font-semibold text-[15px] tracking-tight text-[#1d1d1f]">CampusSafe</span>
-          <span className="text-[12px] text-[#86868b] font-normal hidden sm:inline">RouteGuard Indoor</span>
+          <span className="font-semibold text-[15px] tracking-tight text-[#1d1d1f]">Raah</span>
+          <span className="text-[12px] text-[#86868b] font-normal hidden sm:inline">Indoor Navigation</span>
         </div>
       </div>
 

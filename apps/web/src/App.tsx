@@ -1079,6 +1079,7 @@ export const App: React.FC = () => {
         onOpenSaved={() => setIsSearchPanelOpen(true)}
         onTriggerJudgeMenu={() => setIsJudgeMenuOpen(true)}
         onAskRouteGuard={() => setIsSearchPanelOpen(true)}
+        onAskRaah={() => setIsSearchPanelOpen(true)}
         isParentalModeActive={parentalState.isActive}
         onToggleParentalMode={handleToggleParentalMode}
         onOpenParentalConfig={() => setIsParentalModalOpen(true)}

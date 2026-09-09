@@ -28,7 +28,7 @@ async function bootstrap() {
 
   server.listen(config.port, config.host, () => {
     console.log(`====================================================`);
-    console.log(`🚀 RouteGuard API server running on http://${config.host}:${config.port}`);
+    console.log(`🚀 Raah API server running on http://${config.host}:${config.port}`);
     console.log(`   Campus:   ${config.campus.campusName} (${config.campus.building})`);
     console.log(`   Database: ${config.mongodbDbName}`);
     console.log(`   Realtime: Socket.IO Gateway active`);

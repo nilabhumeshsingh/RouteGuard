@@ -1,4 +1,4 @@
-# RouteGuard — Indoor Emergency Navigation & Life-Safety System
+# Raah — Indoor Emergency Navigation & Life-Safety System
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://muj-wifi-bssid-mapper.vercel.app)
 [![Website](https://img.shields.io/badge/Website-muj--wifi--bssid--mapper.vercel.app-blue?style=for-the-badge)](https://muj-wifi-bssid-mapper.vercel.app)
@@ -6,7 +6,7 @@
 
 > 🚀 **Live Production Application:** [https://muj-wifi-bssid-mapper.vercel.app](https://muj-wifi-bssid-mapper.vercel.app)
 
-In a fire, every second counts—but indoor GPS doesn't work, smoke blocks exit signs, and panic sets in. Our app, **RouteGuard**, solves this by turning your building's existing Wi-Fi into a life-saving navigation system. It pinpoints your location indoors, avoids fire and smoke in real-time, and guides you—with voice and vibration—to the safest exit. It even tells rescue teams exactly where you are. We're making buildings smarter and emergencies safer for everyone, especially the most vulnerable.
+In a fire, every second counts—but indoor GPS doesn't work, smoke blocks exit signs, and panic sets in. Our app, **Raah**, solves this by turning your building's existing Wi-Fi into a life-saving navigation system. It pinpoints your location indoors, avoids fire and smoke in real-time, and guides you—with voice and vibration—to the safest exit. It even tells rescue teams exactly where you are. We're making buildings smarter and emergencies safer for everyone, especially the most vulnerable.
 
 ---
 

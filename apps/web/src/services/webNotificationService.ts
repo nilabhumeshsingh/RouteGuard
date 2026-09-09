@@ -49,7 +49,7 @@ export function sendGeofenceAlertNotification(
   try {
     const title = `🚨 Parental Alert: Geofence Breached!`;
     const options: NotificationOptions = {
-      body: `${childName} has exited the designated safe zone (${zoneName})! Current location: ${currentPlace}. Tap to open RouteGuard.`,
+      body: `${childName} has exited the designated safe zone (${zoneName})! Current location: ${currentPlace}. Tap to open Raah.`,
       icon: "/favicon.ico",
       badge: "/favicon.ico",
       tag: "routeguard-parental-geofence",

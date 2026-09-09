@@ -219,7 +219,7 @@ export const Indoor3DAdapter = forwardRef<Indoor3DAdapterRef, Indoor3DAdapterPro
       <iframe
         ref={iframeRef}
         src={activeUrl}
-        title="RouteGuard 3D Floor Plan"
+        title="Raah 3D Floor Plan"
         className="w-full h-full border-0 block"
         sandbox="allow-scripts allow-same-origin"
       />
