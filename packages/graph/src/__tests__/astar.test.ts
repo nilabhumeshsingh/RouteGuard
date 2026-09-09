@@ -46,6 +46,19 @@ describe("Campus Graph & A* Pathfinding Engine", () => {
     expect(result.segments).toHaveLength(0);
   });
 
+  it("avoids blocked edges even when both endpoint nodes remain available", () => {
+    const result = findPath(graph, "node-204", "node-219", {
+      profile: "recommended",
+      blockedEdges: new Set(["c-204->c-203", "c-203->c-204"])
+    });
+
+    expect(result.status).toBe("found");
+    expect(result.segments.some((segment) =>
+      segment.fromNodeId === "c-204" && segment.toNodeId === "c-203" ||
+      segment.fromNodeId === "c-203" && segment.toNodeId === "c-204"
+    )).toBe(false);
+  });
+
   it("generates route trade-off explanations correctly", () => {
     const recommended = findPath(graph, "node-204", "node-218", { profile: "recommended" });
     const shortest = findPath(graph, "node-204", "node-218", { profile: "shortest" });
