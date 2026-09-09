@@ -20,7 +20,7 @@ VERCEL_FIRE_URL = "https://muj-wifi-bssid-mapper.vercel.app/api/fire"
 VERCEL_SCAN_URL = "https://muj-wifi-bssid-mapper.vercel.app/api/scan"
 
 def main():
-    if "--clear" in sys.argv or "-c" in sys.argv or "clear" in sys.argv:
+    if "--clear" in sys.argv or "clear" in sys.argv:
         print("🧯 Clearing Fire Alarm on Vercel...")
         req = urllib.request.Request(
             VERCEL_FIRE_URL,
