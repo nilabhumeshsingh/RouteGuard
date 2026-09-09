@@ -9,6 +9,8 @@ __pycache__/
 *.db
 *.sqlite3
 *.csv
+!data/survey.csv
+!apps/api/src/data/survey.csv
 .DS_Store
 .env
 .env.local

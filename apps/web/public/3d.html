@@ -2,933 +2,678 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>RouteGuard 3D Floorplan Renderer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manipal University Jaipur — AB3 3D Multi-Floor Architecture</title>
   <style>
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      user-select: none;
     }
-    html, body {
+    body, html {
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background-color: #F8F6F0;
+      background: #081018;
+      font-family: system-ui, -apple-system, sans-serif;
     }
     #canvas-container {
-      position: absolute;
-      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      display: block;
     }
     canvas {
       display: block;
-      width: 100%;
-      height: 100%;
       cursor: grab;
     }
     canvas:active {
       cursor: grabbing;
     }
   </style>
-  <!-- Three.js r128 + OrbitControls via CDN -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 </head>
 <body>
+
+  <!-- WebGL 3D Viewport Only -->
   <div id="canvas-container"></div>
 
+  <!-- Include Three.js & OrbitControls via CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+  <!-- Full 3D Building — 3 floors with room labels -->
   <script>
     (function () {
       "use strict";
 
-      // 1. DATA & METADATA
+      // 1. ROOM CATEGORIES & COLORS
       const ROOM_CATEGORIES = {
         office: { name: 'Classroom / Office', color: 0xf0a24a, hex: '#f0a24a' },
         washroom: { name: 'Washroom Facilities', color: 0x4fd1c2, hex: '#4fd1c2' },
         stair: { name: 'Stairs & Elevator Core', color: 0xef6f6f, hex: '#ef6f6f' },
         void: { name: 'Lightwell Structural Void', color: 0x8f8ff0, hex: '#8f8ff0' },
-        balcony: { name: 'Circular Balcony Facade', color: 0x79d189, hex: '#79d189' }
+        balcony: { name: 'West Facade Balcony', color: 0x79d189, hex: '#79d189' },
+        auditorium: { name: 'Lecture Hall', color: 0xe74c3c, hex: '#e74c3c' },
+        mess: { name: 'Mess & Dining', color: 0x2ecc71, hex: '#2ecc71' },
+        library: { name: 'Library / Study Hall', color: 0x9b59b6, hex: '#9b59b6' },
+        conference: { name: 'Conference / Lobby', color: 0x3498db, hex: '#3498db' }
       };
 
-      const ROOMS_DATA = [
-        { id: 'stair-nw', label: 'Stairs & Lift (NW)', type: 'stair', wing: 'North Wing (West)', x0: -21.0, x1: -17.5, z0: 4.0, z1: 10.5, capacity: 'Core Passage', area: '42 m²', fixtures: ['Double Stairwell Flight', 'Glass Elevator Cab', 'Fire Exit Door'], desc: 'West end vertical egress core providing access to all floors.' },
-        { id: 'wash-nw', label: 'Male Washroom', type: 'washroom', wing: 'North Wing (West)', x0: -17.5, x1: -14.0, z0: 4.0, z1: 10.5, capacity: '12 Users', area: '42 m²', fixtures: ['4 Toilet Stalls', '4 Urinals', '4 Vanity Sinks', 'Hand Dryers'], desc: 'Male sanitation facility with frosted acrylic privacy partitions.' },
-        { id: '201', label: 'Room 201', type: 'office', wing: 'North Wing', x0: -14.0, x1: -9.5, z0: 4.0, z1: 10.5, capacity: '32 Students', area: '54 m²', fixtures: ['16 Student Desks', '32 Ergonomic Chairs', 'Front Lecturer Podium', 'Double Whiteboard'], desc: 'Standard academic classroom formatted with twin seating rows facing front podium.' },
-        { id: '202', label: 'Room 202', type: 'office', wing: 'North Wing', x0: -9.5, x1: -5.0, z0: 4.0, z1: 10.5, capacity: '32 Students', area: '54 m²', fixtures: ['16 Student Desks', '32 Ergonomic Chairs', 'Lecturer Desk', 'Interactive Screen'], desc: 'Multimedia lecture room with digital projection.' },
-        { id: '203', label: 'Room 203', type: 'office', wing: 'North Wing', x0: -5.0, x1: -0.5, z0: 4.0, z1: 10.5, capacity: '32 Students', area: '54 m²', fixtures: ['16 Student Desks', '32 Ergonomic Chairs', 'Podium', 'Whiteboard'], desc: 'Classroom featuring floor-to-ceiling glass wall panel.' },
-        { id: '204', label: 'Room 204', type: 'office', wing: 'North Wing', x0: -0.5, x1: 4.0, z0: 4.0, z1: 10.5, capacity: '36 Students', area: '54 m²', fixtures: ['18 Student Desks', '36 Ergonomic Chairs', 'Lecturer Station', 'Smartboard'], desc: 'North classroom opposite central elevator core.' },
-        { id: 'stair-nm', label: 'Stairs & Lift (Mid-North)', type: 'stair', wing: 'North Wing (Central)', x0: 4.0, x1: 7.5, z0: 4.0, z1: 10.5, capacity: 'Core Passage', area: '42 m²', fixtures: ['Elevator Shaft', 'Mid-Span Stairwell', 'Service Access'], desc: 'Central elevator and staircase core.' },
-        { id: '205', label: 'Room 205', type: 'office', wing: 'North Wing', x0: 7.5, x1: 12.0, z0: 4.0, z1: 10.5, capacity: '32 Students', area: '54 m²', fixtures: ['16 Student Desks', '32 Ergonomic Chairs', 'Podium', 'Whiteboard'], desc: 'East classroom with corridor access.' },
-        { id: '206', label: 'Room 206', type: 'office', wing: 'North Wing', x0: 12.0, x1: 16.5, z0: 4.0, z1: 10.5, capacity: '32 Students', area: '54 m²', fixtures: ['16 Student Desks', '32 Ergonomic Chairs', 'Podium', 'Whiteboard'], desc: 'Academic classroom.' },
-        { id: '207', label: 'Room 207', type: 'office', wing: 'North Wing', x0: 16.5, x1: 21.0, z0: 4.0, z1: 10.5, capacity: '32 Students', area: '54 m²', fixtures: ['16 Student Desks', '32 Ergonomic Chairs', 'Projection Screen'], desc: 'Easternmost north wing classroom.' },
-        { id: 'wash-ne', label: 'Female Washroom', type: 'washroom', wing: 'North Wing (East)', x0: 21.0, x1: 24.0, z0: 4.0, z1: 10.5, capacity: '12 Users', area: '36 m²', fixtures: ['6 Private Cubicles', '5 Vanity Sinks', 'Mirrors'], desc: 'Female sanitation facility.' },
-        { id: 'stair-ne', label: 'Stairs & Lift (NE)', type: 'stair', wing: 'North Wing (East)', x0: 24.0, x1: 27.0, z0: 4.0, z1: 10.5, capacity: 'Fire Exit Core', area: '36 m²', fixtures: ['Emergency Staircase', 'Service Lift'], desc: 'Northeast fire exit stairwell.' },
-
-        { id: '211', label: 'Room 211', type: 'office', wing: 'Central Island', x0: -13.5, x1: -9.5, z0: -2.5, z1: 2.5, capacity: '24 Students', area: '32 m²', fixtures: ['12 Modular Desks', '24 Task Chairs', 'Mobile Whiteboard'], desc: 'Central island seminar room overlooking lightwell 1.' },
-        { id: 'void-1', label: 'Structural Lightwell [X1]', type: 'void', wing: 'Central Island', x0: -9.5, x1: -5.5, z0: -2.5, z1: 2.5, capacity: 'Open Void', area: '32 m²', fixtures: ['Cross-Bracing', 'Glass Balustrade', 'Natural Skylight'], desc: 'Triple-height open lightwell shaft.' },
-        { id: '210', label: 'Room 210', type: 'office', wing: 'Central Island', x0: -5.5, x1: -1.5, z0: -2.5, z1: 2.5, capacity: '24 Students', area: '32 m²', fixtures: ['12 Student Desks', '24 Chairs', 'Whiteboard'], desc: 'Central island classroom between lightwell 1 & 2.' },
-        { id: 'void-2', label: 'Structural Lightwell [X2]', type: 'void', wing: 'Central Island', x0: -1.5, x1: 2.5, z0: -2.5, z1: 2.5, capacity: 'Open Void', area: '32 m²', fixtures: ['Steel Trusses', 'Glass Railing'], desc: 'Central lightwell atrium void.' },
-        { id: '212', label: 'Room 212', type: 'office', wing: 'Central Island', x0: 2.5, x1: 6.5, z0: -2.5, z1: 2.5, capacity: '24 Students', area: '32 m²', fixtures: ['12 Desks', '24 Chairs', 'AV Display Panel'], desc: 'Mid-east central island classroom.' },
-        { id: '209', label: 'Room 209', type: 'office', wing: 'Central Island', x0: 6.5, x1: 10.5, z0: -2.5, z1: 2.5, capacity: '24 Students', area: '32 m²', fixtures: ['12 Desks', '24 Chairs', 'Podium'], desc: 'East central seminar room.' },
-        { id: 'void-3', label: 'Structural Lightwell [X3]', type: 'void', wing: 'Central Island', x0: 10.5, x1: 14.5, z0: -2.5, z1: 2.5, capacity: 'Open Void', area: '32 m²', fixtures: ['Steel Framing', 'Skylight Enclosure'], desc: 'Eastern architectural skylight shaft.' },
-        { id: '213', label: 'Room 213', type: 'office', wing: 'Central Island', x0: 14.5, x1: 18.5, z0: -2.5, z1: 2.5, capacity: '24 Students', area: '32 m²', fixtures: ['12 Desks', '24 Chairs', 'Whiteboard'], desc: 'East central island classroom.' },
-        { id: '208', label: 'Room 208', type: 'office', wing: 'Central Island', x0: 18.5, x1: 22.5, z0: -2.5, z1: 2.5, capacity: '24 Students', area: '32 m²', fixtures: ['12 Desks', '24 Chairs', 'AV Screen'], desc: 'Eastern central island room.' },
-
-        { id: 'stair-sw', label: 'Stairs & Lift (SW)', type: 'stair', wing: 'South Wing (West)', x0: -21.0, x1: -17.5, z0: -10.5, z1: -4.0, capacity: 'Core Passage', area: '42 m²', fixtures: ['Stairwell Flight', 'Elevator Cab', 'Emergency Exit'], desc: 'Southwest corner vertical circulation hub.' },
-        { id: 'wash-sw', label: 'Female Washroom', type: 'washroom', wing: 'South Wing (West)', x0: -17.5, x1: -14.0, z0: -10.5, z1: -4.0, capacity: '12 Users', area: '42 m²', fixtures: ['6 Toilet Stalls', '5 Vanity Sinks', 'Full Mirrors'], desc: 'Southwest female washroom facility.' },
-        { id: '220', label: 'Room 220', type: 'office', wing: 'South Wing', x0: -14.0, x1: -9.5, z0: -10.5, z1: -4.0, capacity: '32 Students', area: '54 m²', fixtures: ['16 Student Desks', '32 Ergonomic Chairs', 'Podium'], desc: 'Southwest classroom.' },
-        { id: '219', label: 'Room 219', type: 'office', wing: 'South Wing', x0: -9.5, x1: -5.0, z0: -10.5, z1: -4.0, capacity: '32 Students', area: '54 m²', fixtures: ['16 Student Desks', '32 Ergonomic Chairs', 'Whiteboard'], desc: 'South wing classroom.' },
-        { id: '218', label: 'Room 218', type: 'office', wing: 'South Wing', x0: -5.0, x1: -0.5, z0: -10.5, z1: -4.0, capacity: '32 Students', area: '54 m²', fixtures: ['16 Student Desks', '32 Ergonomic Chairs', 'Projection Screen'], desc: 'South wing classroom.' },
-        { id: '217', label: 'Room 217', type: 'office', wing: 'South Wing', x0: -0.5, x1: 4.0, z0: -10.5, z1: -4.0, capacity: '36 Students', area: '54 m²', fixtures: ['18 Student Desks', '36 Ergonomic Chairs', 'Smartboard'], desc: 'Large south classroom facing mid-span stair core.' },
-        { id: 'stair-sm', label: 'Stairs & Lift (Mid-South)', type: 'stair', wing: 'South Wing (Central)', x0: 4.0, x1: 7.5, z0: -10.5, z1: -4.0, capacity: 'Core Passage', area: '42 m²', fixtures: ['Elevator Shaft', 'Mid-Span Staircase'], desc: 'Central south staircase and lift core.' },
-        { id: '216', label: 'Room 216', type: 'office', wing: 'South Wing', x0: 7.5, x1: 12.0, z0: -10.5, z1: -4.0, capacity: '32 Students', area: '54 m²', fixtures: ['16 Student Desks', '32 Ergonomic Chairs', 'Whiteboard'], desc: 'East south wing classroom.' },
-        { id: '215', label: 'Room 215', type: 'office', wing: 'South Wing', x0: 12.0, x1: 16.5, z0: -10.5, z1: -4.0, capacity: '32 Students', area: '54 m²', fixtures: ['16 Student Desks', '32 Ergonomic Chairs', 'Whiteboard'], desc: 'East south wing classroom.' },
-        { id: '214', label: 'Room 214', type: 'office', wing: 'South Wing', x0: 16.5, x1: 21.0, z0: -10.5, z1: -4.0, capacity: '32 Students', area: '54 m²', fixtures: ['16 Student Desks', '32 Ergonomic Chairs', 'Whiteboard'], desc: 'Easternmost south classroom.' },
-        { id: 'wash-se', label: 'Male Washroom', type: 'washroom', wing: 'South Wing (East)', x0: 21.0, x1: 24.0, z0: -10.5, z1: -4.0, capacity: '12 Users', area: '36 m²', fixtures: ['4 Toilet Stalls', '4 Urinals', '4 Sinks'], desc: 'Southeast male sanitation unit.' },
-        { id: 'stair-se', label: 'Stairs & Lift (SE)', type: 'stair', wing: 'South Wing (East)', x0: 24.0, x1: 27.0, z0: -10.5, z1: -4.0, capacity: 'Fire Exit Core', area: '36 m²', fixtures: ['Emergency Staircase', 'Service Lift'], desc: 'Southeast egress stairwell.' },
-
-        { id: 'balcony', label: 'Circular Balcony', type: 'balcony', wing: 'West Facade', x0: -27.0, x1: -21.0, z0: -7.5, z1: 7.5, capacity: 'Open Terrace', area: '85 m²', fixtures: ['Curved Glass Balustrade', 'Support Columns', 'Atrium Doors', 'Grand Stairs'], desc: 'Semicircular outdoor balcony terrace on the west elevation.' }
+      // 2. SPATIAL DATASETS — Ground, 1st, 2nd Floor
+      const GROUND_FLOOR_DATA = [
+        { id: 'g-entrance', label: 'Main Entrance Lobby', type: 'conference', x0: -28.5, x1: -21.0, z0: -8.5, z1: 8.5 },
+        { id: 'g-conf-nw', label: 'Boardroom NW', type: 'conference', x0: -21.0, x1: -14.0, z0: 4.5, z1: 11.5 },
+        { id: 'g-conf-sw', label: 'Boardroom SW', type: 'conference', x0: -21.0, x1: -14.0, z0: -11.5, z1: -4.5 },
+        { id: 'aud-g01', label: 'Lecture Hall G01', type: 'auditorium', x0: -14.0, x1: -4.5, z0: 4.5, z1: 11.5 },
+        { id: 'aud-g02', label: 'Lecture Hall G02', type: 'auditorium', x0: -4.5, x1: 5.0, z0: 4.5, z1: 11.5 },
+        { id: 'aud-g03', label: 'Lecture Hall G03', type: 'auditorium', x0: -14.0, x1: -4.5, z0: -11.5, z1: -4.5 },
+        { id: 'aud-g04', label: 'Lecture Hall G04', type: 'auditorium', x0: -4.5, x1: 5.0, z0: -11.5, z1: -4.5 },
+        { id: 'g-void-1', label: 'Lightwell X1', type: 'void', x0: -9.5, x1: -5.5, z0: -2.3, z1: 2.3 },
+        { id: 'g-void-2', label: 'Lightwell X2', type: 'void', x0: -1.5, x1: 2.5, z0: -2.3, z1: 2.3 },
+        { id: 'g-void-3', label: 'Lightwell X3', type: 'void', x0: 12.0, x1: 16.0, z0: -2.3, z1: 2.3 },
+        { id: 'g-mess', label: 'Central Mess & Dining', type: 'mess', x0: -14.0, x1: 20.0, z0: -3.0, z1: 3.0 },
+        { id: 'g-library-n', label: 'Study Hall (North)', type: 'library', x0: 5.0, x1: 22.5, z0: 4.5, z1: 11.5 },
+        { id: 'g-library-s', label: 'Study Hall (South)', type: 'library', x0: 5.0, x1: 22.5, z0: -11.5, z1: -4.5 },
+        { id: 'g-stair-nw', label: 'Stairs NW', type: 'stair', x0: -21.0, x1: -17.5, z0: 4.5, z1: 11.5 },
+        { id: 'g-wash-ne', label: 'Washroom NE', type: 'washroom', x0: 22.5, x1: 25.5, z0: 4.5, z1: 11.5 },
+        { id: 'g-stair-ne', label: 'Stairs NE', type: 'stair', x0: 25.5, x1: 28.5, z0: 4.5, z1: 11.5 },
+        { id: 'g-stair-sw', label: 'Stairs SW', type: 'stair', x0: -21.0, x1: -17.5, z0: -11.5, z1: -4.5 },
+        { id: 'g-wash-se', label: 'Washroom SE', type: 'washroom', x0: 22.5, x1: 25.5, z0: -11.5, z1: -4.5 },
+        { id: 'g-stair-se', label: 'Stairs SE', type: 'stair', x0: 25.5, x1: 28.5, z0: -11.5, z1: -4.5 }
       ];
 
-      // 2. SCENE SETUP
-      const container = document.getElementById('canvas-container');
-      const scene = new THREE.Scene();
-      scene.background = new THREE.Color(0xF8F6F0);
-      scene.fog = new THREE.FogExp2(0xF8F6F0, 0.005);
-
-      const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 500);
-      camera.position.set(0, 36, 42);
-
-      const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.shadowMap.enabled = true;
-      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-      renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.15;
-      container.appendChild(renderer.domElement);
-
-      // Lights
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
-      scene.add(ambientLight);
-
-      const mainLight = new THREE.DirectionalLight(0xfff7ea, 0.95);
-      mainLight.position.set(25, 45, 30);
-      mainLight.castShadow = true;
-      mainLight.shadow.mapSize.width = 2048;
-      mainLight.shadow.mapSize.height = 2048;
-      const d = 35;
-      mainLight.shadow.camera.left = -d; mainLight.shadow.camera.right = d;
-      mainLight.shadow.camera.top = d; mainLight.shadow.camera.bottom = -d;
-      scene.add(mainLight);
-
-      const fillLight = new THREE.DirectionalLight(0xdce7f5, 0.45);
-      fillLight.position.set(-30, 30, -20);
-      scene.add(fillLight);
-
-      // Ground Grid
-      const gridGroup = new THREE.Group();
-      const groundMesh = new THREE.Mesh(
-        new THREE.PlaneGeometry(240, 240),
-        new THREE.MeshStandardMaterial({ color: 0xF2ECE1, roughness: 0.95 })
-      );
-      groundMesh.rotation.x = -Math.PI / 2;
-      groundMesh.position.y = -0.05;
-      groundMesh.receiveShadow = true;
-      gridGroup.add(groundMesh);
-
-      const gridHelper = new THREE.GridHelper(240, 80, 0xD1C9BC, 0xE4DDD2);
-      gridHelper.position.y = -0.04;
-      gridHelper.material.opacity = 0.55;
-      gridHelper.material.transparent = true;
-      gridGroup.add(gridHelper);
-      scene.add(gridGroup);
-
-      // Orbit Controls
-      const controls = new THREE.OrbitControls(camera, renderer.domElement);
-      controls.enableDamping = true;
-      controls.dampingFactor = 0.05;
-      controls.maxPolarAngle = Math.PI / 2 - 0.02;
-      controls.minDistance = 5;
-      controls.maxDistance = 120;
-      controls.target.set(0, 0.5, 0);
-
-      // Camera Smooth Flight
-      let isAnimating = false;
-      let animStartTime = 0;
-      const animDuration = 900;
-      const startCamPos = new THREE.Vector3(), startTarget = new THREE.Vector3();
-      const endCamPos = new THREE.Vector3(), endTarget = new THREE.Vector3();
-
-      function transitionTo(targetCamPos, targetLookAt) {
-        startCamPos.copy(camera.position);
-        startTarget.copy(controls.target);
-        endCamPos.copy(targetCamPos);
-        endTarget.copy(targetLookAt);
-        animStartTime = performance.now();
-        isAnimating = true;
-      }
-
-      // 3. BUILD FLOORPLAN STRUCTURE
-      const floorGroup = new THREE.Group();
-      const wallMeshes = [];
-      const edgeLines = [];
-      const floorMeshes = [];
-      const labelSprites = [];
-
-      const wallMaterial = new THREE.MeshPhysicalMaterial({
-        color: 0xbed2e0,
-        transparent: true,
-        opacity: 0.35,
-        roughness: 0.35,
-        transmission: 0.2,
-        side: THREE.DoubleSide,
-        depthWrite: false
-      });
-      const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x1A73E8, transparent: true, opacity: 0.65 });
-
-      function createRoomLabel(text, typeName) {
-        const canvas = document.createElement('canvas');
-        const scale = 4;
-        canvas.width = 256 * scale;
-        canvas.height = 96 * scale;
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.96)';
-        ctx.strokeStyle = 'rgba(218, 220, 224, 0.95)';
-        ctx.lineWidth = 3 * scale;
-        ctx.beginPath();
-        ctx.roundRect(10 * scale, 10 * scale, canvas.width - 20 * scale, canvas.height - 20 * scale, 14 * scale);
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#202124';
-        ctx.font = `700 ${30 * scale / 2}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-        ctx.fillText(text, canvas.width / 2, canvas.height / 2 - 8 * scale);
-
-        ctx.fillStyle = '#1A73E8';
-        ctx.font = `600 ${17 * scale / 2}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-        ctx.fillText(typeName.toUpperCase(), canvas.width / 2, canvas.height / 2 + 18 * scale);
-
-        const texture = new THREE.CanvasTexture(canvas);
-        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false }));
-        sprite.scale.set(3.2, 1.2, 1);
-        sprite.renderOrder = 999;
-        return sprite;
-      }
-
-      ROOMS_DATA.forEach(room => {
-        if (room.id === 'balcony') return;
-        const w = room.x1 - room.x0, d = room.z1 - room.z0;
-        const cx = (room.x0 + room.x1) / 2, cz = (room.z0 + room.z1) / 2;
-        const cat = ROOM_CATEGORIES[room.type] || ROOM_CATEGORIES.office;
-
-        const roomNode = new THREE.Group();
-        roomNode.position.set(cx, 0, cz);
-        roomNode.userData = room;
-
-        // Floor Mesh
-        const floorMesh = new THREE.Mesh(
-          new THREE.BoxGeometry(w - 0.04, 0.12, d - 0.04),
-          new THREE.MeshStandardMaterial({ color: cat.color, roughness: 0.8 })
-        );
-        floorMesh.position.y = 0.06;
-        floorMesh.receiveShadow = true;
-        floorMesh.userData = room;
-        roomNode.add(floorMesh);
-        floorMeshes.push(floorMesh);
-
-        // Walls & Edge lines
-        if (room.type !== 'void') {
-          const wallH = 3.0, t = 0.10;
-          const wallN = new THREE.Mesh(new THREE.BoxGeometry(w, wallH, t), wallMaterial);
-          wallN.position.set(0, wallH / 2, d / 2);
-          const wallS = wallN.clone();
-          wallS.position.z = -d / 2;
-          const wallE = new THREE.Mesh(new THREE.BoxGeometry(t, wallH, d), wallMaterial);
-          wallE.position.set(w / 2, wallH / 2, 0);
-          const wallW = wallE.clone();
-          wallW.position.x = -w / 2;
-
-          [wallN, wallS, wallE, wallW].forEach(wMesh => {
-            roomNode.add(wMesh);
-            wallMeshes.push(wMesh);
-            const line = new THREE.LineSegments(new THREE.EdgesGeometry(wMesh.geometry), edgeMaterial);
-            wMesh.add(line);
-            edgeLines.push(line);
-          });
-        } else {
-          // Void cross bracing
-          const lineMat = new THREE.LineBasicMaterial({ color: 0x8f8ff0 });
-          const cross1 = new THREE.Line(new THREE.BufferGeometry().setFromPoints([
-            new THREE.Vector3(-w / 2 + 0.2, 0.15, -d / 2 + 0.2),
-            new THREE.Vector3(w / 2 - 0.2, 0.15, d / 2 - 0.2)
-          ]), lineMat);
-          const cross2 = new THREE.Line(new THREE.BufferGeometry().setFromPoints([
-            new THREE.Vector3(-w / 2 + 0.2, 0.15, d / 2 - 0.2),
-            new THREE.Vector3(w / 2 - 0.2, 0.15, -d / 2 + 0.2)
-          ]), lineMat);
-          roomNode.add(cross1, cross2);
-        }
-
-        const label = createRoomLabel(room.label, cat.name);
-        label.position.set(0, 3.8, 0);
-        roomNode.add(label);
-        labelSprites.push(label);
-
-        floorGroup.add(roomNode);
-      });
-
-      // Corridors
-      const corrMat = new THREE.MeshStandardMaterial({ color: 0x16283a, roughness: 0.9 });
-      const nCorr = new THREE.Mesh(new THREE.BoxGeometry(48, 0.10, 1.5), corrMat);
-      nCorr.position.set(3, 0.05, 3.25);
-      const sCorr = new THREE.Mesh(new THREE.BoxGeometry(48, 0.10, 1.5), corrMat);
-      sCorr.position.set(3, 0.05, -3.25);
-      const wAtrium = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.10, 8.0), corrMat);
-      wAtrium.position.set(-19.25, 0.05, 0);
-      floorGroup.add(nCorr, sCorr, wAtrium);
-
-      // Circular Balcony
-      (function buildBalcony() {
-        const balconyData = ROOMS_DATA.find(r => r.id === 'balcony');
-        const radius = 7.5, cx = -21.0;
-        const balconyNode = new THREE.Group();
-        balconyNode.position.set(cx, 0, 0);
-        balconyNode.userData = balconyData;
-
-        const shape = new THREE.Shape();
-        shape.moveTo(0, -radius);
-        shape.absarc(0, 0, radius, -Math.PI / 2, Math.PI / 2, false);
-        shape.lineTo(0, -radius);
-        const floorGeo = new THREE.ShapeGeometry(shape, 64);
-        floorGeo.rotateX(-Math.PI / 2);
-        const floorMesh = new THREE.Mesh(floorGeo, new THREE.MeshStandardMaterial({ color: ROOM_CATEGORIES.balcony.color, roughness: 0.75 }));
-        floorMesh.position.y = 0.06;
-        floorMesh.userData = balconyData;
-        balconyNode.add(floorMesh);
-        floorMeshes.push(floorMesh);
-
-        const curvedWall = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, 3.0, 64, 1, true, -Math.PI / 2, Math.PI), wallMaterial);
-        curvedWall.position.y = 1.5;
-        balconyNode.add(curvedWall);
-        wallMeshes.push(curvedWall);
-        const line = new THREE.LineSegments(new THREE.EdgesGeometry(curvedWall.geometry), edgeMaterial);
-        curvedWall.add(line);
-        edgeLines.push(line);
-
-        const colMat = new THREE.MeshStandardMaterial({ color: 0xeaf2f8 });
-        [-5.5, -2.5, 2.5, 5.5].forEach(zOffset => {
-          const col = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 3.0, 16), colMat);
-          const angle = Math.asin(zOffset / radius);
-          col.position.set(-radius * Math.cos(angle) + 0.3, 1.5, zOffset);
-          balconyNode.add(col);
-        });
-
-        const label = createRoomLabel('Circular Balcony', 'Circulation');
-        label.position.set(-radius * 0.5, 3.8, 0);
-        balconyNode.add(label);
-        labelSprites.push(label);
-        floorGroup.add(balconyNode);
-      })();
-
-      scene.add(floorGroup);
-
-      // 4. FURNITURE & FIXTURES
-      const furnitureGroup = new THREE.Group();
-      const woodMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.6 });
-      const chairMat = new THREE.MeshStandardMaterial({ color: 0x1e272e });
-      const metalMat = new THREE.MeshStandardMaterial({ color: 0xdcdde1 });
-
-      ROOMS_DATA.forEach(room => {
-        if (room.id === 'balcony' || room.type === 'void') return;
-        const w = room.x1 - room.x0, d = room.z1 - room.z0;
-        const cx = (room.x0 + room.x1) / 2, cz = (room.z0 + room.z1) / 2;
-        const g = new THREE.Group();
-        g.position.set(cx, 0, cz);
-
-        if (room.type === 'office') {
-          const cols = Math.floor((w - 1.2) / 1.5);
-          for (let r = 0; r < 3; r++) {
-            for (let c = 0; c < cols; c++) {
-              const desk = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.06, 0.6), woodMat);
-              desk.position.set(-((cols - 1) * 1.5) / 2 + c * 1.5, 0.72, -d * 0.1 + r * 1.1);
-              g.add(desk);
-            }
-          }
-          const pod = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.05, 0.6), woodMat);
-          pod.position.set(-w * 0.25, 0.525, -d * 0.3);
-          g.add(pod);
-        } else if (room.type === 'washroom') {
-          const counter = new THREE.Mesh(new THREE.BoxGeometry(w * 0.7, 0.1, 0.5), chairMat);
-          counter.position.set(0, 0.8, d / 2 - 0.4);
-          g.add(counter);
-        } else if (room.type === 'stair') {
-          for (let i = 0; i < 8; i++) {
-            const step = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.15, 0.28), metalMat);
-            step.position.set(-w * 0.25, i * 0.15 + 0.075, -d * 0.35 + i * 0.28);
-            g.add(step);
-          }
-        }
-        furnitureGroup.add(g);
-      });
-      scene.add(furnitureGroup);
-
-      // 5. DYNAMIC OVERLAYS (USER BEACON, ROUTES, HAZARDS, SMOKE, AVATARS)
-      // A. User Position Beacon
-      const userBeaconGroup = new THREE.Group();
-      userBeaconGroup.visible = false;
-      scene.add(userBeaconGroup);
-
-      const pinGeo = new THREE.ConeGeometry(0.45, 1.4, 16);
-      pinGeo.rotateX(Math.PI);
-      const pinMat = new THREE.MeshStandardMaterial({
-        color: 0x00a8ff,
-        emissive: 0x0055ff,
-        emissiveIntensity: 0.9,
-        roughness: 0.2
-      });
-      const pinMesh = new THREE.Mesh(pinGeo, pinMat);
-      pinMesh.position.y = 1.8;
-      userBeaconGroup.add(pinMesh);
-
-      const pinHeadGeo = new THREE.SphereGeometry(0.35, 16, 16);
-      const pinHeadMat = new THREE.MeshStandardMaterial({
-        color: 0x4fd1c2,
-        emissive: 0x4fd1c2,
-        emissiveIntensity: 1.0
-      });
-      const pinHeadMesh = new THREE.Mesh(pinHeadGeo, pinHeadMat);
-      pinHeadMesh.position.y = 2.4;
-      userBeaconGroup.add(pinHeadMesh);
-
-      const ringGeo = new THREE.RingGeometry(0.4, 0.8, 32);
-      ringGeo.rotateX(-Math.PI / 2);
-      const ringMat = new THREE.MeshBasicMaterial({
-        color: 0x4fd1c2,
-        side: THREE.DoubleSide,
-        transparent: true,
-        opacity: 0.85
-      });
-      const ringMesh = new THREE.Mesh(ringGeo, ringMat);
-      ringMesh.position.y = 0.12;
-      userBeaconGroup.add(ringMesh);
-
-      function parseCoord(val, isY) {
-        if (typeof val !== 'number') return 0;
-        // SVG coordinate mapping fallback
-        if (val > 50) {
-          return isY ? (242.5 - val) / 15 : (val - 480) / 15;
-        }
-        return val;
-      }
-
-      function findRoomForPosition(pos) {
-        if (!pos) return null;
-        const candidate = (pos.label || pos.location || pos.roomId || pos.nearestPlaceName || pos.id || '').toString().toLowerCase().trim();
-        if (!candidate) return null;
-
-        // Exact match on id or label
-        let room = ROOMS_DATA.find(r => 
-          r.id.toLowerCase() === candidate || 
-          r.label.toLowerCase() === candidate
-        );
-        if (room) return room;
-
-        // Number extraction, e.g. "room 219", "219a", "219c", "ab1-219" -> "219"
-        const numMatch = candidate.match(/\b(20[1-9]|21[0-9]|220)\b/);
-        if (numMatch) {
-          const num = numMatch[1];
-          room = ROOMS_DATA.find(r => r.id === num || r.label.toLowerCase().includes(num));
-          if (room) return room;
-        }
-
-        // Special zone keywords
-        if (candidate.includes('balcony')) {
-          return ROOMS_DATA.find(r => r.id === 'balcony');
-        }
-        if (candidate.includes('washroom') || candidate.includes('toilet')) {
-          if (candidate.includes('214') || candidate.includes('se') || candidate.includes('south')) {
-            return ROOMS_DATA.find(r => r.id === 'wash-se');
-          }
-          if (candidate.includes('208') || candidate.includes('ne') || candidate.includes('girl')) {
-            return ROOMS_DATA.find(r => r.id === 'wash-ne');
-          }
-          if (candidate.includes('201') || candidate.includes('nw') || candidate.includes('boy') || candidate.includes('male')) {
-            return ROOMS_DATA.find(r => r.id === 'wash-nw');
-          }
-          if (candidate.includes('211') || candidate.includes('sw')) {
-            return ROOMS_DATA.find(r => r.id === 'wash-sw');
-          }
-        }
-        if (candidate.includes('stair') || candidate.includes('lift') || candidate.includes('elevator')) {
-          if (candidate.includes('nw') || candidate.includes('west')) return ROOMS_DATA.find(r => r.id === 'stair-nw');
-          if (candidate.includes('ne') || candidate.includes('east')) return ROOMS_DATA.find(r => r.id === 'stair-ne');
-          if (candidate.includes('sm') || candidate.includes('south') || candidate.includes('mid-south')) return ROOMS_DATA.find(r => r.id === 'stair-sm');
-          if (candidate.includes('nm') || candidate.includes('north') || candidate.includes('mid')) return ROOMS_DATA.find(r => r.id === 'stair-nm');
-        }
-
-        return null;
-      }
-
-      function updatePositionMarker(pos) {
-        if (!pos) return;
-
-        // 1. Room-level snapping: If position has room label or id, snap directly to room center
-        const matched = findRoomForPosition(pos);
-        if (matched) {
-          const cx = (matched.x0 + matched.x1) / 2;
-          const cz = (matched.z0 + matched.z1) / 2;
-          userBeaconGroup.position.set(cx, 0, cz);
-          userBeaconGroup.visible = true;
-          return;
-        }
-
-        // 2. Coordinate-level positioning
-        const x3d = parseCoord(pos.x3d !== undefined ? pos.x3d : pos.x, false);
-        const z3d = parseCoord(pos.z3d !== undefined ? pos.z3d : (pos.z !== undefined ? pos.z : pos.y), true);
-        userBeaconGroup.position.set(x3d, 0, z3d);
-        userBeaconGroup.visible = true;
-      }
-
-      // B. Route Overlay
-      const routeGroup = new THREE.Group();
-      scene.add(routeGroup);
-
-      function updateRouteOverlay(route, profile) {
-        clearRouteOverlay();
-        if (!route) return;
-        const points = Array.isArray(route) ? route : (route.pathPoints || route.points || []);
-        if (points.length < 2) return;
-
-        const rawVectors = points.map(pt => {
-          const x = parseCoord(pt.x3d !== undefined ? pt.x3d : pt.x, false);
-          const z = parseCoord(pt.z3d !== undefined ? pt.z3d : (pt.z !== undefined ? pt.z : pt.y), true);
-          return new THREE.Vector3(x, 0.25, z);
-        });
-
-        // Deduplicate adjacent points closer than 0.08 units to prevent Three.js TubeGeometry singularity
-        const vectors = [];
-        for (let i = 0; i < rawVectors.length; i++) {
-          if (i === 0 || rawVectors[i].distanceTo(vectors[vectors.length - 1]) > 0.08) {
-            vectors.push(rawVectors[i]);
-          }
-        }
-        if (vectors.length < 2) return;
-
-        const isEmergency = profile === 'emergency' || activeCurrentMode === 'emergency';
-        const curve = new THREE.CatmullRomCurve3(vectors);
-        const tubeGeo = new THREE.TubeGeometry(curve, Math.max(32, vectors.length * 16), isEmergency ? 0.22 : 0.15, 8, false);
-        const tubeMat = new THREE.MeshStandardMaterial({
-          color: isEmergency ? 0x34c759 : 0x4fd1c2,
-          emissive: isEmergency ? 0x1faa3d : 0x1f9d92,
-          emissiveIntensity: isEmergency ? 0.9 : 0.45,
-          roughness: 0.2
-        });
-        const routeMesh = new THREE.Mesh(tubeGeo, tubeMat);
-        routeGroup.add(routeMesh);
-
-        // Emergency destination stairs beacon & point light
-        if (isEmergency) {
-          const dest = vectors[vectors.length - 1];
-          const beaconGeo = new THREE.CylinderGeometry(0.7, 0.7, 3.2, 32);
-          const beaconMat = new THREE.MeshBasicMaterial({
-            color: 0x34c759,
-            transparent: true,
-            opacity: 0.45,
-            side: THREE.DoubleSide
-          });
-          const beaconMesh = new THREE.Mesh(beaconGeo, beaconMat);
-          beaconMesh.position.set(dest.x, 1.6, dest.z);
-          routeGroup.add(beaconMesh);
-
-          const light = new THREE.PointLight(0x34c759, 3, 12);
-          light.position.set(dest.x, 2.2, dest.z);
-          routeGroup.add(light);
-        }
-      }
-
-      function clearRouteOverlay() {
-        while (routeGroup.children.length > 0) {
-          const child = routeGroup.children[0];
-          routeGroup.remove(child);
-          if (child.geometry) child.geometry.dispose();
-          if (child.material) child.material.dispose();
-        }
-      }
-
-      // C. Hazard Overlays
-      const hazardsMap = new Map();
-
-      let activeHazardPosition = { x: -7.25, z: -7.25 };
-
-      function setHazard(hazard) {
-        if (!hazard) return;
-        const raw = String(hazard.roomId || hazard.id || hazard.zoneId || '219');
-        const cleanId = raw.replace(/^(room-|node-|ZONE_FLOOR2_)/i, '').trim();
-        const id = hazard.id || `hazard-${cleanId}`;
-        clearHazard(id);
-
-        const targetRoom = ROOMS_DATA.find(r => r.id === cleanId || r.id === raw || (r.label && r.label.toLowerCase().includes(cleanId)));
-        if (!targetRoom) return;
-
-        const cx = (targetRoom.x0 + targetRoom.x1) / 2;
-        const cz = (targetRoom.z0 + targetRoom.z1) / 2;
-        activeHazardPosition = { x: cx, z: cz };
-
-        const w = targetRoom.x1 - targetRoom.x0;
-        const d = targetRoom.z1 - targetRoom.z0;
-
-        const hGroup = new THREE.Group();
-        hGroup.position.set(cx, 0, cz);
-
-        // Highlight floor box in pulsating red
-        const hFloorGeo = new THREE.BoxGeometry(w, 0.25, d);
-        const hFloorMat = new THREE.MeshStandardMaterial({
-          color: 0xff1e00,
-          emissive: 0xff3b30,
-          emissiveIntensity: 0.9,
-          roughness: 0.3
-        });
-        const hFloor = new THREE.Mesh(hFloorGeo, hFloorMat);
-        hFloor.position.y = 0.12;
-        hGroup.add(hFloor);
-
-        // Emergency point light above fire
-        const fireLight = new THREE.PointLight(0xff3b30, 2.5, 12);
-        fireLight.position.set(0, 3, 0);
-        hGroup.add(fireLight);
-
-        scene.add(hGroup);
-        hazardsMap.set(id, hGroup);
-      }
-
-      function clearHazard(id) {
-        const hGroup = hazardsMap.get(id);
-        if (hGroup) {
-          scene.remove(hGroup);
-          hazardsMap.delete(id);
-        }
-      }
-
-      // D. Smoke Forecast
-      const smokeGroup = new THREE.Group();
-      scene.add(smokeGroup);
-
-      function updateSmokeForecast(forecast) {
-        while (smokeGroup.children.length > 0) {
-          const child = smokeGroup.children[0];
-          smokeGroup.remove(child);
-          if (child.geometry) child.geometry.dispose();
-          if (child.material) child.material.dispose();
-        }
-        if (!forecast) return;
-
-        const minutes = typeof forecast === 'number' ? forecast : (forecast.minutes || 0);
-        if (minutes <= 0) return;
-
-        let cx = activeHazardPosition.x;
-        let cz = activeHazardPosition.z;
-
-        if (forecast && typeof forecast === 'object') {
-          if (forecast.roomId) {
-            const cleanId = String(forecast.roomId).replace(/^(room-|node-|ZONE_FLOOR2_)/i, '').trim();
-            const rm = ROOMS_DATA.find(r => r.id === cleanId || r.id === forecast.roomId);
-            if (rm) {
-              cx = (rm.x0 + rm.x1) / 2;
-              cz = (rm.z0 + rm.z1) / 2;
-            }
-          }
-        }
-
-        const r = minutes === 2 ? 3.5 : minutes === 5 ? 7.0 : 12.0;
-        const smokeGeo = new THREE.SphereGeometry(r, 16, 16);
-        const smokeMat = new THREE.MeshStandardMaterial({
-          color: 0x11161f,
-          transparent: true,
-          opacity: 0.55,
-          roughness: 0.95
-        });
-        const smokeMesh = new THREE.Mesh(smokeGeo, smokeMat);
-        smokeMesh.position.set(cx, 1.8, cz);
-        smokeGroup.add(smokeMesh);
-      }
-
-      // E. User Avatars
-      const avatarsGroup = new THREE.Group();
-      scene.add(avatarsGroup);
-
-      function updateUserAvatars(users) {
-        while (avatarsGroup.children.length > 0) {
-          const child = avatarsGroup.children[0];
-          avatarsGroup.remove(child);
-          if (child.geometry) child.geometry.dispose();
-          if (child.material) child.material.dispose();
-        }
-        if (!Array.isArray(users)) return;
-
-        users.forEach(u => {
-          const x = parseCoord(u.position ? (u.position.x3d || u.position.x) : u.x, false);
-          const z = parseCoord(u.position ? (u.position.z3d || u.position.z || u.position.y) : (u.z || u.y), true);
-          const avGeo = new THREE.CylinderGeometry(0.35, 0.35, 1.6, 16);
-          const avMat = new THREE.MeshStandardMaterial({ color: 0xf0a24a, emissive: 0xf0a24a, emissiveIntensity: 0.5 });
-          const avMesh = new THREE.Mesh(avGeo, avMat);
-          avMesh.position.set(x, 0.8, z);
-          avatarsGroup.add(avMesh);
-        });
-      }
-
-      // F. Focus Room By ID
-      function focusRoomById(roomId, animate) {
-        const room = ROOMS_DATA.find(r => r.id === roomId);
-        if (!room) return;
-        const cx = (room.x0 + room.x1) / 2;
-        const cz = (room.z0 + room.z1) / 2;
-        const roomWidth = room.x1 - room.x0;
-        const roomDepth = room.z1 - room.z0;
-        const dist = Math.max(roomWidth, roomDepth) * 2.8;
-
-        const targetCam = new THREE.Vector3(cx, dist * 0.9, cz + dist * 0.9);
-        const targetLook = new THREE.Vector3(cx, 0.8, cz);
-
-        if (animate !== false) {
-          transitionTo(targetCam, targetLook);
-        } else {
-          camera.position.copy(targetCam);
-          controls.target.copy(targetLook);
-        }
-      }
-
-      // G. Theme & Mode Setter
-      function setTheme(theme) {
-        if (theme === 'dark') {
-          scene.background.set(0x1a1f3a);
-          scene.fog.color.set(0x1a1f3a);
-          groundMesh.material.color.set(0x13172c);
-          document.body.style.backgroundColor = '#1a1f3a';
-        } else if (theme === 'emergency') {
-          scene.background.set(0xffebea);
-          scene.fog.color.set(0xffebea);
-          groundMesh.material.color.set(0xf5dede);
-          document.body.style.backgroundColor = '#ffebea';
-        } else {
-          scene.background.set(0xF8F6F0);
-          scene.fog.color.set(0xF8F6F0);
-          groundMesh.material.color.set(0xF2ECE1);
-          document.body.style.backgroundColor = '#F8F6F0';
-        }
-      }
-
-      let activeCurrentMode = 'normal';
-      function setMode(mode) {
-        activeCurrentMode = mode;
-        if (mode === 'emergency') {
-          ambientLight.intensity = 0.55;
-          mainLight.color.setHex(0xff7777);
-          setTheme('emergency');
-        } else if (mode === 'dark') {
-          setTheme('dark');
-        } else {
-          ambientLight.intensity = 0.85;
-          mainLight.color.setHex(0xfff7ea);
-          setTheme('light');
-        }
-      }
-
-      // H. Camera Zoom & View Helpers
-      function zoomCamera(factor) {
-        const offset = new THREE.Vector3().subVectors(camera.position, controls.target);
-        offset.multiplyScalar(factor);
-        transitionTo(new THREE.Vector3().addVectors(controls.target, offset), controls.target);
-      }
-
-      function resetCamera() {
-        transitionTo(new THREE.Vector3(0, 36, 42), new THREE.Vector3(0, 0.5, 0));
-      }
-
-      // I. Category Filter (dims non-matching rooms)
-      function filterRoomsByCategory(category) {
-        const cat = (category || 'all').toLowerCase().trim();
-        floorMeshes.forEach(mesh => {
-          const r = mesh.userData;
-          if (!r) return;
-          if (cat === 'all' || !cat) {
-            mesh.material.opacity = 0.85;
-            return;
-          }
-          let match = false;
-          if (cat === 'classrooms') match = (r.type === 'office');
-          else if (cat === 'washrooms') match = (r.type === 'washroom');
-          else if (cat === 'stairs') match = (r.type === 'stair');
-          else if (cat === 'exits') match = (r.type === 'stair' || (r.id && r.id.includes('stair')) || r.id === 'balcony');
-          else if (cat === 'refuges') match = (r.type === 'stair' || r.id === 'balcony');
-          else if (cat === 'help points') match = (r.type === 'office' || r.type === 'stair');
-          else match = (r.type === cat || (r.label && r.label.toLowerCase().includes(cat)));
-
-          mesh.material.opacity = match ? 0.95 : 0.16;
-        });
-      }
-
-      // J. Clear All
-      function clearAllOverlays() {
-        clearRouteOverlay();
-        hazardsMap.forEach((_, id) => clearHazard(id));
-        updateSmokeForecast(0);
-        updateUserAvatars([]);
-        userBeaconGroup.visible = false;
-        filterRoomsByCategory('all');
-        setMode('normal');
-      }
-
-      // 6. POSTMESSAGE API FOR PARENT <-> IFRAME
-      const ALLOWED_ORIGINS = [
-        window.location.origin,
-        'http://localhost:5173',
-        'http://localhost:3000',
-        'https://muj-wifi-bssid-mapper.vercel.app'
+      const FIRST_FLOOR_DATA = [
+        { id: 'f1-balcony', label: 'West Terrace', type: 'conference', x0: -27.0, x1: -21.0, z0: -7.5, z1: 7.5 },
+        { id: 'f1-seminar-nw', label: 'Seminar NW', type: 'conference', x0: -21.0, x1: -14.0, z0: 4.5, z1: 11.0 },
+        { id: 'f1-seminar-sw', label: 'Seminar SW', type: 'conference', x0: -21.0, x1: -14.0, z0: -11.0, z1: -4.5 },
+        { id: 'aud-101', label: 'Lecture Hall 101', type: 'auditorium', x0: -14.0, x1: -4.5, z0: 4.5, z1: 11.0 },
+        { id: 'aud-102', label: 'Lecture Hall 102', type: 'auditorium', x0: -4.5, x1: 5.0, z0: 4.5, z1: 11.0 },
+        { id: 'aud-103', label: 'Lecture Hall 103', type: 'auditorium', x0: -14.0, x1: -4.5, z0: -11.0, z1: -4.5 },
+        { id: 'aud-104', label: 'Lecture Hall 104', type: 'auditorium', x0: -4.5, x1: 5.0, z0: -11.0, z1: -4.5 },
+        { id: 'f1-void-1', label: 'Lightwell X1', type: 'void', x0: -9.5, x1: -5.5, z0: -2.3, z1: 2.3 },
+        { id: 'f1-void-2', label: 'Lightwell X2', type: 'void', x0: -1.5, x1: 2.5, z0: -2.3, z1: 2.3 },
+        { id: 'f1-void-3', label: 'Lightwell X3', type: 'void', x0: 12.0, x1: 16.0, z0: -2.3, z1: 2.3 },
+        { id: 'f1-mess', label: 'Mess & Cafeteria', type: 'mess', x0: -14.0, x1: 19.5, z0: -2.5, z1: 2.5 },
+        { id: '105', label: 'Room 105', type: 'office', x0: 5.0, x1: 13.0, z0: 4.5, z1: 11.0 },
+        { id: '106', label: 'Room 106', type: 'office', x0: 13.0, x1: 21.0, z0: 4.5, z1: 11.0 },
+        { id: '115', label: 'Room 115', type: 'office', x0: 5.0, x1: 13.0, z0: -11.0, z1: -4.5 },
+        { id: '114', label: 'Room 114', type: 'office', x0: 13.0, x1: 21.0, z0: -11.0, z1: -4.5 },
+        { id: 'f1-stair-nw', label: 'Stairs NW', type: 'stair', x0: -21.0, x1: -17.5, z0: 4.5, z1: 11.0 },
+        { id: 'f1-wash-ne', label: 'Washroom NE', type: 'washroom', x0: 21.0, x1: 24.0, z0: 4.5, z1: 11.0 },
+        { id: 'f1-stair-ne', label: 'Stairs NE', type: 'stair', x0: 24.0, x1: 27.0, z0: 4.5, z1: 11.0 },
+        { id: 'f1-stair-sw', label: 'Stairs SW', type: 'stair', x0: -21.0, x1: -17.5, z0: -11.0, z1: -4.5 },
+        { id: 'f1-wash-se', label: 'Washroom SE', type: 'washroom', x0: 21.0, x1: 24.0, z0: -11.0, z1: -4.5 },
+        { id: 'f1-stair-se', label: 'Stairs SE', type: 'stair', x0: 24.0, x1: 27.0, z0: -11.0, z1: -4.5 }
       ];
 
-      window.addEventListener('message', (event) => {
-        if (event.origin !== window.location.origin && !ALLOWED_ORIGINS.includes(event.origin) && event.origin !== '*') {
-          return;
-        }
-        const msg = event.data;
-        if (!msg || typeof msg !== 'object') return;
+      // 2nd Floor — has Circular Balcony on West
+      const SECOND_FLOOR_DATA = [
+        { id: 'stair-nw', label: 'Stairs NW', type: 'stair', x0: -21.0, x1: -17.5, z0: 4.5, z1: 11.0 },
+        { id: 'wash-nw', label: 'Male Washroom', type: 'washroom', x0: -17.5, x1: -14.0, z0: 4.5, z1: 11.0 },
+        { id: '201', label: 'Room 201', type: 'office', x0: -14.0, x1: -9.5, z0: 4.5, z1: 11.0 },
+        { id: '202', label: 'Room 202', type: 'office', x0: -9.5, x1: -5.0, z0: 4.5, z1: 11.0 },
+        { id: '203', label: 'Room 203', type: 'office', x0: -5.0, x1: -0.5, z0: 4.5, z1: 11.0 },
+        { id: '204', label: 'Room 204', type: 'office', x0: -0.5, x1: 4.0, z0: 4.5, z1: 11.0 },
+        { id: 'stair-nm', label: 'Stairs Mid-N', type: 'stair', x0: 4.0, x1: 7.5, z0: 4.5, z1: 11.0 },
+        { id: '205', label: 'Room 205', type: 'office', x0: 7.5, x1: 12.0, z0: 4.5, z1: 11.0 },
+        { id: '206', label: 'Room 206', type: 'office', x0: 12.0, x1: 16.5, z0: 4.5, z1: 11.0 },
+        { id: '207', label: 'Room 207', type: 'office', x0: 16.5, x1: 21.0, z0: 4.5, z1: 11.0 },
+        { id: 'wash-ne', label: 'Female Washroom', type: 'washroom', x0: 21.0, x1: 24.0, z0: 4.5, z1: 11.0 },
+        { id: 'stair-ne', label: 'Stairs NE', type: 'stair', x0: 24.0, x1: 27.0, z0: 4.5, z1: 11.0 },
 
-        switch (msg.type) {
-          case 'PING':
-            event.source.postMessage({
-              type: 'MAP_READY',
-              rooms: ROOMS_DATA.map(r => ({ id: r.id, label: r.label, type: r.type, x0: r.x0, x1: r.x1, z0: r.z0, z1: r.z1 }))
-            }, event.origin || '*');
-            break;
-          case 'SET_POSITION':
-            updatePositionMarker(msg.position || msg.payload);
-            break;
-          case 'SET_ROUTE':
-            updateRouteOverlay(msg.route || msg.payload, msg.profile);
-            break;
-          case 'CLEAR_ROUTE':
-            clearRouteOverlay();
-            break;
-          case 'SET_HAZARD':
-            setHazard(msg.hazard || msg.payload);
-            break;
-          case 'CLEAR_HAZARD':
-            clearHazard(msg.id || msg.payload);
-            break;
-          case 'SET_SMOKE_FORECAST':
-            updateSmokeForecast(msg.forecast || msg.payload);
-            break;
-          case 'SET_USERS':
-            updateUserAvatars(msg.users || msg.payload);
-            break;
-          case 'FOCUS_ROOM':
-            focusRoomById(msg.roomId, msg.animate !== false);
-            break;
-          case 'FILTER_CATEGORY':
-            filterRoomsByCategory(msg.category || msg.payload);
-            break;
-          case 'ZOOM_IN':
-            zoomCamera(0.8);
-            break;
-          case 'ZOOM_OUT':
-            zoomCamera(1.25);
-            break;
-          case 'RESET_VIEW':
-            resetCamera();
-            break;
-          case 'SET_THEME':
-            setTheme(msg.theme || msg.payload);
-            break;
-          case 'SET_MODE':
-            setMode(msg.mode || msg.payload);
-            break;
-          case 'CLEAR_ALL':
-            clearAllOverlays();
-            break;
-        }
-      });
+        { id: '211', label: 'Room 211', type: 'office', x0: -14.0, x1: -9.5, z0: -2.3, z1: 2.3 },
+        { id: 'void-1', label: 'Lightwell X1', type: 'void', x0: -9.5, x1: -5.5, z0: -2.3, z1: 2.3 },
+        { id: '210', label: 'Room 210', type: 'office', x0: -5.5, x1: -1.5, z0: -2.3, z1: 2.3 },
+        { id: 'void-2', label: 'Lightwell X2', type: 'void', x0: -1.5, x1: 2.5, z0: -2.3, z1: 2.3 },
+        { id: '212', label: 'Room 212', type: 'office', x0: 2.5, x1: 6.5, z0: -2.3, z1: 2.3 },
+        { id: '209', label: 'Room 209', type: 'office', x0: 8.0, x1: 12.0, z0: -2.3, z1: 2.3 },
+        { id: 'void-3', label: 'Lightwell X3', type: 'void', x0: 12.0, x1: 16.0, z0: -2.3, z1: 2.3 },
+        { id: '213', label: 'Room 213', type: 'office', x0: 16.0, x1: 19.5, z0: -2.3, z1: 2.3 },
+        { id: '208', label: 'Room 208', type: 'office', x0: 19.5, x1: 23.0, z0: -2.3, z1: 2.3 },
 
-      // Signal readiness on load
-      window.addEventListener('load', () => {
-        if (window.parent && window.parent !== window) {
-          window.parent.postMessage({
-            type: 'MAP_READY',
-            rooms: ROOMS_DATA.map(r => ({ id: r.id, label: r.label, type: r.type, x0: r.x0, x1: r.x1, z0: r.z0, z1: r.z1 }))
-          }, '*');
-        }
-      });
+        { id: 'stair-sw', label: 'Stairs SW', type: 'stair', x0: -21.0, x1: -17.5, z0: -11.0, z1: -4.5 },
+        { id: 'wash-sw', label: 'Female Washroom', type: 'washroom', x0: -17.5, x1: -14.0, z0: -11.0, z1: -4.5 },
+        { id: '220', label: 'Room 220', type: 'office', x0: -14.0, x1: -9.5, z0: -11.0, z1: -4.5 },
+        { id: '219', label: 'Room 219', type: 'office', x0: -9.5, x1: -5.0, z0: -11.0, z1: -4.5 },
+        { id: '218', label: 'Room 218', type: 'office', x0: -5.0, x1: -0.5, z0: -11.0, z1: -4.5 },
+        { id: '217', label: 'Room 217', type: 'office', x0: -0.5, x1: 4.0, z0: -11.0, z1: -4.5 },
+        { id: 'stair-sm', label: 'Stairs Mid-S', type: 'stair', x0: 4.0, x1: 7.5, z0: -11.0, z1: -4.5 },
+        { id: '216', label: 'Room 216', type: 'office', x0: 7.5, x1: 12.0, z0: -11.0, z1: -4.5 },
+        { id: '215', label: 'Room 215', type: 'office', x0: 12.0, x1: 16.5, z0: -11.0, z1: -4.5 },
+        { id: '214', label: 'Room 214', type: 'office', x0: 16.5, x1: 21.0, z0: -11.0, z1: -4.5 },
+        { id: 'wash-se', label: 'Male Washroom', type: 'washroom', x0: 21.0, x1: 24.0, z0: -11.0, z1: -4.5 },
+        { id: 'stair-se', label: 'Stairs SE', type: 'stair', x0: 24.0, x1: 27.0, z0: -11.0, z1: -4.5 },
 
-      // Emit on room click
-      function emitRoomSelected(roomData) {
-        const cx = (roomData.x0 + roomData.x1) / 2;
-        const cz = (roomData.z0 + roomData.z1) / 2;
-        if (window.parent && window.parent !== window) {
-          window.parent.postMessage({
-            type: 'ROOM_SELECTED',
-            roomId: roomData.id,
-            label: roomData.label,
-            position: { x: cx, y: cz }
-          }, '*');
-        }
-      }
+        { id: 'balcony', label: 'Circular Balcony', type: 'balcony', x0: -27.0, x1: -21.0, z0: -7.5, z1: 7.5 }
+      ];
 
-      // 7. INTERACTION & RAYCASTING
-      const raycaster = new THREE.Raycaster();
-      const mouse = new THREE.Vector2();
+      // 3. MAIN APP SETUP
+      document.addEventListener('DOMContentLoaded', () => {
+        const container = document.getElementById('canvas-container');
 
-      window.addEventListener('click', e => {
-        mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-        mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-        raycaster.setFromCamera(mouse, camera);
-        const hits = raycaster.intersectObjects(floorMeshes, false);
-        if (hits.length > 0 && hits[0].object.userData && hits[0].object.userData.id) {
-          emitRoomSelected(hits[0].object.userData);
-        } else {
-          const groundHits = raycaster.intersectObject(groundMesh, false);
-          if (groundHits.length > 0 && window.parent && window.parent !== window) {
-            window.parent.postMessage({
-              type: 'USER_CLICKED_MAP',
-              position: { x: groundHits[0].point.x, y: groundHits[0].point.z }
-            }, '*');
-          }
-        }
-      });
+        // Scene
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x081018);
+        scene.fog = new THREE.FogExp2(0x081018, 0.005);
 
-      window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
+        // Camera — positioned to show all 3 floors stacked
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 500);
+        camera.position.set(0, 48, 64);
+
+        // Renderer
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.1;
+        container.appendChild(renderer.domElement);
+
+        // Orbit Controls
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxPolarAngle = Math.PI / 2 - 0.01;
+        controls.minDistance = 5;
+        controls.maxDistance = 180;
+        controls.target.set(0, 6.0, 0);
+
+        // Lighting
+        scene.add(new THREE.AmbientLight(0xffffff, 0.65));
+
+        const mainLight = new THREE.DirectionalLight(0xfff2e0, 0.95);
+        mainLight.position.set(25, 55, 30);
+        mainLight.castShadow = true;
+        mainLight.shadow.mapSize.width = 2048; mainLight.shadow.mapSize.height = 2048;
+        const d = 45;
+        mainLight.shadow.camera.left = -d; mainLight.shadow.camera.right = d;
+        mainLight.shadow.camera.top = d; mainLight.shadow.camera.bottom = -d;
+        scene.add(mainLight);
+
+        const fillLight = new THREE.DirectionalLight(0x4fd1c2, 0.4);
+        fillLight.position.set(-30, 40, -20);
+        scene.add(fillLight);
+
+        const hemiLight = new THREE.HemisphereLight(0xddeeff, 0x182a3a, 0.6);
+        scene.add(hemiLight);
+
+        // Ground Blueprint Grid
+        const gridGroup = new THREE.Group();
+        const groundMesh = new THREE.Mesh(
+          new THREE.PlaneGeometry(180, 180),
+          new THREE.MeshStandardMaterial({ color: 0x060c14, roughness: 0.95 })
+        );
+        groundMesh.rotation.x = -Math.PI / 2; groundMesh.position.y = -0.05; groundMesh.receiveShadow = true;
+        gridGroup.add(groundMesh);
+
+        const gridHelper = new THREE.GridHelper(180, 90, 0xff6b00, 0x142735);
+        gridHelper.position.y = -0.04; gridHelper.material.opacity = 0.35; gridHelper.material.transparent = true;
+        gridGroup.add(gridHelper);
+        scene.add(gridGroup);
+
+        // Shared Materials
+        const wallMaterial = new THREE.MeshPhysicalMaterial({
+          color: 0xbcd6e6, transparent: true, opacity: 0.30, roughness: 0.35, transmission: 0.2, side: THREE.DoubleSide, depthWrite: false
+        });
+        const edgeMaterial = new THREE.LineBasicMaterial({ color: 0xff6b00, transparent: true, opacity: 0.8 });
+
+        // ROOM LABEL CREATOR — canvas-texture sprite floating above each room
+        function createRoomLabel(text, typeName, hexColor) {
+          const canvas = document.createElement('canvas');
+          const scale = 4;
+          canvas.width = 256 * scale; canvas.height = 96 * scale;
+          const ctx = canvas.getContext('2d');
+
+          // Background pill
+          ctx.fillStyle = 'rgba(8, 16, 24, 0.88)';
+          ctx.strokeStyle = hexColor || '#ff6b00';
+          ctx.lineWidth = 3 * scale;
+          ctx.beginPath();
+          ctx.roundRect(10 * scale, 10 * scale, canvas.width - 20 * scale, canvas.height - 20 * scale, 14 * scale);
+          ctx.fill(); ctx.stroke();
+
+          // Main label (room number / name)
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillStyle = '#ffffff';
+          ctx.font = `700 ${28 * scale / 2}px 'IBM Plex Mono', monospace`;
+          ctx.fillText(text, canvas.width / 2, canvas.height / 2 - 8 * scale);
+
+          // Subtitle (category name)
+          ctx.fillStyle = hexColor || '#ff6b00';
+          ctx.font = `500 ${16 * scale / 2}px 'Inter', sans-serif`;
+          ctx.fillText((typeName || '').toUpperCase(), canvas.width / 2, canvas.height / 2 + 18 * scale);
+
+          const texture = new THREE.CanvasTexture(canvas);
+          const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false }));
+          sprite.scale.set(3.4, 1.3, 1);
+          sprite.renderOrder = 999;
+          return sprite;
+        }
+
+        // 4. MULTI-FLOOR BUILDER ENGINE
+        const buildingRootGroup = new THREE.Group(); scene.add(buildingRootGroup);
+
+                const floorMeshes = [];
+        function buildSingleFloorGroup(roomsArray, floorLabel) {
+          const fGroup = new THREE.Group();
+          const corrMat = new THREE.MeshStandardMaterial({ color: 0x2b455e, roughness: 0.5, metalness: 0.15, emissive: 0x0c1a26, emissiveIntensity: 0.8 });
+
+          roomsArray.forEach(room => {
+            if (room.id === 'balcony') {
+              // Semicircular West Circular Balcony (2nd floor only)
+              const radius = 7.5, cx = (room.x0 + room.x1) / 2;
+              const balconyWallH = 1.2;
+              const balconyNode = new THREE.Group(); balconyNode.position.set(cx, 0, 0);
+
+              const shape = new THREE.Shape(); shape.moveTo(0, -radius); shape.absarc(0, 0, radius, -Math.PI / 2, Math.PI / 2, true); shape.lineTo(0, -radius);
+              const floorGeo = new THREE.ShapeGeometry(shape, 64); floorGeo.rotateX(-Math.PI / 2);
+              const balconyFloorMesh = new THREE.Mesh(floorGeo, new THREE.MeshStandardMaterial({ color: ROOM_CATEGORIES.balcony.color, roughness: 0.75 }));
+                            balconyFloorMesh.position.y = 0.06;
+              balconyFloorMesh.userData = room;
+              floorMeshes.push(balconyFloorMesh);
+              balconyNode.add(balconyFloorMesh);
+
+              const curvedWall = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, balconyWallH, 64, 1, true, Math.PI, Math.PI), wallMaterial);
+              curvedWall.position.y = balconyWallH / 2; balconyNode.add(curvedWall);
+              const line = new THREE.LineSegments(new THREE.EdgesGeometry(curvedWall.geometry), edgeMaterial);
+              curvedWall.add(line);
+
+              const wallH = 3.0, t = 0.10;
+              const wallN = new THREE.Mesh(new THREE.BoxGeometry(t, wallH, 6.0), wallMaterial); wallN.position.set(0, wallH / 2, 4.5); balconyNode.add(wallN);
+              const wallS = new THREE.Mesh(new THREE.BoxGeometry(t, wallH, 6.0), wallMaterial); wallS.position.set(0, wallH / 2, -4.5); balconyNode.add(wallS);
+
+              // Label above balcony
+              const cat = ROOM_CATEGORIES.balcony;
+              const label = createRoomLabel(room.label, cat.name, cat.hex);
+              label.position.set(-radius * 0.4, 2.6, 0);
+              balconyNode.add(label);
+
+              fGroup.add(balconyNode);
+              return;
+            }
+
+            const w = room.x1 - room.x0, d = room.z1 - room.z0;
+            const cx = (room.x0 + room.x1) / 2, cz = (room.z0 + room.z1) / 2;
+            const cat = ROOM_CATEGORIES[room.type] || ROOM_CATEGORIES.office;
+
+            const roomNode = new THREE.Group(); roomNode.position.set(cx, 0, cz);
+
+            // Floor mesh
+            const floorMesh = new THREE.Mesh(new THREE.BoxGeometry(w - 0.04, 0.12, d - 0.04), new THREE.MeshStandardMaterial({ color: cat.color, roughness: 0.8 }));
+                        floorMesh.position.y = 0.06; floorMesh.receiveShadow = true;
+            floorMesh.userData = room;
+            floorMeshes.push(floorMesh);
+            roomNode.add(floorMesh);
+
+            // Walls (skip for voids — they get cross-bracing instead)
+            if (room.type !== 'void') {
+              const wallH = 3.0, t = 0.10;
+              const wallN = new THREE.Mesh(new THREE.BoxGeometry(w, wallH, t), wallMaterial); wallN.position.set(0, wallH / 2, d / 2);
+              const wallS = wallN.clone(); wallS.position.z = -d / 2;
+              const wallE = new THREE.Mesh(new THREE.BoxGeometry(t, wallH, d), wallMaterial); wallE.position.set(w / 2, wallH / 2, 0);
+              const wallW = wallE.clone(); wallW.position.x = -w / 2;
+              [wallN, wallS, wallE, wallW].forEach(wMesh => {
+                roomNode.add(wMesh);
+                const line = new THREE.LineSegments(new THREE.EdgesGeometry(wMesh.geometry), edgeMaterial);
+                wMesh.add(line);
+              });
+            } else {
+              // Void cross-bracing
+              const lineMat = new THREE.LineBasicMaterial({ color: 0x8f8ff0 });
+              const cross1 = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-w / 2 + 0.2, 0.15, -d / 2 + 0.2), new THREE.Vector3(w / 2 - 0.2, 0.15, d / 2 - 0.2)]), lineMat);
+              const cross2 = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-w / 2 + 0.2, 0.15, d / 2 - 0.2), new THREE.Vector3(w / 2 - 0.2, 0.15, -d / 2 + 0.2)]), lineMat);
+              roomNode.add(cross1, cross2);
+            }
+
+            // ROOM LABEL — floating above every room
+            const label = createRoomLabel(room.label, cat.name, cat.hex);
+            label.position.set(0, 3.8, 0);
+            roomNode.add(label);
+
+            fGroup.add(roomNode);
+          });
+
+          // Solid corridor base slabs
+          const nSlab = new THREE.Mesh(new THREE.BoxGeometry(49.5, 0.10, 9.5), corrMat); nSlab.position.set(3.75, 0.05, 7.0); nSlab.receiveShadow = true;
+          const sSlab = new THREE.Mesh(new THREE.BoxGeometry(49.5, 0.10, 9.5), corrMat); sSlab.position.set(3.75, 0.05, -7.0); sSlab.receiveShadow = true;
+          const wSlab = new THREE.Mesh(new THREE.BoxGeometry(7.0, 0.10, 9.5), corrMat); wSlab.position.set(-17.5, 0.05, 0.0); wSlab.receiveShadow = true;
+          const mSlab = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.10, 9.5), corrMat); mSlab.position.set(7.25, 0.05, 0.0); mSlab.receiveShadow = true;
+          const eSlab = new THREE.Mesh(new THREE.BoxGeometry(8.5, 0.10, 9.5), corrMat); eSlab.position.set(24.25, 0.05, 0.0); eSlab.receiveShadow = true;
+          fGroup.add(nSlab, sSlab, wSlab, mSlab, eSlab);
+
+          // Floor identifier label (big floating sign)
+          const floorSign = createRoomLabel(floorLabel, 'Floor Level', '#ff6b00');
+          floorSign.position.set(-32, 1.5, -14);
+          floorSign.scale.set(6, 2.3, 1);
+          fGroup.add(floorSign);
+
+          // Furniture Subgroup
+          const fg = new THREE.Group();
+          const woodMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.6 });
+          const chairMat = new THREE.MeshStandardMaterial({ color: 0x1e272e });
+          const porcelainMat = new THREE.MeshStandardMaterial({ color: 0xf5f6fa, roughness: 0.1 });
+          const stallMat = new THREE.MeshStandardMaterial({ color: 0x718093, roughness: 0.5 });
+
+          roomsArray.forEach(room => {
+            if (room.type === 'void' || room.type === 'balcony') return;
+            const w = room.x1 - room.x0, d = room.z1 - room.z0;
+            const cx = (room.x0 + room.x1) / 2, cz = (room.z0 + room.z1) / 2;
+            const g = new THREE.Group(); g.position.set(cx, 0, cz);
+
+            if (room.type === 'auditorium') {
+              const matTier = new THREE.MeshStandardMaterial({ color: 0xc0392b });
+              const matSeat = new THREE.MeshStandardMaterial({ color: 0x2c3e50 });
+              for (let tier = 0; tier < 7; tier++) {
+                const stepZ = -d / 2.5 + tier * (d / 8);
+                const stepH = 0.2 + tier * 0.16;
+                const plat = new THREE.Mesh(new THREE.BoxGeometry(w - 1.2, stepH, d / 8.5), matTier); plat.position.set(0, stepH / 2, stepZ); g.add(plat);
+                for (let s = 0; s < 8; s++) {
+                  const chair = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.45, 0.42), matSeat);
+                  chair.position.set(-w / 2.6 + s * (w / 8.5), stepH + 0.22, stepZ); g.add(chair);
+                }
+              }
+              const stage = new THREE.Mesh(new THREE.BoxGeometry(w - 2.0, 0.35, 1.4), new THREE.MeshStandardMaterial({ color: 0x7f8c8d }));
+              stage.position.set(0, 0.175, d / 2 - 0.9); g.add(stage);
+            } else if (room.type === 'mess' || room.type === 'library') {
+              const matTable = new THREE.MeshStandardMaterial({ color: 0x27ae60 });
+              const matChair = new THREE.MeshStandardMaterial({ color: 0xf39c12 });
+              const cols = Math.max(Math.floor(w / 2.2), 3);
+              const rows = Math.max(Math.floor(d / 1.8), 2);
+              for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                  const tx = -w / 2 + 1.2 + c * 2.2, tz = -d / 2 + 1.0 + r * 1.8;
+                  const table = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.72, 16), matTable); table.position.set(tx, 0.36, tz); g.add(table);
+                  [[-0.65,0],[0.65,0],[0,-0.65],[0,0.65]].forEach(off => {
+                    const chair = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.42, 0.35), matChair); chair.position.set(tx + off[0], 0.21, tz + off[1]); g.add(chair);
+                  });
+                }
+              }
+            } else if (room.type === 'office' || room.type === 'conference') {
+              const cols = Math.max(Math.floor((w - 1.2) / 1.5), 1);
+              for (let r = 0; r < 3; r++) {
+                for (let c = 0; c < cols; c++) {
+                  const desk = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.06, 0.6), woodMat);
+                  desk.position.set(-((cols - 1) * 1.5) / 2 + c * 1.5, 0.72, -d * 0.1 + r * 1.1); g.add(desk);
+                  [-0.3, 0.3].forEach(cxOffset => {
+                    const chair = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.04, 0.4), chairMat);
+                    chair.position.set(-((cols - 1) * 1.5) / 2 + c * 1.5 + cxOffset, 0.42, -d * 0.1 + r * 1.1 + 0.45); g.add(chair);
+                  });
+                }
+              }
+              const pod = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.05, 0.6), woodMat);
+              pod.position.set(-w * 0.25, 0.525, -d * 0.3); g.add(pod);
+            } else if (room.type === 'washroom') {
+              const isMale = room.label.toLowerCase().includes('male');
+              const numStalls = Math.min(Math.floor((w - 0.6) / 1.0), 4);
+              for (let i = 0; i < numStalls; i++) {
+                const sx = -w / 2 + 0.7 + i * 1.0;
+                const part = new THREE.Mesh(new THREE.BoxGeometry(0.04, 2.0, 1.4), stallMat); part.position.set(sx + 0.5, 1.0, -d / 2 + 0.8); g.add(part);
+                const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.18, 0.4, 16), porcelainMat); bowl.position.set(sx, 0.25, -d / 2 + 0.5); g.add(bowl);
+                const tank = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.45, 0.2), porcelainMat); tank.position.set(sx, 0.5, -d / 2 + 0.18); g.add(tank);
+              }
+              const counter = new THREE.Mesh(new THREE.BoxGeometry(w * 0.65, 0.1, 0.5), stallMat); counter.position.set(0, 0.8, d / 2 - 0.4); g.add(counter);
+              for (let s = 0; s < 3; s++) {
+                const sink = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.15, 0.12, 16), porcelainMat); sink.position.set(-w * 0.22 + s * (w * 0.22), 0.82, d / 2 - 0.4); g.add(sink);
+              }
+              if (isMale) {
+                for (let u = 0; u < 3; u++) {
+                  const ur = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.5, 0.2), porcelainMat); ur.position.set(-w / 2 + 0.2, 0.9, -d * 0.1 + u * 0.9); g.add(ur);
+                }
+              }
+            }
+            fg.add(g);
+          });
+          fGroup.add(fg);
+          return fGroup;
+        }
+
+        // Build all 3 floor groups
+        const groundGroup = buildSingleFloorGroup(GROUND_FLOOR_DATA, 'GROUND FLOOR');
+        const floor1Group = buildSingleFloorGroup(FIRST_FLOOR_DATA, 'FIRST FLOOR');
+        const floor2Group = buildSingleFloorGroup(SECOND_FLOOR_DATA, 'SECOND FLOOR');
+
+        // Stack vertically: Ground at Y=0, 1st at Y=6, 2nd at Y=12
+        groundGroup.position.set(0, 0.0, 0);
+        floor1Group.position.set(0, 6.0, 0);
+        floor2Group.position.set(0, 12.0, 0);
+
+        buildingRootGroup.add(groundGroup, floor1Group, floor2Group);
+
+        // 5. INTER-FLOOR SCISSOR STAIRS & ELEVATOR TOWERS
+        const verticalConnectorsGroup = new THREE.Group();
+        const glassShaftMat = new THREE.MeshPhysicalMaterial({ color: 0xdff9fb, transparent: true, opacity: 0.35, transmission: 0.85, roughness: 0.1 });
+        const metalCoreMat = new THREE.MeshStandardMaterial({ color: 0xdcdde1, metalness: 0.8, roughness: 0.2 });
+        const stairStepMat = new THREE.MeshStandardMaterial({ color: 0xe67e22, roughness: 0.4 });
+        const landingMat = new THREE.MeshStandardMaterial({ color: 0x34495e, roughness: 0.5 });
+        const columnMat = new THREE.MeshStandardMaterial({ color: 0x7f8c8d });
+
+        function createScissorStair(cx, cz, yStart, yEnd) {
+          const stairGroup = new THREE.Group();
+          const midY = (yStart + yEnd) / 2;
+          const numSteps = 12;
+          const stepDepth = 0.30, stepWidth = 1.1, stepHeight = (midY - yStart) / numSteps;
+
+          for (let i = 0; i < numSteps; i++) {
+            const step = new THREE.Mesh(new THREE.BoxGeometry(stepWidth, 0.16, stepDepth), stairStepMat);
+            step.position.set(cx - 0.65, yStart + (i + 1) * stepHeight, cz - 2.0 + i * (3.8 / numSteps));
+            stairGroup.add(step);
+          }
+
+          const landing = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.20, 1.2), landingMat);
+          landing.position.set(cx, midY, cz + 2.1);
+          stairGroup.add(landing);
+
+          for (let i = 0; i < numSteps; i++) {
+            const step = new THREE.Mesh(new THREE.BoxGeometry(stepWidth, 0.16, stepDepth), stairStepMat);
+            step.position.set(cx + 0.65, midY + (i + 1) * stepHeight, cz + 1.8 - i * (3.8 / numSteps));
+            stairGroup.add(step);
+          }
+
+          const topLanding = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.20, 1.2), landingMat);
+          topLanding.position.set(cx, yEnd, cz - 2.1);
+          stairGroup.add(topLanding);
+
+          const railLeft = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 4.6, 12), metalCoreMat);
+          railLeft.rotation.x = Math.PI / 6; railLeft.position.set(cx - 1.2, (yStart + midY) / 2 + 0.4, cz - 0.1);
+          const railRight = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 4.6, 12), metalCoreMat);
+          railRight.rotation.x = -Math.PI / 6; railRight.position.set(cx + 1.2, (midY + yEnd) / 2 + 0.4, cz - 0.1);
+          stairGroup.add(railLeft, railRight);
+
+          return stairGroup;
+        }
+
+        // 6 dedicated stair/lift core positions
+        const corePositions = [
+          { x: -19.25, z: 7.75 },
+          { x: -19.25, z: -7.75 },
+          { x: 5.75, z: 7.75 },
+          { x: 5.75, z: -7.75 },
+          { x: 25.5, z: 7.75 },
+          { x: 25.5, z: -7.75 }
+        ];
+
+        corePositions.forEach(pos => {
+          verticalConnectorsGroup.add(createScissorStair(pos.x, pos.z, 0.0, 6.0));
+          verticalConnectorsGroup.add(createScissorStair(pos.x, pos.z, 6.0, 12.0));
+
+          const shaft = new THREE.Mesh(new THREE.BoxGeometry(1.6, 14.0, 1.6), glassShaftMat);
+          shaft.position.set(pos.x + 0.8, 6.0, pos.z);
+          verticalConnectorsGroup.add(shaft);
+
+          [-1.2, 1.2].forEach(dx => {
+            [-1.2, 1.2].forEach(dz => {
+              const col = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.10, 14.0, 12), columnMat);
+              col.position.set(pos.x + dx, 6.0, pos.z + dz);
+              verticalConnectorsGroup.add(col);
+            });
+          });
+        });
+
+        buildingRootGroup.add(verticalConnectorsGroup);
+
+        // Window Resize Handler
+        window.addEventListener('resize', () => {
+          camera.aspect = window.innerWidth / window.innerHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        
+        // --- ROUTEGUARD ADAPTER & POSTMESSAGE HANDSHAKE ---
+        const userBeaconGroup = new THREE.Group();
+        const pinMat = new THREE.MeshStandardMaterial({ color: 0x007aff, roughness: 0.3, metalness: 0.1 });
+        const pinHeadMat = new THREE.MeshStandardMaterial({ color: 0x00c7ff, roughness: 0.2, emissive: 0x004488, emissiveIntensity: 0.6 });
+        const pinMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.02, 1.2, 16), pinMat);
+        pinMesh.position.y = 0.6;
+        const pinHeadMesh = new THREE.Mesh(new THREE.SphereGeometry(0.42, 24, 24), pinHeadMat);
+        pinHeadMesh.position.y = 1.2;
+        const ringGeo = new THREE.RingGeometry(0.5, 0.9, 32);
+        ringGeo.rotateX(-Math.PI / 2);
+        const ringMat = new THREE.MeshBasicMaterial({ color: 0x007aff, transparent: true, opacity: 0.75, side: THREE.DoubleSide });
+        const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+        ringMesh.position.y = 0.08;
+        userBeaconGroup.add(pinMesh, pinHeadMesh, ringMesh);
+        userBeaconGroup.position.set(0, 12.0, 0); // 2nd floor height
+        userBeaconGroup.visible = false;
+        scene.add(userBeaconGroup);
+
+        function updatePositionMarker(pos) {
+          if (!pos || typeof pos.x !== 'number' || typeof pos.y !== 'number') return;
+          userBeaconGroup.position.set(pos.x, 12.0, pos.y);
+          userBeaconGroup.visible = true;
+        }
+
+        let isAnimating = false;
+        let animStartTime = 0;
+        const animDuration = 800;
+        const startCamPos = new THREE.Vector3();
+        const endCamPos = new THREE.Vector3();
+        const startTarget = new THREE.Vector3();
+        const endTarget = new THREE.Vector3();
+
+        function transitionTo(targetPos, targetLook) {
+          startCamPos.copy(camera.position);
+          endCamPos.copy(targetPos);
+          startTarget.copy(controls.target);
+          endTarget.copy(targetLook);
+          animStartTime = performance.now();
+          isAnimating = true;
+        }
+
+        function zoomCamera(factor) {
+          const offset = new THREE.Vector3().subVectors(camera.position, controls.target);
+          offset.multiplyScalar(factor);
+          transitionTo(new THREE.Vector3().addVectors(controls.target, offset), controls.target);
+        }
+
+        function resetCamera() {
+          transitionTo(new THREE.Vector3(0, 48, 64), new THREE.Vector3(0, 6.0, 0));
+        }
+
+        function focusRoomById(roomId) {
+          const allRooms = [...GROUND_FLOOR_DATA, ...FIRST_FLOOR_DATA, ...SECOND_FLOOR_DATA];
+          const r = allRooms.find(rm => rm.id === roomId);
+          if (!r) return;
+          const cx = (r.x0 + r.x1) / 2;
+          const cz = (r.z0 + r.z1) / 2;
+          const y = SECOND_FLOOR_DATA.some(s => s.id === roomId) ? 12 : (FIRST_FLOOR_DATA.some(f => f.id === roomId) ? 6 : 0);
+          transitionTo(new THREE.Vector3(cx, y + 16, cz + 20), new THREE.Vector3(cx, y, cz));
+        }
+
+        // PostMessage API for parent PWA container
+        window.addEventListener('message', (event) => {
+          const msg = event.data;
+          if (!msg || typeof msg !== 'object') return;
+
+          switch (msg.type) {
+            case 'PING':
+              if (window.parent && window.parent !== window) {
+                window.parent.postMessage({ type: 'MAP_READY' }, '*');
+              }
+              break;
+            case 'SET_POSITION':
+              updatePositionMarker(msg.position || msg.payload);
+              break;
+            case 'ZOOM_IN':
+              zoomCamera(0.8);
+              break;
+            case 'ZOOM_OUT':
+              zoomCamera(1.25);
+              break;
+            case 'RESET_VIEW':
+              resetCamera();
+              break;
+            case 'FOCUS_ROOM':
+              focusRoomById(msg.roomId);
+              break;
+          }
+        });
+
+        // Instant & Load MAP_READY notification
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({ type: 'MAP_READY' }, '*');
+        }
+        window.addEventListener('load', () => {
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage({ type: 'MAP_READY' }, '*');
+          }
+        });
+
+        // Click raycasting
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        window.addEventListener('click', (e) => {
+          mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+          mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+          raycaster.setFromCamera(mouse, camera);
+
+          const hits = raycaster.intersectObjects(floorMeshes, false);
+          if (hits.length > 0 && hits[0].object.userData && hits[0].object.userData.id) {
+            const r = hits[0].object.userData;
+            if (window.parent && window.parent !== window) {
+              window.parent.postMessage({
+                type: 'ROOM_SELECTED',
+                roomId: r.id,
+                label: r.label,
+                position: { x: (r.x0 + r.x1) / 2, y: (r.z0 + r.z1) / 2 }
+              }, '*');
+            }
+          } else {
+            const groundHits = raycaster.intersectObject(groundMesh, false);
+            if (groundHits.length > 0 && window.parent && window.parent !== window) {
+              window.parent.postMessage({
+                type: 'USER_CLICKED_MAP',
+                position: { x: groundHits[0].point.x, y: groundHits[0].point.z }
+              }, '*');
+            }
+          }
+        });
+
+        // Render Loop
+        function animate() {
+          requestAnimationFrame(animate);
+          if (isAnimating) {
+            const elapsed = performance.now() - animStartTime;
+            let progress = Math.min(elapsed / animDuration, 1.0);
+            progress = 1 - Math.pow(1 - progress, 3);
+            camera.position.lerpVectors(startCamPos, endCamPos, progress);
+            controls.target.lerpVectors(startTarget, endTarget, progress);
+            if (progress >= 1.0) isAnimating = false;
+          }
+          if (userBeaconGroup && userBeaconGroup.visible) {
+            const t = performance.now() * 0.004;
+            pinMesh.position.y = 1.0 + Math.sin(t * 3) * 0.2;
+            pinHeadMesh.position.y = 1.6 + Math.sin(t * 3) * 0.2;
+            const s = 1.0 + (Math.sin(t * 4) * 0.5 + 0.5) * 1.5;
+            ringMesh.scale.set(s, s, s);
+            ringMat.opacity = Math.max(0.1, 1.0 - (s - 1.0) / 1.5);
+          }
+          controls.update();
+          renderer.render(scene, camera);
+        }
+        animate();
       });
-
-      // 8. RENDER LOOP
-      function animate() {
-        requestAnimationFrame(animate);
-        if (isAnimating) {
-          const elapsed = performance.now() - animStartTime;
-          let progress = Math.min(elapsed / animDuration, 1.0);
-          progress = 1 - Math.pow(1 - progress, 3);
-          camera.position.lerpVectors(startCamPos, endCamPos, progress);
-          controls.target.lerpVectors(startTarget, endTarget, progress);
-          if (progress >= 1.0) isAnimating = false;
-        }
-
-        if (userBeaconGroup.visible) {
-          const t = performance.now() * 0.003;
-          pinMesh.position.y = 1.8 + Math.sin(t * 3) * 0.22;
-          pinHeadMesh.position.y = 2.4 + Math.sin(t * 3) * 0.22;
-          const s = 1.0 + (Math.sin(t * 4) * 0.5 + 0.5) * 1.8;
-          ringMesh.scale.set(s, s, s);
-          ringMat.opacity = Math.max(0.1, 1.0 - (s - 1.0) / 1.8);
-        }
-
-        controls.update();
-        renderer.render(scene, camera);
-      }
-      animate();
     })();
   </script>
 </body>

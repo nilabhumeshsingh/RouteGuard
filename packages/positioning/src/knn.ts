@@ -7,6 +7,8 @@ export interface SurveyFingerprint {
   y: number;
   floorId: string;
   bssids: Record<string, number>;
+  type?: string;
+  visible?: boolean;
 }
 
 export function estimatePositionWeightedKnn(
@@ -112,6 +114,8 @@ export function estimatePositionWeightedKnn(
     source: "wifi",
     quality,
     nearestPlaceName: topK[0].fp.location,
+    type: topK[0].fp.type,
+    visible: topK[0].fp.visible,
     timestamp: Date.now()
   };
 }

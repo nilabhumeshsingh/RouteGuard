@@ -27,6 +27,11 @@ export const PositionEstimateSchema = z.object({
   quality: PositionQualitySchema,
   nearestNodeId: z.string().optional(),
   nearestPlaceName: z.string().optional(),
+  label: z.string().optional(),
+  type: z.string().optional(),
+  visible: z.boolean().optional(),
+  anchorsUsed: z.number().optional(),
+  uncertaintyMeters: z.number().optional(),
   timestamp: z.number().int().nonnegative()
 });
 export type PositionEstimate = z.infer<typeof PositionEstimateSchema>;

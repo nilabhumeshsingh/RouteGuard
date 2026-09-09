@@ -39,6 +39,8 @@ export async function getFingerprints(): Promise<SurveyFingerprint[]> {
               x: Number(doc.x) || 0,
               y: Number(doc.y) || 0,
               floorId: doc.floorId || "floor-2",
+              type: doc.type,
+              visible: doc.visible,
               bssids
             };
           }
@@ -48,6 +50,8 @@ export async function getFingerprints(): Promise<SurveyFingerprint[]> {
             x: Number(doc.x) || 0,
             y: Number(doc.y) || 0,
             floorId: doc.floorId || "floor-2",
+            type: doc.type,
+            visible: doc.visible,
             bssids: (doc.bssids as Record<string, number>) || {}
           };
         });
@@ -59,12 +63,14 @@ export async function getFingerprints(): Promise<SurveyFingerprint[]> {
 
   // Graceful fallback to static surveyed fingerprints
   const sample = loadSampleFingerprints();
-  return sample.map((s) => ({
-    location: s.location,
+  return sample.map((s: any) => ({
+    location: s.location || s.label || "Room",
     x: s.x,
     y: s.y,
     floorId: s.floorId || "floor-2",
-    bssids: s.bssids
+    type: s.type,
+    visible: s.visible,
+    bssids: s.bssids || {}
   }));
 }
 

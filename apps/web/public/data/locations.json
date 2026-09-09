@@ -1,0 +1,66 @@
+{
+  "_description": "Location → floorplan coordinate mapping for BSSID fingerprint matching. BETWEEN corridors are invisible waypoints (no 3D label) — they exist only so KNN can snap scans to corridor positions.",
+  "_coordinate_system": "Local meters from building origin. X = east-west (negative=west, positive=east). Y (in 3D) = floor height (0=ground, 6=1st, 12=2nd). Z = north-south (positive=north, negative=south).",
+  "_floor": "second_floor (Y=12 in 3D model, but KNN works in 2D x/z plane)",
+
+  "locations": {
+    "AB1 Room 204":                  { "x":   1.75, "y":   7.25, "label": "Room 204",                "type": "office",    "visible": true  },
+
+    "201":                           { "x": -11.75, "y":   7.25, "label": "Room 201",                "type": "office",    "visible": true  },
+    "201 B":                         { "x": -11.75, "y":   5.50, "label": "Room 201 (corridor)",      "type": "corridor",  "visible": false },
+    "BOYS WASHROOM NEAR 201":        { "x": -15.75, "y":   7.25, "label": "Male Washroom NW",         "type": "washroom",  "visible": true  },
+
+    "206":                           { "x":  14.25, "y":   7.25, "label": "Room 206",                "type": "office",    "visible": true  },
+    "206B":                          { "x":  14.25, "y":   5.50, "label": "Room 206 (corridor)",       "type": "corridor",  "visible": false },
+    "207":                           { "x":  18.75, "y":   7.25, "label": "Room 207",                "type": "office",    "visible": true  },
+    "207B":                          { "x":  18.75, "y":   5.50, "label": "Room 207 (corridor)",       "type": "corridor",  "visible": false },
+    "208":                           { "x":  21.25, "y":   0.00, "label": "Room 208",                "type": "office",    "visible": true  },
+    "HALL NEAR 208 CORNER":          { "x":  21.25, "y":   1.50, "label": "Hall near 208",            "type": "corridor",  "visible": false },
+    "GIRL WASHROOM IN FRONT OF 208": { "x":  22.50, "y":   2.50, "label": "Female Washroom NE",       "type": "washroom",  "visible": true  },
+
+    "209":                           { "x":  10.00, "y":   0.00, "label": "Room 209",                "type": "office",    "visible": true  },
+    "209 B":                         { "x":  10.00, "y":  -1.50, "label": "Room 209 (corridor)",       "type": "corridor",  "visible": false },
+    "210":                           { "x":  -3.50, "y":   0.00, "label": "Room 210",                "type": "office",    "visible": true  },
+    "210 B":                         { "x":  -3.50, "y":  -1.50, "label": "Room 210 (corridor)",       "type": "corridor",  "visible": false },
+    "211":                           { "x": -11.75, "y":   0.00, "label": "Room 211",                "type": "office",    "visible": true  },
+    "211 B":                         { "x": -11.75, "y":  -1.50, "label": "Room 211 (corridor)",       "type": "corridor",  "visible": false },
+    "212":                           { "x":   4.50, "y":   0.00, "label": "Room 212",                "type": "office",    "visible": true  },
+    "GIRLS WASHROOM IN FRONT OF 211": { "x": -15.75, "y":  -1.50, "label": "Female Washroom SW",      "type": "washroom",  "visible": true  },
+
+    "BETWEEN 211-210":               { "x":  -7.50, "y":   0.00, "label": "Corridor 211-210",         "type": "corridor",  "visible": false },
+    "BETWEEN 210-211 B":             { "x":  -7.50, "y":  -1.50, "label": "Corridor 210-211 B",       "type": "corridor",  "visible": false },
+    "BETWEEN 210-212":               { "x":   0.50, "y":   0.00, "label": "Corridor 210-212",         "type": "corridor",  "visible": false },
+    "BETWEEN 210-212 B":             { "x":   0.50, "y":  -1.50, "label": "Corridor 210-212 B",       "type": "corridor",  "visible": false },
+    "BETWEEN 212-209":               { "x":   7.25, "y":   0.00, "label": "Corridor 212-209",         "type": "corridor",  "visible": false },
+    "BETWEEN 212-209 B":             { "x":   7.25, "y":  -1.50, "label": "Corridor 212-209 B",       "type": "corridor",  "visible": false },
+
+    "214":                           { "x":  18.75, "y":  -7.25, "label": "Room 214",                "type": "office",    "visible": true  },
+    "214 B":                         { "x":  18.75, "y":  -5.50, "label": "Room 214 (corridor)",       "type": "corridor",  "visible": false },
+    "215":                           { "x":  14.25, "y":  -7.25, "label": "Room 215",                "type": "office",    "visible": true  },
+    "215 B":                         { "x":  14.25, "y":  -5.50, "label": "Room 215 (corridor)",       "type": "corridor",  "visible": false },
+    "WASHROOM NEAR 214":             { "x":  22.50, "y":  -7.25, "label": "Male Washroom SE",         "type": "washroom",  "visible": true  },
+    "217":                           { "x":   1.75, "y":  -7.25, "label": "Room 217",                "type": "office",    "visible": true  },
+    "217 B":                         { "x":   1.75, "y":  -5.50, "label": "Room 217 (corridor)",       "type": "corridor",  "visible": false },
+    "218":                           { "x":  -2.75, "y":  -7.25, "label": "Room 218",                "type": "office",    "visible": true  },
+    "218 B":                         { "x":  -2.75, "y":  -5.50, "label": "Room 218 (corridor)",       "type": "corridor",  "visible": false },
+    "219":                           { "x":  -7.25, "y":  -7.25, "label": "Room 219",                "type": "office",    "visible": true  },
+    "219a":                          { "x":  -7.25, "y":  -6.00, "label": "Room 219 (entrance)",       "type": "corridor",  "visible": false },
+    "219c":                          { "x":  -7.25, "y":  -8.50, "label": "Room 219 (back)",            "type": "corridor",  "visible": false },
+    "room 219":                      { "x":  -7.25, "y":  -7.25, "label": "Room 219",                "type": "office",    "visible": true  },
+    "220":                           { "x": -11.75, "y":  -7.25, "label": "Room 220",                "type": "office",    "visible": true  },
+    "220 B":                         { "x": -11.75, "y":  -5.50, "label": "Room 220 (corridor)",       "type": "corridor",  "visible": false },
+    "ELEVATOR - STAIRCASE AREA":     { "x":   5.75, "y":  -7.25, "label": "Stair Mid-South",           "type": "stair",     "visible": true  },
+    "IN FRONT OF BALCONY":           { "x": -21.00, "y":   0.00, "label": "Balcony Entrance",          "type": "corridor",  "visible": false },
+    "IN CIRCULAR BALCONY":           { "x": -24.00, "y":   0.00, "label": "Circular Balcony",           "type": "balcony",   "visible": true  },
+    "IN CIRCULAR BALCONY B":         { "x": -24.00, "y":  -1.50, "label": "Circular Balcony B",        "type": "balcony",   "visible": false }
+  },
+
+  "stats": {
+    "total_locations": 44,
+    "visible_rooms": 25,
+    "invisible_corridors": 19,
+    "between_corridors": 6,
+    "corridor_b_variants": 5,
+    "floor": "second_floor"
+  }
+}

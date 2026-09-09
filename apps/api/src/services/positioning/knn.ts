@@ -2,6 +2,8 @@ export interface Fingerprint {
   x: number;
   y: number;
   label: string;
+  type?: string;
+  visible?: boolean;
   aps: { bssid: string; rssi: number }[];
 }
 
@@ -17,8 +19,10 @@ export interface PositionEstimate {
   x: number;
   y: number;
   confidence: number;
-  source: 'wifi' | 'manual' | 'replay';
+  source: 'wifi' | 'manual' | 'replay' | 'no_fingerprints';
   label?: string;
+  type?: string;
+  visible?: boolean;
   anchorsUsed: number;
   uncertaintyMeters?: number;
 }
@@ -101,6 +105,8 @@ export function runKNN(scanAps: APReading[], fingerprints: Fingerprint[]): Posit
     confidence,
     source: 'wifi',
     label: distances[0].fp.label,
+    type: distances[0].fp.type,
+    visible: distances[0].fp.visible,
     anchorsUsed: bestOverlap,
     uncertaintyMeters: uncertainty
   };
