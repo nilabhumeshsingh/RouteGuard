@@ -21,8 +21,10 @@ import {
   sendGeofenceAlertNotification,
   playWarningChime,
   triggerHapticPulse,
-  requestNotificationPermission
+  requestNotificationPermission,
+  haversineDistanceMeters
 } from "./services/webNotificationService";
+import { indoorToLatLng } from "./components/map/GoogleMapAdapter";
 import {
   calculateRouteTradeOffs,
   calculateEvacuationRoute,
@@ -118,6 +120,7 @@ export const App: React.FC = () => {
 
   // Parental Geofence State
   const [isParentalModalOpen, setIsParentalModalOpen] = useState(false);
+  const [isGeofencePickMode, setIsGeofencePickMode] = useState<boolean>(false);
   const [parentalState, setParentalState] = useState<ParentalModeState>({
     isActive: false,
     selectedZone: PREDEFINED_GEOFENCE_ZONES[0],
@@ -129,16 +132,36 @@ export const App: React.FC = () => {
     breachMessage: null
   });
 
-  // Parental Geofence Real-time Monitoring & Web Notification Dispatcher
+  // Parental Geofence Real-time Monitoring & Web Notification Dispatcher (Haversine + Indoor Dual Engine)
   useEffect(() => {
     if (!parentalState.isActive || !guardianState.isPaired || !guardianState.childPosition) {
       return;
     }
 
-    const { x, y } = guardianState.childPosition;
-    const { center, svgRadius, name } = parentalState.selectedZone;
-    const dist = Math.hypot(x - center.x, y - center.y);
-    const isOutside = dist > svgRadius;
+    const { x, y, lat: childLat, lng: childLng } = guardianState.childPosition;
+    const { center, svgRadius, radiusMeters, geoCenter, name } = parentalState.selectedZone;
+
+    let isOutside = false;
+
+    if (geoCenter) {
+      // Precise real-world distance via Haversine formula on Google Maps
+      const childGeo =
+        childLat != null && childLng != null
+          ? { lat: childLat, lng: childLng }
+          : indoorToLatLng(x, y);
+
+      const distanceMeters = haversineDistanceMeters(
+        childGeo.lat,
+        childGeo.lng,
+        geoCenter.lat,
+        geoCenter.lng
+      );
+      isOutside = distanceMeters > radiusMeters;
+    } else {
+      // 2D architectural blueprint Euclidean boundary
+      const dist = Math.hypot(x - center.x, y - center.y);
+      isOutside = dist > svgRadius;
+    }
 
     if (isOutside && !parentalState.isBreached) {
       const message = `${guardianState.childName} has left ${name}! Current position: ${guardianState.childPosition.placeName}.`;
@@ -197,27 +220,112 @@ export const App: React.FC = () => {
     }));
   }, []);
 
-  const handleSimulateChildBreach = useCallback(() => {
-    setGuardianState((prev) => ({
+  const handleStartPickOnGoogleMaps = useCallback(() => {
+    setIsParentalModalOpen(false);
+    setViewMode("Google");
+    setIsGeofencePickMode(true);
+    setParentalState((prev) => ({
       ...prev,
-      childPosition: {
-        x: 120,
-        y: 240,
-        floorId: "floor-2",
-        placeName: "West Balcony (Deserted Terrace)"
-      }
+      isActive: true
     }));
+    requestNotificationPermission();
   }, []);
 
+  const handlePickGeofenceLocation = useCallback(
+    (latLng: { lat: number; lng: number }) => {
+      const currentRadius = parentalState.selectedZone.radiusMeters || 45;
+      const newZone: GeofenceZoneConfig = {
+        id: `zone-gmap-${Date.now()}`,
+        name: `Campus Pin (${latLng.lat.toFixed(4)}, ${latLng.lng.toFixed(4)})`,
+        floorId: "floor-2",
+        center: { x: 540, y: 242.5 },
+        geoCenter: latLng,
+        radiusMeters: currentRadius,
+        svgRadius: Math.round(currentRadius * 3.2),
+        isGoogleMapGeofence: true
+      };
+
+      setParentalState((prev) => ({
+        ...prev,
+        isActive: true,
+        selectedZone: newZone,
+        isBreached: false
+      }));
+
+      // Reposition child within the newly chosen geofence location
+      setGuardianState((prev) => ({
+        ...prev,
+        childPosition: {
+          x: 540,
+          y: 242.5,
+          lat: latLng.lat,
+          lng: latLng.lng,
+          floorId: "floor-2",
+          placeName: newZone.name
+        },
+        inSafeZone: true,
+        geofenceWarning: null
+      }));
+    },
+    [parentalState.selectedZone.radiusMeters]
+  );
+
+  const handleGeofenceChange = useCallback(
+    (newCenter: { lat: number; lng: number }, newRadius: number) => {
+      setParentalState((prev) => ({
+        ...prev,
+        selectedZone: {
+          ...prev.selectedZone,
+          geoCenter: newCenter,
+          radiusMeters: newRadius,
+          svgRadius: Math.round(newRadius * 3.2),
+          name: prev.selectedZone.isGoogleMapGeofence
+            ? `Campus Zone (${newCenter.lat.toFixed(4)}, ${newCenter.lng.toFixed(4)})`
+            : prev.selectedZone.name
+        }
+      }));
+    },
+    []
+  );
+
+  const handleSimulateChildBreach = useCallback(() => {
+    if (parentalState.selectedZone.geoCenter) {
+      const { lat, lng } = parentalState.selectedZone.geoCenter;
+      setGuardianState((prev) => ({
+        ...prev,
+        childPosition: {
+          x: 120,
+          y: 240,
+          lat: lat + 0.0018,
+          lng: lng - 0.0018,
+          floorId: "floor-2",
+          placeName: "Campus Grounds (Beyond Designated Perimeter)"
+        }
+      }));
+    } else {
+      setGuardianState((prev) => ({
+        ...prev,
+        childPosition: {
+          x: 120,
+          y: 240,
+          floorId: "floor-2",
+          placeName: "West Balcony (Deserted Terrace)"
+        }
+      }));
+    }
+  }, [parentalState.selectedZone]);
+
   const handleSimulateChildReturn = useCallback(() => {
-    const center = parentalState.selectedZone.center;
+    const { center, geoCenter, name } = parentalState.selectedZone;
     setGuardianState((prev) => ({
       ...prev,
       childPosition: {
         x: center.x,
         y: center.y,
+        lat: geoCenter?.lat,
+        lng: geoCenter?.lng,
         floorId: "floor-2",
-        placeName: parentalState.selectedZone.name
+        placeName: name
       }
     }));
     setParentalState((prev) => ({
@@ -1029,6 +1137,25 @@ export const App: React.FC = () => {
         </div>
       )}
 
+      {/* 2c. Google Maps Geofence Placement Mode Top Floating Banner */}
+      {isGeofencePickMode && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-[#1d1d1f]/95 text-white px-5 py-3 rounded-2xl shadow-2xl backdrop-blur-xl border border-white/20 flex items-center gap-4 animate-in fade-in slide-in-from-top-4 duration-200 max-w-lg w-[92%] sm:w-auto">
+          <div className="w-9 h-9 rounded-full bg-[#1A73E8] flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined text-white text-lg">touch_app</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] font-bold leading-tight">Tap Anywhere on Google Maps</p>
+            <p className="text-[11px] text-white/70">Click to place geofence center, or drag the circle to adjust</p>
+          </div>
+          <button
+            onClick={() => setIsGeofencePickMode(false)}
+            className="px-3.5 py-1.5 rounded-full bg-[#0066CC] hover:bg-[#0071E3] text-white text-[12px] font-bold transition-all shrink-0 cursor-pointer shadow-xs"
+          >
+            Done
+          </button>
+        </div>
+      )}
+
       {/* 3. Main Full-Bleed Map Canvas Area */}
       <main className="relative flex-1 min-w-0 h-full w-full overflow-hidden">
         {/* Full-Bleed 3D / 2D Map Container */}
@@ -1065,6 +1192,9 @@ export const App: React.FC = () => {
           onToggleTraffic={setIsTrafficActive}
           categoryFilter={selectedCategory.toLowerCase()}
           theme={isAlarmActive ? "emergency" : isDarkMode ? "dark" : "light"}
+          isGeofencePickMode={isGeofencePickMode}
+          onPickGeofenceLocation={handlePickGeofenceLocation}
+          onGeofenceChange={handleGeofenceChange}
         />
 
         {/* Top-Right Mode Switcher Pill (3D / 2D / Maps) - Desktop */}
@@ -1353,6 +1483,7 @@ export const App: React.FC = () => {
         onSimulateChildBreach={handleSimulateChildBreach}
         onSimulateChildReturn={handleSimulateChildReturn}
         onLocateChild={handleLocateChild}
+        onStartPickOnGoogleMaps={handleStartPickOnGoogleMaps}
       />
     </div>
   );

@@ -84,6 +84,9 @@ export interface GoogleMapAdapterProps {
   onSelectRoom?: (room: ArchitecturalRoom) => void;
   onSelectNode?: (nodeId: string, label: string) => void;
   onSwitchViewMode?: (mode: "3D" | "2D" | "Google") => void;
+  isGeofencePickMode?: boolean;
+  onPickGeofenceLocation?: (latLng: { lat: number; lng: number }) => void;
+  onGeofenceChange?: (newCenter: { lat: number; lng: number }, newRadius: number) => void;
 }
 
 export interface GoogleMapAdapterRef {
@@ -111,7 +114,10 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
       parentalState,
       onSelectRoom,
       onSelectNode,
-      onSwitchViewMode
+      onSwitchViewMode,
+      isGeofencePickMode = false,
+      onPickGeofenceLocation,
+      onGeofenceChange
     },
     ref
   ) => {
@@ -139,6 +145,7 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
     const userCircleRef = useRef<any>(null);
     const childMarkerRef = useRef<any>(null);
     const geofenceCircleRef = useRef<any>(null);
+    const geofenceCenterMarkerRef = useRef<any>(null);
     const routePolylineRef = useRef<any>(null);
     const routeGlowLineRef = useRef<any>(null);
     const routeDestinationMarkerRef = useRef<any>(null);
@@ -437,7 +444,10 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
 
       // Guardian Child Marker (if paired)
       if (guardianState?.isPaired && guardianState.childPosition) {
-        const childLatLng = indoorToLatLng(guardianState.childPosition.x, guardianState.childPosition.y);
+        const childLatLng =
+          guardianState.childPosition.lat != null && guardianState.childPosition.lng != null
+            ? { lat: guardianState.childPosition.lat, lng: guardianState.childPosition.lng }
+            : indoorToLatLng(guardianState.childPosition.x, guardianState.childPosition.y);
         const isBreached = !!parentalState?.isBreached;
         const markerIcon = {
           path: google.maps.SymbolPath.CIRCLE,
@@ -473,24 +483,27 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
       }
     }, [isLoaded, userPosition, guardianState, parentalState]);
 
-    // 5b. Parental Mode Geofence Circle Overlay
+    // 5b. Parental Mode Geofence Circle & Center Pin Overlay (Draggable on Google Maps)
     useEffect(() => {
       if (!isLoaded || !mapInstanceRef.current) return;
       const google = (window as any).google;
 
       if (parentalState?.isActive && parentalState.selectedZone) {
-        const centerLatLng = indoorToLatLng(
-          parentalState.selectedZone.center.x,
-          parentalState.selectedZone.center.y
-        );
+        const centerLatLng = parentalState.selectedZone.geoCenter
+          ? { lat: parentalState.selectedZone.geoCenter.lat, lng: parentalState.selectedZone.geoCenter.lng }
+          : indoorToLatLng(
+              parentalState.selectedZone.center.x,
+              parentalState.selectedZone.center.y
+            );
         const radiusMeters = parentalState.selectedZone.radiusMeters;
         const isBreached = !!parentalState.isBreached;
 
         if (!geofenceCircleRef.current) {
-          geofenceCircleRef.current = new google.maps.Circle({
+          const circle = new google.maps.Circle({
             map: mapInstanceRef.current,
             center: centerLatLng,
             radius: radiusMeters,
+            draggable: true,
             fillColor: isBreached ? "#EF4444" : "#10B981",
             fillOpacity: isBreached ? 0.28 : 0.16,
             strokeColor: isBreached ? "#DC2626" : "#059669",
@@ -498,9 +511,31 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
             strokeWeight: isBreached ? 3 : 2,
             zIndex: 110
           });
+
+          // Update center pin on drag
+          circle.addListener("drag", () => {
+            const dragCenter = circle.getCenter();
+            if (dragCenter && geofenceCenterMarkerRef.current) {
+              geofenceCenterMarkerRef.current.setPosition(dragCenter);
+            }
+          });
+
+          // Emit new center lat/lng on drag completion
+          circle.addListener("dragend", () => {
+            const newCenter = circle.getCenter();
+            if (newCenter && onGeofenceChange) {
+              onGeofenceChange(
+                { lat: newCenter.lat(), lng: newCenter.lng() },
+                circle.getRadius() || radiusMeters
+              );
+            }
+          });
+
+          geofenceCircleRef.current = circle;
         } else {
           geofenceCircleRef.current.setCenter(centerLatLng);
           geofenceCircleRef.current.setRadius(radiusMeters);
+          geofenceCircleRef.current.setDraggable(true);
           geofenceCircleRef.current.setOptions({
             fillColor: isBreached ? "#EF4444" : "#10B981",
             fillOpacity: isBreached ? 0.28 : 0.16,
@@ -509,11 +544,69 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
           });
           geofenceCircleRef.current.setMap(mapInstanceRef.current);
         }
-      } else if (geofenceCircleRef.current) {
-        geofenceCircleRef.current.setMap(null);
-        geofenceCircleRef.current = null;
+
+        // Center Marker Pin
+        const geofenceCenterIcon = {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 6,
+          fillColor: isBreached ? "#DC2626" : "#059669",
+          fillOpacity: 1,
+          strokeColor: "#FFFFFF",
+          strokeWeight: 2
+        };
+
+        if (!geofenceCenterMarkerRef.current) {
+          geofenceCenterMarkerRef.current = new google.maps.Marker({
+            position: centerLatLng,
+            map: mapInstanceRef.current,
+            title: `Safe Zone Center: ${parentalState.selectedZone.name}`,
+            icon: geofenceCenterIcon,
+            zIndex: 112
+          });
+        } else {
+          geofenceCenterMarkerRef.current.setPosition(centerLatLng);
+          geofenceCenterMarkerRef.current.setIcon(geofenceCenterIcon);
+          geofenceCenterMarkerRef.current.setMap(mapInstanceRef.current);
+        }
+      } else {
+        if (geofenceCircleRef.current) {
+          geofenceCircleRef.current.setMap(null);
+          geofenceCircleRef.current = null;
+        }
+        if (geofenceCenterMarkerRef.current) {
+          geofenceCenterMarkerRef.current.setMap(null);
+          geofenceCenterMarkerRef.current = null;
+        }
       }
-    }, [isLoaded, parentalState]);
+    }, [isLoaded, parentalState, onGeofenceChange]);
+
+    // 5c. Tap Anywhere on Google Maps to Place Geofence
+    useEffect(() => {
+      if (!isLoaded || !mapInstanceRef.current) return;
+      const google = (window as any).google;
+
+      const clickListener = mapInstanceRef.current.addListener("click", (e: any) => {
+        if (!e || !e.latLng) return;
+        const lat = e.latLng.lat();
+        const lng = e.latLng.lng();
+
+        if (isGeofencePickMode && onPickGeofenceLocation) {
+          onPickGeofenceLocation({ lat, lng });
+        }
+      });
+
+      if (isGeofencePickMode) {
+        mapInstanceRef.current.setOptions({ draggableCursor: "crosshair" });
+      } else {
+        mapInstanceRef.current.setOptions({ draggableCursor: null });
+      }
+
+      return () => {
+        if (google && google.maps && google.maps.event) {
+          google.maps.event.removeListener(clickListener);
+        }
+      };
+    }, [isLoaded, isGeofencePickMode, onPickGeofenceLocation]);
 
     // 6. Update Navigation / Emergency / Night Safety Polyline
     useEffect(() => {

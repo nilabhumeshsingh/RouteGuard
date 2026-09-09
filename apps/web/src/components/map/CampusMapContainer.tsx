@@ -30,6 +30,9 @@ export interface CampusMapContainerProps {
   onToggleTraffic?: (active: boolean) => void;
   categoryFilter?: string;
   theme?: "light" | "dark" | "emergency";
+  isGeofencePickMode?: boolean;
+  onPickGeofenceLocation?: (latLng: { lat: number; lng: number }) => void;
+  onGeofenceChange?: (newCenter: { lat: number; lng: number }, newRadius: number) => void;
 }
 
 export interface CampusMapContainerHandle {
@@ -64,7 +67,10 @@ export const CampusMapContainer = forwardRef<CampusMapContainerHandle, CampusMap
       onToggleGoogleMapType,
       onToggleTraffic,
       categoryFilter = "all",
-      theme = "light"
+      theme = "light",
+      isGeofencePickMode = false,
+      onPickGeofenceLocation,
+      onGeofenceChange
     },
     ref
   ) => {
@@ -191,6 +197,9 @@ export const CampusMapContainer = forwardRef<CampusMapContainerHandle, CampusMap
             onSelectRoom={onSelectRoom}
             onSelectNode={onSelectNode}
             onSwitchViewMode={onSwitchViewMode}
+            isGeofencePickMode={isGeofencePickMode}
+            onPickGeofenceLocation={onPickGeofenceLocation}
+            onGeofenceChange={onGeofenceChange}
           />
         </div>
       );

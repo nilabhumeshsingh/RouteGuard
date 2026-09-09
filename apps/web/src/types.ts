@@ -40,6 +40,8 @@ export interface GuardianState {
     y: number;
     floorId: FloorId;
     placeName: string;
+    lat?: number;
+    lng?: number;
   };
   batteryLevel: number;
   lastUpdatedSecondsAgo: number;
@@ -54,6 +56,8 @@ export interface GeofenceZoneConfig {
   center: { x: number; y: number };
   radiusMeters: number;
   svgRadius: number;
+  geoCenter?: { lat: number; lng: number };
+  isGoogleMapGeofence?: boolean;
 }
 
 export interface ParentalModeState {
