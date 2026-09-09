@@ -372,10 +372,10 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
             <path d="M 2 2 L 7 5 L 2 8" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" />
           </marker>
 
-          {/* Intense Neon Blue Light Glow Filter */}
+          {/* Intense Dark Blue Light Glow Filter */}
           <filter id="neonBlueGlow" x="-80%" y="-80%" width="260%" height="260%">
-            <feGaussianBlur stdDeviation="6" result="blur1" />
-            <feGaussianBlur stdDeviation="14" result="blur2" />
+            <feGaussianBlur stdDeviation="5" result="blur1" />
+            <feGaussianBlur stdDeviation="12" result="blur2" />
             <feMerge>
               <feMergeNode in="blur2" />
               <feMergeNode in="blur1" />
@@ -384,11 +384,11 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
           </filter>
 
           <radialGradient id="glowingBlueLightGrad" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#ffffff" stopOpacity="1" />
-            <stop offset="20%" stopColor="#00f0ff" stopOpacity="0.95" />
-            <stop offset="50%" stopColor="#0088ff" stopOpacity="0.65" />
-            <stop offset="80%" stopColor="#0044ff" stopOpacity="0.25" />
-            <stop offset="100%" stopColor="#001166" stopOpacity="0" />
+            <stop offset="0%" stopColor="#80aaff" stopOpacity="0.9" />
+            <stop offset="25%" stopColor="#1a55ff" stopOpacity="0.75" />
+            <stop offset="55%" stopColor="#0033cc" stopOpacity="0.5" />
+            <stop offset="85%" stopColor="#001a80" stopOpacity="0.25" />
+            <stop offset="100%" stopColor="#000d40" stopOpacity="0" />
           </radialGradient>
 
           {/* Location Halo Drop Shadow */}
@@ -1013,7 +1013,7 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
           </g>
         )}
 
-        {/* User Location Dot with Glowing Blue Light Beacon */}
+        {/* User Location Dot with Glowing Dark Blue Light Beacon */}
         <g id="user-location-marker" className="pointer-events-none">
           {/* Broad Diffused Glowing Light Aura */}
           <circle
@@ -1031,9 +1031,9 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
             cx={resolvedCoords.x}
             cy={resolvedCoords.y}
             r={userPosition.uncertaintyRadius * 12}
-            fill="#00d2ff"
-            fillOpacity="0.18"
-            stroke="#00f0ff"
+            fill="#002299"
+            fillOpacity="0.22"
+            stroke="#0033cc"
             strokeWidth="1.5"
             strokeOpacity="0.75"
             className="animate-halo"
@@ -1045,27 +1045,27 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
             cy={resolvedCoords.y}
             r="20"
             fill="none"
-            stroke="#00e5ff"
+            stroke="#1a55ff"
             strokeWidth="1.5"
             strokeDasharray="4 2"
-            opacity="0.8"
+            opacity="0.75"
           />
 
-          {/* Intense Neon Blue Light Core */}
+          {/* Intense Dark Blue Light Core */}
           <circle
             cx={resolvedCoords.x}
             cy={resolvedCoords.y}
             r="10"
-            fill="#00d2ff"
+            fill="#0033cc"
             stroke="#ffffff"
             strokeWidth="2.5"
             filter="url(#neonBlueGlow)"
           />
 
-          {/* White-Hot Photon Center Dot */}
-          <circle cx={resolvedCoords.x} cy={resolvedCoords.y} r="4" fill="#ffffff" />
+          {/* Inner Photon Center Dot */}
+          <circle cx={resolvedCoords.x} cy={resolvedCoords.y} r="4" fill="#b3d1ff" />
 
-          {/* Floating Neon Cyan Badge */}
+          {/* Floating Dark Blue Badge */}
           <g transform={`translate(${resolvedCoords.x}, ${resolvedCoords.y - 22})`}>
             <rect
               x="-46"
@@ -1073,9 +1073,9 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
               width="92"
               height="18"
               rx="9"
-              fill="#002b4d"
-              fillOpacity="0.9"
-              stroke="#00d2ff"
+              fill="#020d26"
+              fillOpacity="0.95"
+              stroke="#0033cc"
               strokeWidth="1.2"
               filter="url(#neonBlueGlow)"
             />
@@ -1084,7 +1084,7 @@ export const Indoor2DMap: React.FC<Indoor2DMapProps> = ({
               y="1"
               textAnchor="middle"
               dominantBaseline="middle"
-              className="text-[9px] font-bold fill-[#00ffff] tracking-wide"
+              className="text-[9px] font-bold fill-[#b3d1ff] tracking-wide"
               style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
             >
               YOU ARE HERE

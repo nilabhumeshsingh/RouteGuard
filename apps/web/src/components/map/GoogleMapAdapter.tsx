@@ -369,7 +369,7 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
           icon: {
             path: google.maps.SymbolPath.CIRCLE,
             scale: 8,
-            fillColor: "#00d2ff",
+            fillColor: "#0033cc",
             fillOpacity: 1,
             strokeColor: "#FFFFFF",
             strokeWeight: 2.5
@@ -383,11 +383,11 @@ export const GoogleMapAdapter = forwardRef<GoogleMapAdapterRef, GoogleMapAdapter
 
       if (!userCircleRef.current) {
         userCircleRef.current = new google.maps.Circle({
-          strokeColor: "#00f0ff",
+          strokeColor: "#0033cc",
           strokeOpacity: 0.8,
           strokeWeight: 2,
-          fillColor: "#00d2ff",
-          fillOpacity: 0.22,
+          fillColor: "#002299",
+          fillOpacity: 0.25,
           map: mapInstanceRef.current,
           center: userLatLng,
           radius: Math.max(4, userPosition.uncertaintyRadius || 5)

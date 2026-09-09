@@ -519,67 +519,55 @@
         });
 
         
-        // --- GLOWING BLUE LIGHT & LOCATION BEACON ---
+        // --- GLOWING DARK BLUE LIGHT & LOCATION BEACON ---
         const userBeaconGroup = new THREE.Group();
 
-        // 1. Dynamic PointLight — casts real radiant cyan-blue light onto room walls, floor and ceiling
-        const locationLight = new THREE.PointLight(0x00d2ff, 5.0, 24, 1.2);
-        locationLight.position.set(0, 1.6, 0);
+        // 1. Dynamic PointLight — casts rich radiant dark blue light onto room walls, floor and ceiling
+        const locationLight = new THREE.PointLight(0x0033cc, 4.5, 20, 1.4);
+        locationLight.position.set(0, 1.2, 0);
         locationLight.castShadow = false;
         userBeaconGroup.add(locationLight);
 
-        // 2. Volumetric Glowing Light Core (white-hot photon core + cyan volumetric aura)
-        const coreMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-        const coreMesh = new THREE.Mesh(new THREE.SphereGeometry(0.28, 24, 24), coreMat);
-        coreMesh.position.y = 1.4;
+        // 2. Volumetric Glowing Light Core (soft white/blue photon center + deep dark blue aura)
+        const coreMat = new THREE.MeshBasicMaterial({ color: 0x80b3ff });
+        const coreMesh = new THREE.Mesh(new THREE.SphereGeometry(0.3, 24, 24), coreMat);
+        coreMesh.position.y = 1.0;
 
         const auraMat = new THREE.MeshBasicMaterial({
-          color: 0x00bfff,
+          color: 0x002b99,
           transparent: true,
           opacity: 0.85,
           blending: THREE.AdditiveBlending
         });
-        const auraMesh = new THREE.Mesh(new THREE.SphereGeometry(0.65, 24, 24), auraMat);
-        auraMesh.position.y = 1.4;
+        const auraMesh = new THREE.Mesh(new THREE.SphereGeometry(0.7, 24, 24), auraMat);
+        auraMesh.position.y = 1.0;
 
         const outerGlowMat = new THREE.MeshBasicMaterial({
-          color: 0x0066ff,
+          color: 0x001466,
           transparent: true,
-          opacity: 0.5,
+          opacity: 0.6,
           blending: THREE.AdditiveBlending
         });
-        const outerGlowMesh = new THREE.Mesh(new THREE.SphereGeometry(1.2, 24, 24), outerGlowMat);
-        outerGlowMesh.position.y = 1.4;
+        const outerGlowMesh = new THREE.Mesh(new THREE.SphereGeometry(1.25, 24, 24), outerGlowMat);
+        outerGlowMesh.position.y = 1.0;
 
-        // 3. Vertical Glowing Skyward Laser Beam / Pillar
-        const beamGeo = new THREE.CylinderGeometry(0.08, 0.45, 24, 16, 1, true);
-        const beamMat = new THREE.MeshBasicMaterial({
-          color: 0x00e5ff,
-          transparent: true,
-          opacity: 0.55,
-          side: THREE.DoubleSide,
-          blending: THREE.AdditiveBlending
-        });
-        const beamMesh = new THREE.Mesh(beamGeo, beamMat);
-        beamMesh.position.y = 12.0;
-
-        // 4. Concentric Expanding Ground Wave Rings
-        const ringGeo1 = new THREE.RingGeometry(0.4, 0.8, 36);
+        // 3. Concentric Expanding Ground Wave Rings (Dark Blue)
+        const ringGeo1 = new THREE.RingGeometry(0.4, 0.85, 36);
         ringGeo1.rotateX(-Math.PI / 2);
         const ringMat1 = new THREE.MeshBasicMaterial({
-          color: 0x00f0ff,
+          color: 0x0033cc,
           transparent: true,
-          opacity: 0.9,
+          opacity: 0.85,
           side: THREE.DoubleSide,
           blending: THREE.AdditiveBlending
         });
         const ringMesh1 = new THREE.Mesh(ringGeo1, ringMat1);
         ringMesh1.position.y = 0.08;
 
-        const ringGeo2 = new THREE.RingGeometry(0.8, 1.4, 36);
+        const ringGeo2 = new THREE.RingGeometry(0.85, 1.5, 36);
         ringGeo2.rotateX(-Math.PI / 2);
         const ringMat2 = new THREE.MeshBasicMaterial({
-          color: 0x0088ff,
+          color: 0x001a80,
           transparent: true,
           opacity: 0.6,
           side: THREE.DoubleSide,
@@ -588,43 +576,32 @@
         const ringMesh2 = new THREE.Mesh(ringGeo2, ringMat2);
         ringMesh2.position.y = 0.09;
 
-        // 5. Solid Stem Pin
-        const pinMat = new THREE.MeshStandardMaterial({
-          color: 0x00e5ff,
-          roughness: 0.2,
-          metalness: 0.5,
-          emissive: 0x0077bb,
-          emissiveIntensity: 0.8
-        });
-        const pinMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.02, 1.4, 16), pinMat);
-        pinMesh.position.y = 0.7;
-
-        // 6. Floating Neon Location Badge Sprite
+        // 4. Floating Dark Blue Location Badge Sprite
         function createLocationBadge() {
           const canvas = document.createElement('canvas');
           const scale = 4;
           canvas.width = 256 * scale; canvas.height = 72 * scale;
           const ctx = canvas.getContext('2d');
 
-          ctx.fillStyle = 'rgba(4, 18, 36, 0.92)';
-          ctx.strokeStyle = '#00f0ff';
+          ctx.fillStyle = 'rgba(2, 8, 26, 0.95)';
+          ctx.strokeStyle = '#0033cc';
           ctx.lineWidth = 3 * scale;
-          ctx.shadowColor = '#00e5ff';
+          ctx.shadowColor = '#002299';
           ctx.shadowBlur = 12 * scale;
           ctx.beginPath();
           ctx.roundRect(8 * scale, 8 * scale, canvas.width - 16 * scale, canvas.height - 16 * scale, 12 * scale);
           ctx.fill(); ctx.stroke();
 
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          ctx.fillStyle = '#ffffff';
+          ctx.fillStyle = '#b3d1ff';
           ctx.font = "800 " + (22 * scale) + "px system-ui, -apple-system, sans-serif";
           ctx.shadowBlur = 8 * scale;
           ctx.fillText('YOU ARE HERE', canvas.width / 2, canvas.height / 2);
 
           const texture = new THREE.CanvasTexture(canvas);
           const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false }));
-          sprite.scale.set(3.6, 1.0, 1);
-          sprite.position.y = 2.8;
+          sprite.scale.set(3.4, 0.95, 1);
+          sprite.position.y = 2.4;
           sprite.renderOrder = 1000;
           return sprite;
         }
@@ -634,10 +611,8 @@
           coreMesh,
           auraMesh,
           outerGlowMesh,
-          beamMesh,
           ringMesh1,
           ringMesh2,
-          pinMesh,
           locationBadge
         );
 
@@ -773,31 +748,28 @@
           if (userBeaconGroup && userBeaconGroup.visible) {
             const t = performance.now() * 0.003;
             // Pulsing PointLight intensity
-            locationLight.intensity = 4.2 + Math.sin(t * 5) * 2.0;
+            locationLight.intensity = 3.8 + Math.sin(t * 4) * 1.5;
 
             // Hover core, auras and badge
-            const hoverY = 1.4 + Math.sin(t * 3.5) * 0.18;
+            const hoverY = 1.0 + Math.sin(t * 3.5) * 0.15;
             coreMesh.position.y = hoverY;
             auraMesh.position.y = hoverY;
             outerGlowMesh.position.y = hoverY;
             locationBadge.position.y = hoverY + 1.4;
 
             // Aura scale breathing
-            const auraScale = 1.0 + Math.sin(t * 4) * 0.2;
+            const auraScale = 1.0 + Math.sin(t * 3.5) * 0.18;
             auraMesh.scale.set(auraScale, auraScale, auraScale);
-            outerGlowMesh.scale.set(1.0 + Math.sin(t * 3) * 0.25, 1.0 + Math.sin(t * 3) * 0.25, 1.0 + Math.sin(t * 3) * 0.25);
+            outerGlowMesh.scale.set(1.0 + Math.sin(t * 2.5) * 0.2, 1.0 + Math.sin(t * 2.5) * 0.2, 1.0 + Math.sin(t * 2.5) * 0.2);
 
             // Two concentric expanding ripple waves on the floor
             const r1 = 1.0 + ((t * 1.8) % 2.5);
             ringMesh1.scale.set(r1, r1, 1);
-            ringMat1.opacity = Math.max(0, 0.95 - (r1 - 1.0) / 2.5);
+            ringMat1.opacity = Math.max(0, 0.85 - (r1 - 1.0) / 2.5);
 
             const r2 = 1.0 + (((t * 1.8) + 1.25) % 2.5);
             ringMesh2.scale.set(r2, r2, 1);
-            ringMat2.opacity = Math.max(0, 0.75 - (r2 - 1.0) / 2.5);
-
-            // Light pillar pulse
-            beamMat.opacity = 0.45 + Math.sin(t * 4) * 0.25;
+            ringMat2.opacity = Math.max(0, 0.65 - (r2 - 1.0) / 2.5);
           }
           controls.update();
           renderer.render(scene, camera);
